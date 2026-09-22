@@ -1,0 +1,20 @@
+{
+  "name": "PhotoBooth — Studio Foto Privat",
+  "short_name": "PhotoBooth",
+  "description": "Ambil, edit, dan simpan foto secara privat langsung di perangkat Anda.",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F4F0E4",
+  "theme_color": "#F4F0E4",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

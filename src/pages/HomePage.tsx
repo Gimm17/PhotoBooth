@@ -15,10 +15,9 @@ export function HomePage() {
       <section className="hero page-width">
         <div className="hero-copy">
           <p className="privacy-chip"><span aria-hidden="true" /> Privat. Cepat. Langsung di perangkatmu.</p>
-          <h1>PhotoBooth untuk kenanganmu</h1>
-          <p className="hero-title" aria-hidden="true">
+          <h1 className="hero-title">
             Abadikan momen,<br /> <mark className="blue-mark">buat jadi</mark> <mark className="pink-mark">milikmu.</mark>
-          </p>
+          </h1>
           <p className="hero-summary">Studio foto digital langsung dari browsermu. Tangkap momen spontan, buat strip foto bergaya scrapbook, lalu simpan tanpa server.</p>
           <div className="hero-actions">
             <Link className="button primary-button" to="/setup">Mulai PhotoBooth <ArrowRight aria-hidden="true" size={19} /></Link>

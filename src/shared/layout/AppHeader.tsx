@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Aperture, LockKeyhole, Menu } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
@@ -11,6 +11,18 @@ const navigation = [
 
 export function AppHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsMenuOpen(false)
+      menuButtonRef.current?.focus()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [isMenuOpen])
 
   return (
     <header className="app-header">
@@ -25,7 +37,7 @@ export function AppHeader() {
 
         <nav id="primary-navigation" className={`primary-nav${isMenuOpen ? ' is-open' : ''}`} aria-label="Navigasi utama">
           {navigation.map(({ to, label, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => (isActive ? 'active' : undefined)}>
+            <NavLink key={to} to={to} end={end} onClick={() => setIsMenuOpen(false)} className={({ isActive }) => (isActive ? 'active' : undefined)}>
               {label}
             </NavLink>
           ))}
@@ -36,6 +48,7 @@ export function AppHeader() {
           <span>100% privat di browser</span>
         </div>
         <button
+          ref={menuButtonRef}
           className="menu-button"
           type="button"
           aria-label="Buka navigasi"

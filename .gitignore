@@ -5,5 +5,9 @@ playwright-report/
 test-results/
 .env
 .env.*
+.env.local
+.env.*.local
 .superpowers/
-
+.DS_Store
+Thumbs.db
+*.log

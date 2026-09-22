@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Ikon kamera PhotoBooth</title>
+  <rect width="512" height="512" rx="112" fill="#F4F0E4"/>
+  <rect x="72" y="150" width="368" height="254" rx="56" fill="#A5D6F1" stroke="#2C2B29" stroke-width="24"/>
+  <path d="M166 150l34-52h112l34 52" fill="#EFAAB9" stroke="#2C2B29" stroke-linejoin="round" stroke-width="24"/>
+  <circle cx="256" cy="277" r="91" fill="#FFFFFF" stroke="#2C2B29" stroke-width="24"/>
+  <circle cx="256" cy="277" r="47" fill="#EFAAB9" stroke="#2C2B29" stroke-width="20"/>
+  <circle cx="386" cy="201" r="15" fill="#2C2B29"/>
+</svg>

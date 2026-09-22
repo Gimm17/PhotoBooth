@@ -1,17 +1,18 @@
 * { box-sizing: border-box; }
 html { background: var(--color-canvas); color: var(--color-ink); font-family: var(--font-body); scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; overflow-x: hidden; }
+img, svg, video, canvas { max-width: 100%; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
 a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
 .page-width { width: min(100% - (var(--page-padding) * 2), var(--page-max)); margin-inline: auto; }
-.app-shell { min-height: 100dvh; display: flex; flex-direction: column; }
-main { flex: 1; }
+.app-shell { min-height: 100dvh; display: flex; flex-direction: column; overflow: clip; }
+main { flex: 1; min-width: 0; }
 .skip-link { align-items: center; background: var(--color-ink); color: var(--color-paper); display: inline-flex; left: 1rem; min-height: 44px; padding: .75rem 1rem; position: fixed; top: -4rem; z-index: 100; border-radius: .5rem; }
 .skip-link:focus { top: 1rem; }
 
-.app-header { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border-bottom: 1px solid var(--color-line); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+.app-header { background: color-mix(in srgb, var(--color-surface) 92%, transparent); border-bottom: 1px solid var(--color-line); padding-top: env(safe-area-inset-top); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
 .header-content { min-height: 4.75rem; display: flex; align-items: center; gap: 1rem; justify-content: space-between; }
 .brand { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; flex-shrink: 0; }
 .brand svg { color: #32647B; }
@@ -31,7 +32,6 @@ main { flex: 1; }
 .privacy-chip span { background: #1DAB71; border-radius: 50%; width: .42rem; height: .42rem; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { font-family: var(--font-display); }
-.hero h1 { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .hero-title { color: var(--color-ink); font: 600 clamp(2.2rem, 4.4vw, 3.8rem)/1.1 var(--font-display); letter-spacing: -.055em; margin: 1.25rem 0 1.15rem; }
 mark { color: var(--color-ink); display: inline-block; padding: 0 .18em .04em; border-radius: .35rem; }
 .blue-mark { background: var(--color-primary); transform: rotate(-1.5deg); }
@@ -131,7 +131,7 @@ mark { color: var(--color-ink); display: inline-block; padding: 0 .18em .04em; b
 .simple-page .section-kicker, .simple-page .simple-actions, .simple-page .privacy-note { justify-content: center; }
 .camera-placeholder { align-items: center; background: linear-gradient(135deg, rgba(165,214,241,.45), rgba(239,170,185,.35)); border: 1px dashed rgba(44,43,41,.3); border-radius: var(--radius-card); color: var(--color-muted); display: flex; flex-direction: column; gap: .7rem; justify-content: center; margin: 1.8rem auto; min-height: 13rem; max-width: 42rem; }
 .empty-icon { color: #32647B; display: block; margin: 1.8rem auto; }
-.app-footer { background: rgba(44,43,41,.04); border-top: 1px solid var(--color-line); padding-block: 1.5rem; }
+.app-footer { background: rgba(44,43,41,.04); border-top: 1px solid var(--color-line); padding: 1.5rem var(--page-padding) max(1.5rem, env(safe-area-inset-bottom)); }
 .footer-content { align-items: center; display: flex; justify-content: space-between; gap: 1.5rem; }
 .footer-brand { align-items: center; display: flex; font-size: .72rem; font-weight: 600; gap: .25rem; margin-bottom: .25rem; }
 .footer-content > div > p:last-child { color: var(--color-muted); font-size: .7rem; margin-bottom: 0; }
