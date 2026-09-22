@@ -112,7 +112,7 @@ export function Studio() {
         <p className="studio-tip">Posisikan wajah pada area tengah untuk hasil cetak yang seimbang. Tekan Space untuk menjepret.</p>
       </div>
 
-      <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan" role={mobileSettingsOpen ? 'dialog' : undefined} aria-modal={mobileSettingsOpen || undefined}>
+      <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan">
         <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2></div>
         <button className="settings-close" type="button" onClick={() => setMobileSettingsOpen(false)} aria-label="Tutup setelan tangkapan">Tutup</button>
         <fieldset><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>

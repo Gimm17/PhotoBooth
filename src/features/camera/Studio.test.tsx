@@ -78,17 +78,21 @@ describe('Studio', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Semua foto siap untuk diedit')
   })
 
-  it('opens and closes the mobile settings sheet from an accessible control', () => {
+  it('opens and closes the mobile settings sheet as a non-modal disclosure', () => {
     renderStudio()
 
     const button = screen.getByLabelText('Buka setelan tangkapan', { selector: 'button' })
+    const sheet = screen.getByRole('complementary', { name: 'Setelan tangkapan' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(sheet).not.toHaveAttribute('aria-modal')
 
     act(() => fireEvent.click(button))
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('dialog', { name: 'Setelan tangkapan' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Setelan tangkapan' })).toHaveClass('is-mobile-open')
+    expect(screen.queryByRole('dialog', { name: 'Setelan tangkapan' })).not.toBeInTheDocument()
 
     act(() => fireEvent.click(screen.getByLabelText('Tutup setelan tangkapan', { selector: 'button' })))
-    expect(screen.queryByRole('dialog', { name: 'Setelan tangkapan' })).not.toBeInTheDocument()
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(sheet).not.toHaveClass('is-mobile-open')
   })
 })
