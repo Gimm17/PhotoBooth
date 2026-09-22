@@ -43,6 +43,9 @@ function releaseServiceWorker() {
 
 export default defineConfig({
   plugins: [react(), releaseServiceWorker()],
+  build: {
+    assetsInlineLimit: 0,
+  },
   test: {
     css: true,
     environment: 'jsdom',

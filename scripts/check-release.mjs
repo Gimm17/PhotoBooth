@@ -22,6 +22,21 @@ const serviceWorker = readFileSync(serviceWorkerPath, 'utf8')
 const revision = serviceWorker.match(/photobooth-app-shell-([a-f0-9]{12})/i)?.[1]
 assert(revision, 'Expected sw.js to contain a concrete 12-character app-shell revision.')
 
+const assetsDirectory = join(distDirectory, 'assets')
+const fingerprintedFrameAssets = existsSync(assetsDirectory)
+  ? listFiles(assetsDirectory)
+    .map((file) => '/' + relative(distDirectory, file).replaceAll('\\', '/'))
+    .filter((path) => /^\/assets\/.+-[A-Za-z0-9_-]{8,}\.(svg|png)$/.test(path))
+  : []
+const svgFrameAsset = fingerprintedFrameAssets.find((path) => path.endsWith('.svg'))
+const pngFrameAsset = fingerprintedFrameAssets.find((path) => path.endsWith('.png'))
+
+assert(svgFrameAsset, 'No fingerprinted SVG frame asset found')
+assert(pngFrameAsset, 'No fingerprinted PNG frame asset found')
+for (const frameAsset of [svgFrameAsset, pngFrameAsset]) {
+  assert(serviceWorker.includes(frameAsset), `Frame asset missing from service-worker precache: ${frameAsset}`)
+}
+
 const hash = createHash('sha256')
 for (const file of listFiles(distDirectory)) {
   hash.update(relative(distDirectory, file).replaceAll('\\', '/'))
@@ -39,4 +54,4 @@ assert(serviceWorker.includes('VERSIONED_VITE_ASSET.test(url.pathname)'), 'Expec
 assert(!serviceWorker.includes("url.pathname.startsWith('/assets/')"), 'Service worker must not cache arbitrary /assets responses.')
 assert(!/blob:|indexeddb|camera stream/i.test(serviceWorker), 'Service worker must not contain user-media persistence paths.')
 
-console.log(`Release service worker verified: ${revision}`)
+console.log(`Release service worker verified: ${revision}; frame assets: ${fingerprintedFrameAssets.filter((path) => path.endsWith('.svg')).length} SVG, ${fingerprintedFrameAssets.filter((path) => path.endsWith('.png')).length} PNG`)
