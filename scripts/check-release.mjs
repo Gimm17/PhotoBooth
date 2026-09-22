@@ -21,6 +21,11 @@ assert(existsSync(serviceWorkerPath), 'Expected dist/sw.js after the production 
 const serviceWorker = readFileSync(serviceWorkerPath, 'utf8')
 const revision = serviceWorker.match(/photobooth-app-shell-([a-f0-9]{12})/i)?.[1]
 assert(revision, 'Expected sw.js to contain a concrete 12-character app-shell revision.')
+const precacheJson = serviceWorker.match(/^const PRECACHE_URLS = (?<urls>\[[^\r\n]*\])\r?$/m)?.groups?.urls
+assert(precacheJson, 'Expected service worker to contain generated PRECACHE_URLS.')
+const precacheUrls = JSON.parse(precacheJson)
+assert(Array.isArray(precacheUrls), 'Expected service-worker precache to be an array.')
+const precacheUrlSet = new Set(precacheUrls)
 
 const assetsDirectory = join(distDirectory, 'assets')
 const fingerprintedFrameAssets = existsSync(assetsDirectory)
@@ -34,7 +39,7 @@ const pngFrameAsset = fingerprintedFrameAssets.find((path) => path.endsWith('.pn
 assert(svgFrameAsset, 'No fingerprinted SVG frame asset found')
 assert(pngFrameAsset, 'No fingerprinted PNG frame asset found')
 for (const frameAsset of [svgFrameAsset, pngFrameAsset]) {
-  assert(serviceWorker.includes(frameAsset), `Frame asset missing from service-worker precache: ${frameAsset}`)
+  assert(precacheUrlSet.has(frameAsset), `Frame asset missing from service-worker precache: ${frameAsset}`)
 }
 
 const hash = createHash('sha256')
