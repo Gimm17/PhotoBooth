@@ -77,7 +77,7 @@ describe('Editor', () => {
     expect(screen.queryByRole('button', { name: /Classic Polaroid/i })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Cari bingkai'), { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Minimal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Celebration' }))
     fireEvent.click(screen.getByRole('button', { name: 'Kotak' }))
     expect(screen.getByRole('button', { name: /Clean Grid/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Museum White/i })).not.toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('Editor', () => {
     readySession()
     renderEditor()
 
-    expect(screen.getByRole('button', { name: 'Minimal' })).toHaveStyle({ minHeight: '44px' })
+    expect(screen.getByRole('button', { name: 'Celebration' })).toHaveStyle({ minHeight: '44px' })
     expect(screen.getByRole('button', { name: 'Kotak' })).toHaveStyle({ minHeight: '44px' })
     fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
     expect(screen.getByRole('button', { name: 'Film' })).toHaveStyle({ minHeight: '44px' })

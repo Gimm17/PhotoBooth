@@ -30,7 +30,22 @@ export interface PhotoSlot {
   rotation?: number
 }
 
-export type FrameCategory = 'Classic' | 'Cute & Pastel' | 'Retro' | 'Minimal' | 'Seasonal'
+export type FrameCategory = 'Classic' | 'Coquette' | 'Cute & Pastel' | 'Nature & Dreamy' | 'Celebration' | 'Seasonal'
+export type FrameAssetPlacement = 'underlay' | 'overlay'
+export type FrameAssetFit = 'contain' | 'cover' | 'stretch'
+
+export interface FrameAssetLayer {
+  src: string
+  placement: FrameAssetPlacement
+  x: number
+  y: number
+  width: number
+  height: number
+  opacity?: number
+  rotation?: number
+  fit?: FrameAssetFit
+}
+
 export type FrameOrientation = 'portrait' | 'landscape' | 'square'
 
 export interface FrameCaption {
@@ -54,6 +69,8 @@ export interface FrameTemplate {
   background: string
   border: { color: string; width: number; radius: number }
   caption: FrameCaption
+  thumbnail?: string
+  assets?: FrameAssetLayer[]
 }
 
 export interface PhotoSession {

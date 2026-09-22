@@ -2,7 +2,7 @@ import { Check, Search } from 'lucide-react'
 import { FRAME_TEMPLATES } from '../../catalog/frames'
 import type { FrameCategory, FrameOrientation } from '../../catalog/types'
 
-const categories: Array<FrameCategory | 'Semua'> = ['Semua', 'Classic', 'Cute & Pastel', 'Retro', 'Minimal', 'Seasonal']
+const categories: Array<FrameCategory | 'Semua'> = ['Semua', 'Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal']
 const orientations: Array<{ label: string; value: FrameOrientation | 'all' }> = [
   { label: 'Semua rasio', value: 'all' },
   { label: 'Tegak', value: 'portrait' },
