@@ -103,7 +103,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         selectedFrame: frame.id,
         selectedLayout: layout.id,
         requiredShots: layout.requiredShots,
-        photos: state.photos.slice(0, layout.requiredShots),
+        photos: state.photos,
         composedResultUrl: null,
         composedResultBlob: null,
       }
@@ -127,7 +127,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         selectedFrame: frame.id,
         selectedFilter: filter.id,
         requiredShots: layout.requiredShots,
-        photos: snapshot.photos.slice(0, layout.requiredShots),
+        photos: [...snapshot.photos],
         filterIntensity: Math.min(100, Math.max(0, snapshot.filterIntensity)),
         caption: snapshot.caption,
         showDate: snapshot.showDate,

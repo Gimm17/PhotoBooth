@@ -47,7 +47,7 @@ export function Studio() {
 
   const machine = machineRef.current
   const activeSlot = captureState.retakeIndex ?? Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0))
-  const complete = session.photos.length === session.requiredShots
+  const complete = session.photos.length >= session.requiredShots
   const uploadContinuation = camera.status !== 'active' && session.photos.length > 0
   const canEdit = complete || uploadContinuation
 
@@ -132,7 +132,7 @@ export function Studio() {
     </div>
 
     <section className="studio-film" aria-label="Progres pose">
-      <div className="film-heading"><h2>Lembar klise</h2><span>{session.photos.length} selesai · {Math.max(session.requiredShots - session.photos.length, 0)} tersisa</span></div>
+      <div className="film-heading"><h2>Lembar klise</h2><span>{Math.min(session.photos.length, session.requiredShots)} selesai · {Math.max(session.requiredShots - session.photos.length, 0)} tersisa</span></div>
       <div className="film-slots">{Array.from({ length: session.requiredShots }, (_, index) => {
         const photo = session.photos[index]
         return <button key={index} className={`film-slot ${index === activeSlot && !complete ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>

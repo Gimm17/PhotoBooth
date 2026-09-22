@@ -125,19 +125,34 @@ describe('Editor', () => {
     expect(useSessionStore.getState().caption).toBe('Kita')
   })
 
-  it('restores every captured photo in order when undoing a frame layout change', () => {
+  it('preserves every captured photo while switching to a smaller frame and back', async () => {
     useSessionStore.setState({
-      selectedLayout: 'grid-2x2', selectedFrame: 'minimal-grid', requiredShots: 4,
-      photos: ['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three', 'data:image/png;base64,four'],
+      selectedLayout: 'three-postcard', selectedFrame: 'classic-postcard', requiredShots: 3,
+      photos: ['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three'],
     })
     renderEditor()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Classic Polaroid' }))
-    expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one'])
+    fireEvent.click(screen.getByRole('button', { name: 'Gallery Duo' }))
+    expect(useSessionStore.getState().photos).toEqual([
+      'data:image/png;base64,one',
+      'data:image/png;base64,two',
+      'data:image/png;base64,three',
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sunday Postcard' }))
+    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'three-postcard', selectedFrame: 'classic-postcard', requiredShots: 3 })
+    expect(useSessionStore.getState().photos).toEqual([
+      'data:image/png;base64,one',
+      'data:image/png;base64,two',
+      'data:image/png;base64,three',
+    ])
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenLastCalledWith(expect.objectContaining({
+      photos: ['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three'],
+    })))
 
     fireEvent.click(screen.getByRole('button', { name: 'Batalkan perubahan' }))
-    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'grid-2x2', selectedFrame: 'minimal-grid', requiredShots: 4 })
-    expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three', 'data:image/png;base64,four'])
+    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'wide-duo', selectedFrame: 'classic-duo', requiredShots: 2 })
+    expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three'])
   })
 
   it('keeps newer preview results when an older composition resolves later', async () => {

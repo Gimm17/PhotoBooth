@@ -154,25 +154,41 @@ describe('session store', () => {
     })
   })
 
-  it('switches to a one-shot frame by trimming photos and cleaning up the result URL', () => {
+  it('switches to a smaller editor frame without discarding photos needed by a later frame', () => {
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
-    useSessionStore.getState().setLayout('grid-2x2')
+    useSessionStore.getState().setLayout('three-postcard')
     useSessionStore.getState().addPhoto('data:image/png;base64,first')
     useSessionStore.getState().addPhoto('data:image/png;base64,second')
     useSessionStore.getState().addPhoto('data:image/png;base64,third')
-    useSessionStore.getState().addPhoto('data:image/png;base64,fourth')
-    useSessionStore.getState().setComposedResult('blob:grid-result', new Blob(['grid']))
+    useSessionStore.getState().setComposedResult('blob:postcard-result', new Blob(['postcard']))
 
-    useSessionStore.getState().setFrame('classic-polaroid')
+    useSessionStore.getState().setFrame('classic-duo')
 
-    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:grid-result')
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:postcard-result')
     expect(useSessionStore.getState()).toMatchObject({
-      selectedFrame: 'classic-polaroid',
-      selectedLayout: 'polaroid-single',
-      requiredShots: 1,
-      photos: ['data:image/png;base64,first'],
+      selectedFrame: 'classic-duo',
+      selectedLayout: 'wide-duo',
+      requiredShots: 2,
+      photos: [
+        'data:image/png;base64,first',
+        'data:image/png;base64,second',
+        'data:image/png;base64,third',
+      ],
       composedResultUrl: null,
       composedResultBlob: null,
+    })
+
+    useSessionStore.getState().setFrame('classic-postcard')
+
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'classic-postcard',
+      selectedLayout: 'three-postcard',
+      requiredShots: 3,
+      photos: [
+        'data:image/png;base64,first',
+        'data:image/png;base64,second',
+        'data:image/png;base64,third',
+      ],
     })
   })
 })

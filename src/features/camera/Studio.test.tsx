@@ -103,6 +103,27 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Lanjut ke editor' })).toBeDisabled()
   })
 
+  it('treats preserved source photos as complete when the active frame needs fewer slots', () => {
+    mocks.cameraSnapshot = camera('active')
+    useSessionStore.setState({
+      selectedLayout: 'wide-duo',
+      selectedFrame: 'classic-duo',
+      requiredShots: 2,
+      photos: [
+        'data:image/jpeg;base64,first',
+        'data:image/jpeg;base64,second',
+        'data:image/jpeg;base64,third',
+      ],
+    })
+
+    renderStudio()
+
+    expect(screen.getByText('Wide Duo · 2 pose selesai')).toBeInTheDocument()
+    expect(screen.getByText('2 selesai · 0 tersisa')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Lanjut ke editor' })).toBeEnabled()
+  })
+
   it('captures successfully after the camera becomes active', () => {
     vi.useFakeTimers()
     const view = renderStudio()
