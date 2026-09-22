@@ -23,7 +23,10 @@ export function Studio() {
   const session = useSessionStore()
   const latest = useRef(session)
   latest.current = session
+  const currentCamera = useRef(camera)
+  currentCamera.current = camera
   const [captureState, setCaptureState] = useState<CaptureState>(initialCaptureState)
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
   const machineRef = useRef<ReturnType<typeof createCaptureMachine> | null>(null)
 
   if (!machineRef.current) {
@@ -33,7 +36,7 @@ export function Studio() {
       photoCount: () => latest.current.photos.length,
       capture: (replaceIndex) => {
         const video = videoRef.current
-        if (!video || camera.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
+        if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
         const filter = filterById(latest.current.selectedFilter)
         const image = captureFrame(video, { mirror: latest.current.mirror, filter: filter?.cssFilter ?? 'none' })
         if (replaceIndex === null) latest.current.addPhoto(image)
@@ -109,8 +112,9 @@ export function Studio() {
         <p className="studio-tip">Posisikan wajah pada area tengah untuk hasil cetak yang seimbang. Tekan Space untuk menjepret.</p>
       </div>
 
-      <aside className="studio-settings" aria-label="Setelan tangkapan">
+      <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan" role={mobileSettingsOpen ? 'dialog' : undefined} aria-modal={mobileSettingsOpen || undefined}>
         <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2></div>
+        <button className="settings-close" type="button" onClick={() => setMobileSettingsOpen(false)} aria-label="Tutup setelan tangkapan">Tutup</button>
         <fieldset><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
         <label className="studio-select-label" htmlFor="frame-select">Frame yang kompatibel</label>
         <select id="frame-select" value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
@@ -133,6 +137,7 @@ export function Studio() {
       })}</div>
       <div className="studio-actions">
         {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel}>Batalkan hitung mundur</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]}><RotateCcw aria-hidden="true" size={18} />Ulang pose</button>}
+        <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={21} /></button>
         <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || complete} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
         <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
       </div>
