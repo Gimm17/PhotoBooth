@@ -55,17 +55,17 @@ test('new session from Gallery clears a completed result while preserving its sa
   await expect(page.getByRole('article')).toHaveCount(1)
 })
 
-test('camera selection, changing shot requirements, completed retake, and raw capture work together', async ({ page }) => {
-  test.setTimeout(60_000)
+async function installCameraFixture(page: import('@playwright/test').Page) {
   await page.addInitScript(() => {
-    const evidence = { requests: [] as MediaStreamConstraints[], stopped: [] as string[], captureFilters: [] as string[] }
+    const evidence = { requests: [] as MediaStreamConstraints[], stopped: [] as string[], captureFilters: [] as string[], rearConnected: true }
     Object.assign(window, { cameraEvidence: evidence })
     Object.defineProperty(navigator.mediaDevices, 'enumerateDevices', { value: async () => [
       { kind: 'videoinput', deviceId: 'front', label: 'Front' }, { kind: 'videoinput', deviceId: 'rear', label: 'Rear' },
-    ] })
+    ].filter((device) => device.deviceId !== 'rear' || evidence.rearConnected) })
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { value: async (constraints: MediaStreamConstraints) => {
       evidence.requests.push(constraints)
-      const id = constraints.video === true ? 'front' : 'rear'
+      const id = typeof constraints.video === 'object' ? (constraints.video.deviceId as ConstrainDOMStringParameters)?.exact as string : 'front'
+      if (id === 'rear' && !evidence.rearConnected) throw new DOMException('Rear camera disconnected', 'OverconstrainedError')
       const canvas = document.createElement('canvas')
       canvas.width = 640; canvas.height = 480
       const context = canvas.getContext('2d')!
@@ -85,6 +85,11 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
       return Reflect.apply(draw, this, args)
     }
   })
+}
+
+test('camera selection, changing shot requirements, completed retake, and raw capture work together', async ({ page }) => {
+  test.setTimeout(60_000)
+  await installCameraFixture(page)
   await page.goto('/setup')
   const evidence = () => page.evaluate(() => (window as unknown as { cameraEvidence: { requests: MediaStreamConstraints[]; stopped: string[]; captureFilters: string[] } }).cameraEvidence)
   expect((await evidence()).requests).toHaveLength(0)
@@ -139,4 +144,35 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
   await page.keyboard.press('Home')
   await expect.poll(previewColorDifference).toBeGreaterThan(100)
   await page.screenshot({ path: '.superpowers/verification-artifacts/final-fixes/editor-zero-intensity.png', fullPage: true })
+})
+
+test('recovers from a disconnected saved rear camera after returning from Studio', async ({ page }, testInfo) => {
+  await installCameraFixture(page)
+  await page.goto('/setup')
+  await page.getByRole('button', { name: 'Aktifkan Kamera', exact: true }).click()
+  await page.getByLabel('Pilih sumber masukan').selectOption('rear')
+  await expect(page.getByText('Kamera aktif dan siap', { exact: false })).toBeVisible()
+  await page.getByRole('button', { name: 'Masuk Studio', exact: true }).click()
+  await expect(page.getByText('Kamera aktif', { exact: true })).toBeVisible()
+  await page.evaluate(() => { (window as unknown as { cameraEvidence: { rearConnected: boolean } }).cameraEvidence.rearConnected = false })
+  await page.getByRole('button', { name: 'Kembali ke pengaturan kamera' }).click()
+  await page.getByRole('button', { name: 'Aktifkan Kamera', exact: true }).click()
+  await expect(page.getByText(/Tidak ada kamera yang terdeteksi/)).toBeVisible()
+  const source = page.getByLabel('Pilih sumber masukan')
+  await expect(source).toBeEnabled()
+  await expect(source.locator('option')).toHaveText(['Pilih kamera', 'Front'])
+  const evidence = () => page.evaluate(() => (window as unknown as { cameraEvidence: { requests: MediaStreamConstraints[]; stopped: string[] } }).cameraEvidence)
+  expect((await evidence()).requests).toHaveLength(4)
+  await source.selectOption('front')
+  await expect(page.getByText('Kamera aktif dan siap', { exact: false })).toBeVisible()
+  await expect(source).toHaveValue('front')
+  await page.screenshot({ path: testInfo.outputPath('recovered-front-camera.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Masuk Studio', exact: true }).click()
+  await expect(page.getByText('Kamera aktif', { exact: true })).toBeVisible()
+  expect((await evidence()).requests.slice(-2)).toEqual([
+    { audio: false, video: { deviceId: { exact: 'front' } } },
+    { audio: false, video: { deviceId: { exact: 'front' } } },
+  ])
+  await page.getByRole('link', { name: 'Galeri lokal', exact: true }).click()
+  await expect.poll(async () => (await evidence()).stopped).toEqual(['front', 'rear', 'rear', 'front', 'front'])
 })

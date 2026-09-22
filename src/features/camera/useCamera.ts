@@ -53,6 +53,8 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
     stopCamera(streamRef.current)
     streamRef.current = null
     setStream(null)
+    setActiveDeviceId(null)
+    videoRef.current.srcObject = null
     setStatus('requesting')
     setError(null)
     try {
@@ -82,6 +84,7 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
       const details = cameraErrorDetails(cameraError)
       setStatus(details.status)
       setError(details.message)
+      if (details.status === 'unavailable') void refreshDevices()
       return false
     }
   }, [refreshDevices, videoRef])

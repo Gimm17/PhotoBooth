@@ -24,6 +24,7 @@ const renderSetup = () => render(<MemoryRouter><CameraSetup /></MemoryRouter>)
 describe('CameraSetup', () => {
   beforeEach(() => {
     useSessionStore.getState().resetSession()
+    useSessionStore.setState({ cameraDeviceId: null })
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: {
@@ -87,6 +88,53 @@ describe('CameraSetup', () => {
     fireEvent.click(screen.getByRole('button', { name: /Aktifkan Kamera/i }))
 
     expect(await screen.findByText(/Izin kamera ditolak/i)).toBeInTheDocument()
+  })
+
+  it.each(['OverconstrainedError', 'NotFoundError'])('recovers from a saved disconnected camera after %s without an automatic second request', async (name) => {
+    useSessionStore.getState().setCameraDeviceId('rear')
+    const stopped = vi.fn()
+    const track = { stop: stopped, getSettings: () => ({ deviceId: 'front' }) }
+    vi.mocked(navigator.mediaDevices.enumerateDevices).mockResolvedValue([
+      { kind: 'videoinput', deviceId: 'front', label: 'Front' },
+    ] as MediaDeviceInfo[])
+    vi.mocked(navigator.mediaDevices.getUserMedia)
+      .mockRejectedValueOnce({ name })
+      .mockResolvedValueOnce({ getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream)
+    const view = renderSetup()
+    fireEvent.click(screen.getByRole('button', { name: 'Aktifkan Kamera' }))
+    await screen.findByText(/Tidak ada kamera yang terdeteksi/)
+    await waitFor(() => expect(useSessionStore.getState().cameraDeviceId).toBeNull())
+    await waitFor(() => expect(screen.getByLabelText('Pilih sumber masukan')).toBeEnabled())
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1)
+    fireEvent.change(screen.getByLabelText('Pilih sumber masukan'), { target: { value: 'front' } })
+    await screen.findByText(/Kamera aktif dan siap/)
+    expect(screen.getByLabelText('Pilih sumber masukan')).toHaveValue('front')
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: { deviceId: { exact: 'front' } } })
+    view.unmount()
+    expect(stopped).toHaveBeenCalledOnce()
+  })
+
+  it('retries the default camera explicitly when the saved camera vanished and enumeration is empty', async () => {
+    useSessionStore.getState().setCameraDeviceId('rear')
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce({ name: 'OverconstrainedError' })
+    renderSetup()
+    fireEvent.click(screen.getByRole('button', { name: 'Aktifkan Kamera' }))
+    await screen.findByText(/Tidak ada kamera yang terdeteksi/)
+    fireEvent.click(screen.getByRole('button', { name: 'Aktifkan Kamera' }))
+    await screen.findByText(/Kamera aktif dan siap/)
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenLastCalledWith({ audio: false, video: true })
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['NotAllowedError', 'NotReadableError'])('preserves the device preference and does not retry for %s', async (name) => {
+    useSessionStore.getState().setCameraDeviceId('rear')
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockRejectedValueOnce({ name })
+    renderSetup()
+    fireEvent.click(screen.getByRole('button', { name: 'Aktifkan Kamera' }))
+    await screen.findByText(name === 'NotAllowedError' ? /Izin kamera ditolak/ : /Kamera belum dapat digunakan/)
+    expect(useSessionStore.getState().cameraDeviceId).toBe('rear')
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce()
+    expect(navigator.mediaDevices.enumerateDevices).not.toHaveBeenCalled()
   })
 
   it('stays on setup when activation is denied', async () => {

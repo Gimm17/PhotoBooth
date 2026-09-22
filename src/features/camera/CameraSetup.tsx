@@ -1,5 +1,5 @@
 import { Camera, CameraOff, ChevronDown, FlipHorizontal, FolderOpen, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessionStore } from '../../store/session-store'
 import { useCamera } from './useCamera'
@@ -35,6 +35,10 @@ export function CameraSetup() {
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   const selectedDevice = camera.devices.find((device) => device.deviceId === camera.activeDeviceId)
+
+  useEffect(() => {
+    if (camera.status === 'unavailable') setCameraDeviceId(null)
+  }, [camera.status, setCameraDeviceId])
 
   const loadFiles = async (files: File[]) => {
     setUploadError(null)
@@ -88,7 +92,7 @@ export function CameraSetup() {
         <div className="camera-controls">
           <h2>Preferensi Ruang Potret</h2>
           <label htmlFor="camera-source">Pilih sumber masukan</label>
-          <select id="camera-source" value={camera.activeDeviceId ?? ''} onChange={(event) => void camera.switchDevice(event.target.value)} disabled={camera.status !== 'active' || camera.devices.length === 0}>
+          <select id="camera-source" value={camera.activeDeviceId ?? ''} onChange={(event) => void camera.switchDevice(event.target.value)} disabled={!['active', 'unavailable'].includes(camera.status) || camera.devices.length === 0}>
             <option value="">{camera.devices.length ? 'Pilih kamera' : 'Kamera akan tampil setelah diizinkan'}</option>
             {camera.devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${index + 1}`}</option>)}
           </select>

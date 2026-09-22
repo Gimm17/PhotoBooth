@@ -7,7 +7,7 @@ export type EditorHistorySnapshot = Pick<PhotoSession, 'selectedLayout' | 'selec
 
 interface SessionActions {
   cameraDeviceId: string | null
-  setCameraDeviceId: (deviceId: string) => void
+  setCameraDeviceId: (deviceId: string | null) => void
   setLayout: (layoutId: LayoutId) => void
   addPhoto: (dataUrl: string) => void
   setImportedPhotos: (dataUrls: string[]) => void
