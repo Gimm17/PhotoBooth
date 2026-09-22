@@ -1,6 +1,7 @@
 import { Check, Search } from 'lucide-react'
 import { FRAME_TEMPLATES } from '../../catalog/frames'
 import type { FrameCategory, FrameOrientation } from '../../catalog/types'
+import { FrameThumbnail } from './FrameThumbnail'
 
 const categories: Array<FrameCategory | 'Semua'> = ['Semua', 'Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal']
 const orientations: Array<{ label: string; value: FrameOrientation | 'all' }> = [
@@ -36,9 +37,7 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
     <div className="editor-chip-row editor-orientations" aria-label="Orientasi bingkai">{orientations.map((item) => <button key={item.value} className={orientation === item.value ? 'is-active' : ''} type="button" onClick={() => onOrientationChange(item.value)}>{item.label}</button>)}</div>
     <div className="frame-grid" aria-live="polite">
       {frames.map((frame) => <button key={frame.id} className={`frame-card ${selectedFrame === frame.id ? 'is-selected' : ''}`} type="button" onClick={() => onSelect(frame.id)} aria-pressed={selectedFrame === frame.id}>
-        <span className="frame-swatch" style={{ background: frame.background, borderColor: frame.border.color, borderWidth: `${Math.max(2, Math.min(8, frame.border.width / 4))}px`, borderRadius: `${Math.min(14, frame.border.radius)}px` }}>
-          {frame.slots.map((_, index) => <i key={index} />)}
-        </span>
+        <FrameThumbnail frame={frame} />
         <span>{frame.name}</span>
         {selectedFrame === frame.id && <Check aria-label="Dipilih" size={16} />}
       </button>)}
