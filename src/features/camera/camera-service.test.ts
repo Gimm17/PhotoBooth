@@ -52,6 +52,17 @@ describe('camera service', () => {
     expect(video.play).toHaveBeenCalledOnce()
   })
 
+  it('stops every obtained track if preview playback cannot start', async () => {
+    const track = { stop: vi.fn() }
+    const stream = streamWithTracks(track)
+    const video = { srcObject: null, play: vi.fn().mockRejectedValue(new Error('Playback blocked')) } as unknown as HTMLVideoElement
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockResolvedValue(stream)
+
+    await expect(startCamera(video, { video: true, audio: false })).rejects.toThrow('Playback blocked')
+
+    expect(track.stop).toHaveBeenCalledOnce()
+  })
+
   it('stops every track when a stream is released', () => {
     const first = { stop: vi.fn() }
     const second = { stop: vi.fn() }
@@ -147,5 +158,44 @@ describe('useCamera', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai' })) })
 
     expect(screen.getByRole('status')).toHaveTextContent('front')
+  })
+
+  it('stops a stream that resolves after the camera hook unmounts', async () => {
+    let resolveStream!: (stream: MediaStream) => void
+    const pendingStream = new Promise<MediaStream>((resolve) => { resolveStream = resolve })
+    const track = { stop: vi.fn() }
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { enumerateDevices: vi.fn().mockResolvedValue([]), getUserMedia: vi.fn().mockReturnValue(pendingStream) },
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+    const view = render(createElement(CameraHarness))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mulai' }))
+    view.unmount()
+    await act(async () => { resolveStream(streamWithTracks(track)); await Promise.resolve() })
+
+    expect(track.stop).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a newer device stream active when an older request resolves late', async () => {
+    let resolveFirst!: (stream: MediaStream) => void
+    const firstRequest = new Promise<MediaStream>((resolve) => { resolveFirst = resolve })
+    const firstTrack = { stop: vi.fn() }
+    const secondTrack = { stop: vi.fn() }
+    const secondStream = streamWithTracks(secondTrack)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { enumerateDevices: vi.fn().mockResolvedValue([]), getUserMedia: vi.fn().mockReturnValueOnce(firstRequest).mockResolvedValueOnce(secondStream) },
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+    render(createElement(CameraHarness))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mulai' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ganti' })) })
+    await act(async () => { resolveFirst(streamWithTracks(firstTrack)); await Promise.resolve() })
+
+    expect(firstTrack.stop).toHaveBeenCalledOnce()
+    expect(secondTrack.stop).not.toHaveBeenCalled()
   })
 })

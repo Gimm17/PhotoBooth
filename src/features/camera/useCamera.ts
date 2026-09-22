@@ -13,8 +13,8 @@ export interface UseCameraResult {
   devices: MediaDeviceInfo[]
   activeDeviceId: string | null
   stream: MediaStream | null
-  start: (deviceId?: string) => Promise<void>
-  switchDevice: (deviceId: string) => Promise<void>
+  start: (deviceId?: string) => Promise<boolean>
+  switchDevice: (deviceId: string) => Promise<boolean>
   refreshDevices: () => Promise<void>
   stop: () => void
 }
@@ -26,6 +26,8 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const requestGeneration = useRef(0)
+  const isMounted = useRef(true)
 
   const refreshDevices = useCallback(async () => {
     try {
@@ -44,8 +46,9 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
   }, [videoRef])
 
   const start = useCallback(async (deviceId?: string) => {
-    if (!videoRef.current) return
+    if (!videoRef.current) return false
 
+    const generation = ++requestGeneration.current
     stopCamera(streamRef.current)
     streamRef.current = null
     setStream(null)
@@ -57,23 +60,38 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
         video: deviceId ? { deviceId: { exact: deviceId } } : true,
       }
       const nextStream = await startCamera(videoRef.current, constraints)
+      if (!isMounted.current || generation !== requestGeneration.current) {
+        stopCamera(nextStream)
+        return false
+      }
       streamRef.current = nextStream
       setStream(nextStream)
       setActiveDeviceId(nextStream.getVideoTracks?.()[0]?.getSettings().deviceId ?? deviceId ?? null)
       setStatus('active')
-      await refreshDevices()
+      void refreshDevices()
+      return true
     } catch (cameraError) {
+      if (!isMounted.current || generation !== requestGeneration.current) return false
       const details = cameraErrorDetails(cameraError)
       setStatus(details.status)
       setError(details.message)
+      return false
     }
   }, [refreshDevices, videoRef])
 
   const switchDevice = useCallback(async (deviceId: string) => {
-    await start(deviceId)
+    return start(deviceId)
   }, [start])
 
-  useEffect(() => () => stopCamera(streamRef.current), [])
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+      requestGeneration.current += 1
+      stopCamera(streamRef.current)
+      streamRef.current = null
+    }
+  }, [])
 
   return { status, error, devices, activeDeviceId, stream, start, switchDevice, refreshDevices, stop }
 }

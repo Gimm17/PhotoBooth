@@ -50,3 +50,28 @@
 ## Commit
 
 `feat: add private camera setup and upload fallback`
+
+## Review follow-up
+
+### RED evidence
+
+1. `startCamera` left an obtained stream running when `video.play()` rejected: expected the track stop call once, received zero calls.
+2. Deferred `getUserMedia` tests showed a stream resolving after unmount or after a newer device request was not stopped: expected the stale track stop call once, received zero calls.
+3. A successful activation stayed on `/setup` rather than navigating to `/studio`.
+4. The mirror checkbox computed to `22.4px` by `22.4px`, below the required 44px target.
+5. Empty file input now produces the observable inline message `Belum ada foto yang dipilih.` and does not navigate.
+
+### GREEN evidence
+
+- Focused camera service and setup tests: 21 passed.
+- Full suite: 40 passed across 4 files.
+- `npm run typecheck`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+
+### Fixes
+
+- `startCamera` stops tracks and clears the video attachment when preview attachment or playback fails.
+- `useCamera` uses a mounted flag and monotonic request generation so unmounted or superseded requests stop their late stream without updating state. Successful starts return `true`, allowing the setup action to navigate only after camera activation.
+- The mirror checkbox is now a 44px focusable control with a matching `:focus-visible` selector.
+- Empty file selections stay on setup with inline feedback.

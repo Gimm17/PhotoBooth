@@ -39,6 +39,10 @@ export function CameraSetup() {
 
   const loadFiles = async (files: File[]) => {
     setUploadError(null)
+    if (files.length === 0) {
+      setUploadError('Belum ada foto yang dipilih.')
+      return
+    }
     if (files.length > maxFiles) {
       setUploadError('Maksimal 12 foto dapat dipilih sekaligus.')
       return
@@ -54,6 +58,10 @@ export function CameraSetup() {
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Foto tidak dapat dibaca dari perangkat.')
     }
+  }
+
+  const activateCamera = async () => {
+    if (await camera.start()) navigate('/studio')
   }
 
   return <section className="camera-setup page-width" aria-labelledby="setup-heading">
@@ -85,7 +93,7 @@ export function CameraSetup() {
             <option value="">{camera.devices.length ? 'Pilih kamera' : 'Kamera akan tampil setelah diizinkan'}</option>
             {camera.devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${index + 1}`}</option>)}
           </select>
-          <label className="camera-toggle" htmlFor="mirror-toggle"><span><FlipHorizontal aria-hidden="true" size={19} /><strong>Cermin pratinjau</strong><small>Pembalikan orientasi selfie</small></span><input id="mirror-toggle" type="checkbox" checked={mirror} onChange={(event) => setMirror(event.target.checked)} /></label>
+          <label className="camera-toggle" htmlFor="mirror-toggle"><span><FlipHorizontal aria-hidden="true" size={19} /><strong>Cermin pratinjau</strong><small>Pembalikan orientasi selfie</small></span><input className="mirror-toggle-input" id="mirror-toggle" type="checkbox" checked={mirror} onChange={(event) => setMirror(event.target.checked)} /></label>
           <div className="upload-panel">
             <strong>Atau unggah foto dari perangkat Anda</strong>
             <button className="upload-zone" type="button" onClick={() => fileInputRef.current?.click()}><Upload aria-hidden="true" size={28} />Pilih foto lokal (.jpg, .png, .heic)<small>Maksimal 12 foto</small></button>
@@ -101,7 +109,7 @@ export function CameraSetup() {
       </div>
 
       <div className="troubleshooting"><p>PANDUAN MASALAH IZIN &amp; PERANGKAT</p>{troubleshooting.map(([question, answer]) => <details key={question}><summary>{question}<ChevronDown aria-hidden="true" size={18} /></summary><p>{answer}</p></details>)}</div>
-      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/editor')}>Lewati &amp; Pilih Template Dulu</button><button className="button primary-button" type="button" onClick={() => void camera.start()} disabled={camera.status === 'requesting'}><Camera aria-hidden="true" size={20} />{camera.status === 'requesting' ? 'Meminta izin…' : 'Aktifkan Kamera & Masuk Studio'}</button></div>
+      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/editor')}>Lewati &amp; Pilih Template Dulu</button><button className="button primary-button" type="button" onClick={() => void activateCamera()} disabled={camera.status === 'requesting'}><Camera aria-hidden="true" size={20} />{camera.status === 'requesting' ? 'Meminta izin…' : 'Aktifkan Kamera & Masuk Studio'}</button></div>
     </div>
     <p className="setup-footer-note"><FolderOpen aria-hidden="true" size={14} /> Foto tetap di memori lokal browser selama sesi ini.</p>
   </section>

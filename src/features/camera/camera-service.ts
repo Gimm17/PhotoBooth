@@ -42,9 +42,15 @@ export async function startCamera(
   constraints: MediaStreamConstraints,
 ): Promise<MediaStream> {
   const stream = await mediaDevices().getUserMedia(constraints)
-  videoElement.srcObject = stream
-  await videoElement.play()
-  return stream
+  try {
+    videoElement.srcObject = stream
+    await videoElement.play()
+    return stream
+  } catch (error) {
+    videoElement.srcObject = null
+    stopCamera(stream)
+    throw error
+  }
 }
 
 export function stopCamera(stream: MediaStream | null | undefined): void {
