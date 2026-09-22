@@ -1,6 +1,7 @@
-const CACHE_NAME = 'photobooth-app-shell-v1'
+const CACHE_NAME = 'photobooth-app-shell-__PHOTOBOOTH_CACHE_REVISION__'
 const APP_SHELL = '/'
 const KNOWN_APP_ROUTES = new Set(['/', '/setup', '/studio', '/editor', '/result', '/gallery'])
+const VERSIONED_VITE_ASSET = /^\/assets\/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.add(new Request(APP_SHELL, { cache: 'reload' }))))
@@ -40,5 +41,5 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (url.pathname.startsWith('/assets/')) event.respondWith(cacheVersionedAsset(request))
+  if (VERSIONED_VITE_ASSET.test(url.pathname)) event.respondWith(cacheVersionedAsset(request))
 })

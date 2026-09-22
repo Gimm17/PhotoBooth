@@ -16,6 +16,12 @@ Perintah pemeriksaan:
 
 Kamera browser hanya tersedia pada secure context: gunakan `https://` saat deploy. `localhost` biasanya dianggap aman oleh browser untuk pengembangan. Pengguna juga dapat memilih foto lokal sebagai alternatif kamera.
 
+## Menyiapkan browser Playwright
+
+Sebelum E2E pertama pada mesin atau runner baru, jalankan `npm run setup:e2e`. Perintah tersebut menjalankan `npx playwright install chromium` melalui Playwright yang sudah dipin. Di CI Linux berbasis Debian/Ubuntu, instal dependensi sistemnya sekali dengan `npx playwright install --with-deps chromium` (runner perlu izin yang sesuai), kemudian jalankan `npm run test:e2e` atau `npm run verify`. Contoh urutan CI: `npm ci`, `npx playwright install --with-deps chromium`, lalu `npm run verify`.
+
+Playwright Chromium adalah browser standar di CI. Konfigurasi hanya menggunakan Chrome lokal sebagai fallback pengembangan ketika executable Chromium Playwright belum tersedia; fallback itu bukan prasyarat maupun asumsi CI.
+
 ## Privasi
 
 Foto diambil, dikomposisikan, diunduh, dan (jika dipilih pengguna) disimpan di IndexedDB browser yang sama. Aplikasi tidak mengirim foto atau metadata ke server. Service worker hanya menyimpan app shell dan aset build berversi; ia tidak menyimpan stream kamera, Blob/URL foto, hasil komposisi, atau isi IndexedDB.
