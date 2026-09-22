@@ -1,0 +1,19 @@
+:root {
+  --color-canvas: #F4F0E4;
+  --color-surface: #FAF8F2;
+  --color-paper: #FFFFFF;
+  --color-primary: #A5D6F1;
+  --color-secondary: #EFAAB9;
+  --color-ink: #2C2B29;
+  --color-muted: #6C6A64;
+  --color-line: rgba(44, 43, 41, 0.12);
+  --color-shadow: rgba(44, 43, 41, 0.08);
+  --font-display: Outfit, "Trebuchet MS", system-ui, sans-serif;
+  --font-body: Outfit, "Trebuchet MS", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --radius-control: 1rem;
+  --radius-card: 1.5rem;
+  --shadow-paper: 0 2px 8px -2px var(--color-shadow), 0 1px 3px rgba(44, 43, 41, 0.04);
+  --page-padding: clamp(1rem, 4vw, 2.5rem);
+  --page-max: 90rem;
+}
