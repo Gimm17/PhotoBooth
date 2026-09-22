@@ -89,6 +89,12 @@ describe('Gallery', () => {
     expect(screen.getByRole('article', { name: /Strip Klasik/i })).toBeInTheDocument()
   })
 
+  it('displays zero browser usage without rounding it up', async () => {
+    renderGallery(createRepository(), async () => ({ usage: 0, quota: 10_485_760 }))
+
+    expect(await screen.findByText(/0 B dari 10\.0 MB/i)).toBeInTheDocument()
+  })
+
   it('labels unavailable storage estimates without making the gallery fail', async () => {
     renderGallery(createRepository(), undefined)
 
@@ -103,9 +109,22 @@ describe('Gallery', () => {
 
     deleteButton.focus()
     fireEvent.click(deleteButton)
-    expect(screen.getByRole('dialog', { name: 'Hapus foto dari galeri' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Unduh' })).toBeDisabled()
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    const dialog = screen.getByRole('dialog', { name: 'Hapus foto dari galeri' })
+    const close = screen.getByRole('button', { name: 'Tutup konfirmasi' })
+    const cancel = screen.getByRole('button', { name: 'Batal' })
+    const confirm = screen.getByRole('button', { name: 'Ya, hapus foto' })
+    expect(dialog).toBeInTheDocument()
+    expect(document.activeElement).toBe(close)
+    expect(screen.getByRole('button', { name: 'Unduh', hidden: true })).toBeDisabled()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(cancel)
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(confirm)
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(close)
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(confirm)
+    fireEvent.keyDown(dialog, { key: 'Escape' })
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(document.activeElement).toBe(deleteButton)

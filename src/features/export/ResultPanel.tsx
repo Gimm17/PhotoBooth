@@ -14,6 +14,7 @@ interface ResultPanelProps {
 }
 
 type Status = { kind: 'success' | 'error' | 'info'; message: string } | null
+type ResultIdentity = { blob: Blob; url: string | null }
 
 const formatDetails: Record<OutputFormat, { label: string; description: string }> = {
   png: { label: 'PNG', description: 'Kualitas terbaik' },
@@ -40,6 +41,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const [status, setStatus] = useState<Status>(null)
   const [isRecomposing, setIsRecomposing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [savedResult, setSavedResult] = useState<ResultIdentity | null>(null)
   const recompositionRequest = useRef(0)
   const saveInFlight = useRef(false)
 
@@ -47,6 +49,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     recompositionRequest.current += 1
     setFormat(blob ? outputFormatFor(blob) : 'png')
     setIsRecomposing(false)
+    setSavedResult(null)
     return () => { recompositionRequest.current += 1 }
   }, [blob, session.composedResultUrl])
 
@@ -65,6 +68,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   }
 
   const filename = () => createExportFilename(format)
+  const currentResultIsSaved = savedResult?.blob === blob && savedResult.url === session.composedResultUrl
   const handleFormatChange = async (nextFormat: OutputFormat) => {
     if (nextFormat === format || isRecomposing) return
     const request = ++recompositionRequest.current
@@ -148,12 +152,17 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   }
 
   const handleSave = async () => {
-    if (!saveToGallery || isRecomposing || saveInFlight.current) return
+    if (!saveToGallery || isRecomposing || saveInFlight.current || currentResultIsSaved) return
+    const source: ResultIdentity = { blob, url: session.composedResultUrl }
     saveInFlight.current = true
     setIsSaving(true)
     try {
       await saveToGallery(blob, filename())
-      setStatus({ kind: 'success', message: 'Foto disimpan ke galeri lokal.' })
+      const current = useSessionStore.getState()
+      if (current.composedResultBlob === source.blob && current.composedResultUrl === source.url) {
+        setSavedResult(source)
+        setStatus({ kind: 'success', message: 'Foto disimpan ke galeri lokal.' })
+      }
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Foto tidak dapat disimpan ke galeri lokal.' })
     } finally {
@@ -200,7 +209,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
 
         <div className="result-secondary-actions">
           <button type="button" disabled={isRecomposing} onClick={handlePrint}><Printer aria-hidden="true" size={19} /><span><strong>Cetak langsung</strong><small>Gunakan dialog cetak perangkat</small></span></button>
-          <button type="button" disabled={!saveToGallery || isSaving || isRecomposing} onClick={() => void handleSave()}><Bookmark aria-hidden="true" size={19} /><span><strong>Simpan ke galeri</strong><small>{saveToGallery ? 'Tersimpan di perangkat ini' : 'Tersedia setelah galeri lokal aktif'}</small></span></button>
+          <button type="button" disabled={!saveToGallery || isSaving || isRecomposing || currentResultIsSaved} onClick={() => void handleSave()}><Bookmark aria-hidden="true" size={19} /><span><strong>Simpan ke galeri</strong><small>{currentResultIsSaved ? 'Sudah tersimpan di galeri lokal' : saveToGallery ? 'Tersimpan di perangkat ini' : 'Tersedia setelah galeri lokal aktif'}</small></span></button>
           <button type="button" disabled={isRecomposing} onClick={() => void handleShare()}><Share2 aria-hidden="true" size={19} /><span><strong>Bagikan foto</strong><small>Gunakan opsi berbagi perangkat</small></span></button>
           <Link to="/setup" onClick={createNew}><Sparkles aria-hidden="true" size={19} /><span><strong>Buat foto baru</strong><small>Mulai sesi ulang</small></span></Link>
         </div>

@@ -26,7 +26,9 @@ const defaultRepository: GalleryRepository = {
   clear: clearGallery,
 }
 
-const formatBytes = (bytes: number) => bytes < 1024 * 1024
+const formatBytes = (bytes: number) => bytes === 0
+  ? '0 B'
+  : bytes < 1024 * 1024
   ? `${Math.max(1, Math.round(bytes / 1024))} KB`
   : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 
@@ -61,11 +63,12 @@ function GalleryCard({ record, onDelete, onDownload, actionsDisabled }: { record
 }
 
 function ConfirmationDialog({ pending, onCancel, onConfirm, busy }: { pending: Exclude<PendingAction, null>; onCancel: () => void; onConfirm: () => void; busy: boolean }) {
+  const closeButton = useRef<HTMLButtonElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
   const confirmButton = useRef<HTMLButtonElement>(null)
   const heading = pending.type === 'delete' ? 'Hapus foto dari galeri' : 'Bersihkan seluruh galeri'
 
-  useEffect(() => { cancelButton.current?.focus() }, [])
+  useEffect(() => { closeButton.current?.focus() }, [])
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape') {
@@ -73,21 +76,16 @@ function ConfirmationDialog({ pending, onCancel, onConfirm, busy }: { pending: E
       if (!busy) onCancel()
     }
     if (event.key !== 'Tab') return
-    const first = cancelButton.current
-    const last = confirmButton.current
-    if (!first || !last) return
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
+    const controls = [closeButton.current, cancelButton.current, confirmButton.current].filter((control): control is HTMLButtonElement => Boolean(control && !control.disabled))
+    const currentIndex = controls.indexOf(document.activeElement as HTMLButtonElement)
+    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + (event.shiftKey ? -1 : 1) + controls.length) % controls.length
+    event.preventDefault()
+    controls[nextIndex]?.focus()
   }
 
   return <div className="gallery-dialog-backdrop">
     <section className="gallery-dialog" role="dialog" aria-modal="true" aria-labelledby="gallery-dialog-title" onKeyDown={handleKeyDown}>
-      <button className="gallery-dialog-close" type="button" aria-label="Tutup konfirmasi" disabled={busy} onClick={onCancel}><X aria-hidden="true" size={20} /></button>
+      <button ref={closeButton} className="gallery-dialog-close" type="button" aria-label="Tutup konfirmasi" disabled={busy} onClick={onCancel}><X aria-hidden="true" size={20} /></button>
       <Trash2 aria-hidden="true" size={26} />
       <h2 id="gallery-dialog-title">{heading}</h2>
       <p>{pending.type === 'delete' ? `“${pending.record.frameLabel}” akan dihapus permanen dari perangkat ini.` : 'Semua foto yang tersimpan akan dihapus permanen dari perangkat ini.'}</p>
@@ -187,6 +185,7 @@ export function Gallery({ repository = defaultRepository, getStorageEstimate }: 
   }
 
   return <section className="gallery-page page-width" aria-labelledby="gallery-title">
+    <div aria-hidden={pending ? true : undefined} inert={Boolean(pending)}>
     <div className="gallery-vault">
       <span className="gallery-vault-tape" aria-hidden="true" />
       <p className="gallery-kicker"><ShieldCheck aria-hidden="true" size={15} /> Tersimpan hanya di perangkat ini <span><HardDrive aria-hidden="true" size={14} /> IndexedDB Storage</span></p>
@@ -214,6 +213,7 @@ export function Gallery({ repository = defaultRepository, getStorageEstimate }: 
       </div>
       {displayed.length ? <div className="gallery-grid">{displayed.map((record) => <GalleryCard key={record.id} record={record} actionsDisabled={Boolean(pending)} onDownload={handleDownload} onDelete={(item, target) => openConfirmation({ type: 'delete', record: item }, target)} />)}</div> : <p className="gallery-filter-empty">Belum ada foto untuk filter ini.</p>}
     </>}
+    </div>
     {pending && <ConfirmationDialog pending={pending} busy={busy} onCancel={closeConfirmation} onConfirm={() => void confirm()} />}
   </section>
 }

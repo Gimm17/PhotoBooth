@@ -186,6 +186,23 @@ describe('ResultPanel', () => {
     await act(async () => { finishSave() })
   })
 
+  it('saves a composed result at most once and re-enables save for a new composition', async () => {
+    const saveToGallery = vi.fn().mockResolvedValue(undefined)
+    renderPanel(saveToGallery)
+
+    const save = screen.getByRole('button', { name: /Simpan ke galeri/i })
+    fireEvent.click(save)
+    await waitFor(() => expect(saveToGallery).toHaveBeenCalledTimes(1))
+    expect(save).toBeDisabled()
+    fireEvent.click(save)
+    expect(saveToGallery).toHaveBeenCalledTimes(1)
+
+    act(() => useSessionStore.getState().setComposedResult('blob:new-composition', new Blob(['new'], { type: 'image/png' })))
+    await waitFor(() => expect(screen.getByRole('button', { name: /Simpan ke galeri/i })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: /Simpan ke galeri/i }))
+    await waitFor(() => expect(saveToGallery).toHaveBeenCalledTimes(2))
+  })
+
   it('resets the session before creating a new photo session', async () => {
     renderPanel()
 
