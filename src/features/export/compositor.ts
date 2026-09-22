@@ -1,4 +1,5 @@
-import type { FilterPreset, FrameTemplate } from '../../catalog/types'
+import type { FilterPreset, FrameAssetFit, FrameAssetLayer, FrameTemplate } from '../../catalog/types'
+import { loadFrameAsset } from './frame-asset-loader'
 import { calculateCoverCrop } from './geometry'
 
 export type OutputFormat = 'png' | 'jpeg' | 'webp'
@@ -45,6 +46,89 @@ const loadImage = (source: string, position: number): Promise<HTMLImageElement> 
   image.src = source
 })
 
+const calculateAssetDestination = (
+  image: Pick<HTMLImageElement, 'naturalWidth' | 'naturalHeight'>,
+  box: { x: number; y: number; width: number; height: number },
+  fit: FrameAssetFit,
+): { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } => {
+  if (fit === 'stretch') {
+    return {
+      sx: 0,
+      sy: 0,
+      sw: image.naturalWidth,
+      sh: image.naturalHeight,
+      dx: box.x,
+      dy: box.y,
+      dw: box.width,
+      dh: box.height,
+    }
+  }
+
+  if (fit === 'cover') {
+    const crop = calculateCoverCrop(
+      { width: image.naturalWidth, height: image.naturalHeight },
+      { width: box.width, height: box.height },
+    )
+
+    return {
+      ...crop,
+      dx: box.x,
+      dy: box.y,
+      dw: box.width,
+      dh: box.height,
+    }
+  }
+
+  const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight)
+  const width = image.naturalWidth * scale
+  const height = image.naturalHeight * scale
+  return {
+    sx: 0,
+    sy: 0,
+    sw: image.naturalWidth,
+    sh: image.naturalHeight,
+    dx: box.x + (box.width - width) / 2,
+    dy: box.y + (box.height - height) / 2,
+    dw: width,
+    dh: height,
+  }
+}
+
+const drawAssetLayer = (
+  context: CanvasRenderingContext2D,
+  canvas: Pick<HTMLCanvasElement, 'width' | 'height'>,
+  layer: FrameAssetLayer,
+  image: HTMLImageElement,
+): void => {
+  const box = {
+    x: layer.x * canvas.width,
+    y: layer.y * canvas.height,
+    width: layer.width * canvas.width,
+    height: layer.height * canvas.height,
+  }
+  const destination = calculateAssetDestination(image, box, layer.fit ?? 'contain')
+  const centerX = box.x + box.width / 2
+  const centerY = box.y + box.height / 2
+
+  context.save()
+  context.translate(centerX, centerY)
+  context.rotate((layer.rotation ?? 0) * 2 * Math.PI)
+  context.translate(-centerX, -centerY)
+  context.globalAlpha = layer.opacity ?? 1
+  context.drawImage(
+    image,
+    destination.sx,
+    destination.sy,
+    destination.sw,
+    destination.sh,
+    destination.dx,
+    destination.dy,
+    destination.dw,
+    destination.dh,
+  )
+  context.restore()
+}
+
 const roundedPath = (context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
   const safeRadius = Math.min(Math.max(0, radius), width / 2, height / 2)
   context.beginPath()
@@ -81,7 +165,10 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
     throw new Error(`Frame requires ${frame.slots.length} photos but received ${photos.length}`)
   }
 
-  const images = await Promise.all(frame.slots.map((_, index) => loadImage(photos[index], index)))
+  const [assets, images] = await Promise.all([
+    Promise.all((frame.assets ?? []).map(async (layer) => ({ layer, image: await loadFrameAsset(layer.src) }))),
+    Promise.all(frame.slots.map((_, index) => loadImage(photos[index], index))),
+  ])
   const canvas = document.createElement('canvas')
   canvas.width = frame.output.width
   canvas.height = frame.output.height
@@ -90,6 +177,10 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
 
   context.fillStyle = frame.background
   context.fillRect(0, 0, canvas.width, canvas.height)
+
+  assets
+    .filter(({ layer }) => layer.placement === 'underlay')
+    .forEach(({ layer, image }) => drawAssetLayer(context, canvas, layer, image))
 
   frame.slots.forEach((slot, index) => {
     const width = slot.width * canvas.width
@@ -118,6 +209,10 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
     roundedPath(context, frame.border.width / 2, frame.border.width / 2, canvas.width - frame.border.width, canvas.height - frame.border.width, frame.border.radius)
     context.stroke()
   }
+
+  assets
+    .filter(({ layer }) => layer.placement === 'overlay')
+    .forEach(({ layer, image }) => drawAssetLayer(context, canvas, layer, image))
 
   context.fillStyle = frame.caption.color
   context.font = `${frame.caption.fontSize}px ${frame.caption.fontFamily}`
