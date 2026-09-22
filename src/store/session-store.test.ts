@@ -37,6 +37,14 @@ describe('session store', () => {
     ])
   })
 
+  it('keeps every accepted local import for later layout selection', () => {
+    const imported = Array.from({ length: 12 }, (_, index) => `data:image/jpeg;base64,import-${index}`)
+
+    useSessionStore.getState().setImportedPhotos(imported)
+
+    expect(useSessionStore.getState().photos).toEqual(imported)
+  })
+
   it('replaces a photo in place without changing capture order', () => {
     useSessionStore.getState().setLayout('three-postcard')
     useSessionStore.getState().addPhoto('data:image/png;base64,first')

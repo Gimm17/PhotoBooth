@@ -6,6 +6,7 @@ import type { LayoutId, PhotoSession } from '../catalog/types'
 interface SessionActions {
   setLayout: (layoutId: LayoutId) => void
   addPhoto: (dataUrl: string) => void
+  setImportedPhotos: (dataUrls: string[]) => void
   replacePhoto: (index: number, dataUrl: string) => void
   removePhoto: (index: number) => void
   setFilter: (filterId: string) => void
@@ -62,6 +63,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       ? state
       : { photos: [...state.photos, dataUrl] }
   )),
+  setImportedPhotos: (dataUrls) => set({ photos: dataUrls }),
   replacePhoto: (index, dataUrl) => set((state) => {
     if (index < 0 || index >= state.photos.length) return state
     const photos = [...state.photos]

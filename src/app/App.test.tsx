@@ -4,7 +4,7 @@ import '../shared/styles/global.css'
 
 const routes = [
   ['/', 'PhotoBooth untuk kenanganmu'],
-  ['/setup', 'Siapkan kamera'],
+  ['/setup', 'Izinkan Akses Kamera'],
   ['/studio', 'Studio pengambilan foto'],
   ['/editor', 'Kustomisasi hasil fotomu'],
   ['/result', 'Foto kamu sudah siap'],
