@@ -7,7 +7,7 @@ const routes = [
   ['/setup', 'Izinkan Akses Kamera'],
   ['/studio', 'Studio pengambilan foto'],
   ['/editor', 'Kustomisasi hasil fotomu'],
-  ['/result', 'Foto kamu sudah siap'],
+  ['/result', 'Hasil foto belum siap'],
   ['/gallery', 'Galeri lokal'],
 ] as const
 
