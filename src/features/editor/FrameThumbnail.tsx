@@ -27,7 +27,7 @@ export function FrameThumbnail({ frame }: FrameThumbnailProps) {
       data-testid={`frame-thumbnail-${frame.id}`}
       style={{
         aspectRatio: `${frame.output.width} / ${frame.output.height}`,
-        ...(frame.output.width >= frame.output.height ? { width: '100%' } : { height: '100%' }),
+        width: `min(100%, calc(var(--frame-thumbnail-height) * ${frame.output.width / frame.output.height}))`,
         background: frame.background,
         borderColor: frame.border.color,
         borderWidth: `${Math.max(2, Math.min(8, frame.border.width / 4))}px`,
