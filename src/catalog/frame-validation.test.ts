@@ -1,6 +1,61 @@
 import { describe, expect, it } from 'vitest'
 import type { FrameTemplate, LayoutDefinition } from './types'
 import { validateFrameTemplate } from './frame-validation'
+import { FRAME_TEMPLATES, frameById, layoutById } from './frames'
+
+const retainedIds = ['classic-polaroid', 'classic-strip', 'retro-sprocket', 'minimal-grid', 'seasonal-spring']
+const removedIds = ['classic-duo', 'classic-postcard', 'pastel-blossom', 'pastel-duo', 'pastel-grid', 'pastel-postcard', 'retro-sunrise', 'retro-checker', 'retro-postage', 'minimal-white', 'minimal-duo', 'minimal-strip', 'seasonal-summer', 'seasonal-autumn', 'seasonal-winter']
+const newFrames = [
+  ['love-letter-portrait', 'Love Letter Portrait', 'Coquette', 'polaroid-single'],
+  ['coquette-mirror', 'Coquette Mirror', 'Coquette', 'polaroid-single'],
+  ['blossom-cover', 'Blossom Cover', 'Nature & Dreamy', 'polaroid-single'],
+  ['birthday-star', 'Birthday Star', 'Celebration', 'polaroid-single'],
+  ['strawberry-date', 'Strawberry Date', 'Cute & Pastel', 'wide-duo'],
+  ['kitty-cafe-duo', 'Kitty Café Duo', 'Cute & Pastel', 'wide-duo'],
+  ['butterfly-garden', 'Butterfly Garden', 'Nature & Dreamy', 'wide-duo'],
+  ['moonlight-besties', 'Moonlight Besties', 'Nature & Dreamy', 'wide-duo'],
+  ['wedding-vow', 'Wedding Vow', 'Celebration', 'wide-duo'],
+  ['ocean-friends-duo', 'Ocean Friends Duo', 'Nature & Dreamy', 'wide-duo'],
+  ['sakura-diary', 'Sakura Diary', 'Nature & Dreamy', 'three-postcard'],
+  ['cherry-soda', 'Cherry Soda', 'Cute & Pastel', 'three-postcard'],
+  ['ribbon-booth', 'Ribbon Booth', 'Coquette', 'three-postcard'],
+  ['daisy-film', 'Daisy Film', 'Nature & Dreamy', 'three-postcard'],
+  ['lavender-stars', 'Lavender Stars', 'Nature & Dreamy', 'three-postcard'],
+  ['pastel-cloud', 'Pastel Cloud', 'Cute & Pastel', 'three-postcard'],
+  ['candy-scrapbook', 'Candy Scrapbook', 'Cute & Pastel', 'grid-2x2'],
+  ['besties-forever', 'Besties Forever', 'Celebration', 'grid-2x2'],
+  ['mermaid-party', 'Mermaid Party', 'Celebration', 'grid-2x2'],
+  ['holiday-polaroid', 'Holiday Polaroid', 'Seasonal', 'classic-strip'],
+]
+
+describe('curated frame catalog', () => {
+  it('offers exactly 25 unique frames and keeps the default first', () => {
+    expect(FRAME_TEMPLATES).toHaveLength(25)
+    expect(new Set(FRAME_TEMPLATES.map(({ id }) => id)).size).toBe(25)
+    expect(FRAME_TEMPLATES[0].id).toBe('classic-polaroid')
+    expect(FRAME_TEMPLATES.map(({ id }) => id).sort()).toEqual([...retainedIds, ...newFrames.map(([id]) => id)].sort())
+  })
+  it('retains exactly the five approved legacy IDs', () => {
+    expect(FRAME_TEMPLATES.filter(({ id }) => [...retainedIds, ...removedIds].includes(id)).map(({ id }) => id).sort()).toEqual([...retainedIds].sort())
+    for (const id of removedIds) expect(frameById(id), id).toBeUndefined()
+  })
+  it.each(newFrames)('provides the approved metadata and decoration for %s', (id, name, category, layoutId) => {
+    const frame: FrameTemplate | undefined = frameById(id)
+    expect(frame).toMatchObject({ id, name, category, layoutId })
+    expect(frame?.thumbnail?.trim()).toBeTruthy()
+    expect(frame?.assets?.length).toBeGreaterThanOrEqual(2)
+    expect(frame?.assets?.some(({ placement }) => placement === 'overlay')).toBe(true)
+    expect(frame?.assets?.some(({ src }) => src === frame.thumbnail)).toBe(true)
+  })
+  it('covers the promised new-frame shot counts and category totals', () => {
+    const added = FRAME_TEMPLATES.filter(({ id }) => !retainedIds.includes(id))
+    expect([1, 2, 3, 4].map((shots) => added.filter((frame) => layoutById(frame.layoutId)?.requiredShots === shots).length)).toEqual([4, 6, 6, 4])
+    expect(['Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal'].map((category) => FRAME_TEMPLATES.filter((frame) => frame.category === category).length)).toEqual([2, 3, 5, 8, 5, 2])
+  })
+  it('validates every catalog frame against its layout', () => {
+    expect(FRAME_TEMPLATES.flatMap((frame) => validateFrameTemplate(frame, layoutById(frame.layoutId)!))).toEqual([])
+  })
+})
 
 const layout: LayoutDefinition = { id: 'wide-duo', name: 'Wide Duo', requiredShots: 2 }
 const valid: FrameTemplate = {

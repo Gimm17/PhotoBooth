@@ -107,7 +107,7 @@ describe('Studio', () => {
     mocks.cameraSnapshot = camera('active')
     useSessionStore.setState({
       selectedLayout: 'wide-duo',
-      selectedFrame: 'classic-duo',
+      selectedFrame: 'strawberry-date',
       requiredShots: 2,
       photos: [
         'data:image/jpeg;base64,first',

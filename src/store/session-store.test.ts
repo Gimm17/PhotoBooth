@@ -134,20 +134,20 @@ describe('session store', () => {
         .filter((rotation): rotation is number => rotation !== undefined),
     )
 
-    expect(rotations).toEqual([
-      0.994, 0.006, 0.994, 0.006,
-      0.994, 0.006, 0.994, 0.006,
-    ])
+    expect(rotations.length).toBeGreaterThan(0)
+    for (const frame of FRAME_TEMPLATES.filter(({ layoutId }) => layoutId === 'three-postcard')) {
+      expect(frame.slots.map((slot: PhotoSlot) => slot.rotation)).toEqual([0.994, undefined, 0.006])
+    }
     expect(rotations.every((rotation) => rotation >= 0 && rotation <= 1)).toBe(true)
   })
 
   it('switches to a selected four-shot frame while preserving captured photos', () => {
     useSessionStore.getState().addPhoto('data:image/png;base64,first')
 
-    useSessionStore.getState().setFrame('pastel-grid')
+    useSessionStore.getState().setFrame('candy-scrapbook')
 
     expect(useSessionStore.getState()).toMatchObject({
-      selectedFrame: 'pastel-grid',
+      selectedFrame: 'candy-scrapbook',
       selectedLayout: 'grid-2x2',
       requiredShots: 4,
       photos: ['data:image/png;base64,first'],
@@ -162,11 +162,11 @@ describe('session store', () => {
     useSessionStore.getState().addPhoto('data:image/png;base64,third')
     useSessionStore.getState().setComposedResult('blob:postcard-result', new Blob(['postcard']))
 
-    useSessionStore.getState().setFrame('classic-duo')
+    useSessionStore.getState().setFrame('strawberry-date')
 
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:postcard-result')
     expect(useSessionStore.getState()).toMatchObject({
-      selectedFrame: 'classic-duo',
+      selectedFrame: 'strawberry-date',
       selectedLayout: 'wide-duo',
       requiredShots: 2,
       photos: [
@@ -178,10 +178,10 @@ describe('session store', () => {
       composedResultBlob: null,
     })
 
-    useSessionStore.getState().setFrame('classic-postcard')
+    useSessionStore.getState().setFrame('sakura-diary')
 
     expect(useSessionStore.getState()).toMatchObject({
-      selectedFrame: 'classic-postcard',
+      selectedFrame: 'sakura-diary',
       selectedLayout: 'three-postcard',
       requiredShots: 3,
       photos: [

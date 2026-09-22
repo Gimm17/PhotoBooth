@@ -72,15 +72,15 @@ describe('Editor', () => {
     readySession()
     renderEditor()
 
-    fireEvent.change(screen.getByLabelText('Cari bingkai'), { target: { value: 'museum' } })
-    expect(screen.getByRole('button', { name: /Museum White/i })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Cari bingkai'), { target: { value: 'birthday' } })
+    expect(screen.getByRole('button', { name: /Birthday Star/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Classic Polaroid/i })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Cari bingkai'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Celebration' }))
     fireEvent.click(screen.getByRole('button', { name: 'Kotak' }))
     expect(screen.getByRole('button', { name: /Clean Grid/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Museum White/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Birthday Star/i })).not.toBeInTheDocument()
   })
 
   it('applies a selected frame atomically through the session store', () => {
@@ -127,20 +127,20 @@ describe('Editor', () => {
 
   it('preserves every captured photo while switching to a smaller frame and back', async () => {
     useSessionStore.setState({
-      selectedLayout: 'three-postcard', selectedFrame: 'classic-postcard', requiredShots: 3,
+      selectedLayout: 'three-postcard', selectedFrame: 'sakura-diary', requiredShots: 3,
       photos: ['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three'],
     })
     renderEditor()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Gallery Duo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Strawberry Date' }))
     expect(useSessionStore.getState().photos).toEqual([
       'data:image/png;base64,one',
       'data:image/png;base64,two',
       'data:image/png;base64,three',
     ])
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sunday Postcard' }))
-    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'three-postcard', selectedFrame: 'classic-postcard', requiredShots: 3 })
+    fireEvent.click(screen.getByRole('button', { name: 'Sakura Diary' }))
+    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'three-postcard', selectedFrame: 'sakura-diary', requiredShots: 3 })
     expect(useSessionStore.getState().photos).toEqual([
       'data:image/png;base64,one',
       'data:image/png;base64,two',
@@ -151,7 +151,7 @@ describe('Editor', () => {
     })))
 
     fireEvent.click(screen.getByRole('button', { name: 'Batalkan perubahan' }))
-    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'wide-duo', selectedFrame: 'classic-duo', requiredShots: 2 })
+    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'wide-duo', selectedFrame: 'strawberry-date', requiredShots: 2 })
     expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three'])
   })
 
