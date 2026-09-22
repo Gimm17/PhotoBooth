@@ -33,3 +33,11 @@
 ## Commit
 
 - `8808b8727216a6e244e69e369c9bb92519782b5a` — `feat: add local export print and share flows`
+
+## Review fix evidence
+
+- **RED:** New result-panel regressions failed because print, share, and gallery save could use the previous PNG while JPEG/WebP recomposition was pending, and a late result after reset replaced the cleared session. A newer externally committed result also remained blocked with the prior selected format.
+- **GREEN:** Every result-consuming action is disabled and guarded while recomposition is pending. Each request records its source session/result identity, is invalidated on result replacement and unmount, and checks freshness before storing a Blob URL; any URL made obsolete before commit is revoked. The current result MIME resets the selected format, so an external/newer result is immediately actionable with matching filename and Blob.
+- Added tests cover disabled download/print/share/save, JPEG committed Blob plus filename alignment, session-reset late completion, and a newer WebP result surviving an older JPEG completion.
+- Verification after review: focused export suites 14/14 passed; full suite 106/106 passed; typecheck, production build, and `git diff --check` passed.
+- Review-fix commit: `43d568caf80d28c1de20c2bc67a174ba0dbda10e` — `fix: guard result export recomposition`.
