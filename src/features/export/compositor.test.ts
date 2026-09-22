@@ -113,6 +113,24 @@ describe('composePhotoStrip', () => {
     })).rejects.toThrow('Frame requires 2 photos but received 1')
   })
 
+  it('interpolates equivalent near-full hue turns across the shortest signed rotation', async () => {
+    const { canvas, context } = makeCanvas()
+    vi.stubGlobal('Image', LoadedImage)
+    vi.spyOn(document, 'createElement').mockReturnValue(canvas)
+
+    await composePhotoStrip({
+      frame,
+      filter: { ...filter, cssFilter: 'hue-rotate(340deg)' },
+      photos: ['data:image/png;base64,photo'],
+      intensity: 50,
+      caption: '',
+      showDate: false,
+      format: 'png',
+    })
+
+    expect(context.filter).toBe('hue-rotate(-10deg)')
+  })
+
   it('rejects when an image cannot be decoded', async () => {
     class BrokenImage extends LoadedImage {
       override set src(_value: string) {

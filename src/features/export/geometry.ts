@@ -11,8 +11,9 @@ export interface SourceCrop {
 }
 
 export const calculateCoverCrop = (source: Dimensions, target: Dimensions): SourceCrop => {
-  if (source.width <= 0 || source.height <= 0 || target.width <= 0 || target.height <= 0) {
-    throw new Error('Dimensions must be greater than zero')
+  const dimensions = [source.width, source.height, target.width, target.height]
+  if (dimensions.some((dimension) => !Number.isFinite(dimension) || dimension <= 0)) {
+    throw new Error('Dimensions must be finite and greater than zero')
   }
 
   const sourceAspect = source.width / source.height

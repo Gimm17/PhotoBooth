@@ -21,6 +21,11 @@ const outputMimeTypes: Record<OutputFormat, string> = {
   webp: 'image/webp',
 }
 
+const shortestHueRotation = (degrees: number) => {
+  const normalized = ((degrees % 360) + 360) % 360
+  return normalized > 180 ? normalized - 360 : normalized
+}
+
 const interpolateFilter = (cssFilter: string, intensity: number) => {
   const amount = Math.min(100, Math.max(0, intensity)) / 100
   return cssFilter.replace(/(brightness|contrast|saturate|sepia|grayscale)\((-?\d+(?:\.\d+)?)%\)|hue-rotate\((-?\d+(?:\.\d+)?)deg\)/g, (term, property, percent, degrees) => {
@@ -29,7 +34,7 @@ const interpolateFilter = (cssFilter: string, intensity: number) => {
       return `${property}(${neutral + (Number(percent) - neutral) * amount}%)`
     }
 
-    return `hue-rotate(${Number(degrees) * amount}deg)`
+    return `hue-rotate(${shortestHueRotation(Number(degrees)) * amount}deg)`
   })
 }
 

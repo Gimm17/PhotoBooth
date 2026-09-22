@@ -34,6 +34,23 @@ describe('calculateCoverCrop', () => {
     [{ width: 400, height: 200 }, { width: 0, height: 200 }],
     [{ width: -1, height: 200 }, { width: 100, height: 200 }],
   ])('rejects invalid or zero dimensions: %o', (source, target) => {
-    expect(() => calculateCoverCrop(source, target)).toThrow('Dimensions must be greater than zero')
+    expect(() => calculateCoverCrop(source, target)).toThrow('Dimensions must be finite and greater than zero')
+  })
+
+  it.each([
+    [{ width: Number.NaN, height: 200 }, { width: 100, height: 200 }],
+    [{ width: Infinity, height: 200 }, { width: 100, height: 200 }],
+    [{ width: -Infinity, height: 200 }, { width: 100, height: 200 }],
+    [{ width: 400, height: Number.NaN }, { width: 100, height: 200 }],
+    [{ width: 400, height: Infinity }, { width: 100, height: 200 }],
+    [{ width: 400, height: -Infinity }, { width: 100, height: 200 }],
+    [{ width: 400, height: 200 }, { width: Number.NaN, height: 200 }],
+    [{ width: 400, height: 200 }, { width: Infinity, height: 200 }],
+    [{ width: 400, height: 200 }, { width: -Infinity, height: 200 }],
+    [{ width: 400, height: 200 }, { width: 100, height: Number.NaN }],
+    [{ width: 400, height: 200 }, { width: 100, height: Infinity }],
+    [{ width: 400, height: 200 }, { width: 100, height: -Infinity }],
+  ])('rejects non-finite dimensions: %o', (source, target) => {
+    expect(() => calculateCoverCrop(source, target)).toThrow('Dimensions must be finite and greater than zero')
   })
 })
