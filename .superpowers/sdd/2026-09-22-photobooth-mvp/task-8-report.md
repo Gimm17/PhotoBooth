@@ -28,3 +28,19 @@
 ## Commit
 
 - `c7c99277aafd7da8c9d8e64f9d6efb060a6e6a6f` — `feat: add private indexeddb gallery`
+
+## Review fixes
+
+- **RED:** Focus-regression coverage showed the confirmation dialog initially focused Cancel and omitted its close control from the Tab cycle; the background remained discoverable to assistive technology.
+- **GREEN:** The dialog now focuses Close first, cycles Close → Cancel → Confirm in both directions, preserves Escape/cancel and trigger-focus restoration, and makes the background `inert` plus `aria-hidden` while a modal is open.
+- **RED:** A completed successful gallery save left the same composed result saveable again.
+- **GREEN:** Save state now keys on the active Blob and composed-result URL. The action remains disabled after success, and re-enables only when a new composed result arrives; both in-flight and sequential duplicate activation are covered.
+- **RED:** A supported storage estimate of zero bytes displayed as `1 KB`.
+- **GREEN:** Zero usage displays as `0 B`.
+
+### Review verification
+
+- Focused gallery and result tests — 2 files, 18 tests passed.
+- `npm test` — 14 files, 123 tests passed.
+- `npm run typecheck`, `npm run build`, and `git diff --check` — passed.
+- `b26db0c1d64fbf26cf7a1b22387985fbc656c5f5` — `fix: harden gallery focus and save idempotency`
