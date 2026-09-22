@@ -177,6 +177,15 @@ describe('session store', () => {
       composedResultUrl: null,
       composedResultBlob: null,
     })
+  })
+
+  it('preserves all data URLs through the Sakura Diary to Strawberry Date round trip', () => {
+    const photos = [
+      'data:image/png;base64,photo-1',
+      'data:image/png;base64,photo-2',
+      'data:image/png;base64,photo-3',
+    ]
+    useSessionStore.getState().setImportedPhotos(photos)
 
     useSessionStore.getState().setFrame('sakura-diary')
 
@@ -184,11 +193,25 @@ describe('session store', () => {
       selectedFrame: 'sakura-diary',
       selectedLayout: 'three-postcard',
       requiredShots: 3,
-      photos: [
-        'data:image/png;base64,first',
-        'data:image/png;base64,second',
-        'data:image/png;base64,third',
-      ],
     })
+    expect(useSessionStore.getState().photos).toEqual(photos)
+
+    useSessionStore.getState().setFrame('strawberry-date')
+
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'strawberry-date',
+      selectedLayout: 'wide-duo',
+      requiredShots: 2,
+    })
+    expect(useSessionStore.getState().photos).toEqual(photos)
+
+    useSessionStore.getState().setFrame('sakura-diary')
+
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'sakura-diary',
+      selectedLayout: 'three-postcard',
+      requiredShots: 3,
+    })
+    expect(useSessionStore.getState().photos).toEqual(photos)
   })
 })

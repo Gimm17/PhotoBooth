@@ -5,6 +5,25 @@ const generatedPng = Buffer.from(
   'base64',
 )
 
+async function importGeneratedPhotos(page: import('@playwright/test').Page, count: number) {
+  await page.goto('/setup')
+  await page.getByLabel('Pilih foto dari perangkat').setInputFiles(
+    Array.from({ length: count }, (_, index) => ({
+      name: `generated-fixture-${index + 1}.png`,
+      mimeType: 'image/png',
+      buffer: generatedPng,
+    })),
+  )
+  await expect(page).toHaveURL(/\/editor$/)
+}
+
+async function selectDecoratedFrame(page: import('@playwright/test').Page, name: string) {
+  await page.getByRole('button', { name: new RegExp(name, 'i') }).click()
+  const preview = page.getByRole('img', { name: 'Pratinjau hasil foto dengan bingkai dan filter pilihan' })
+  await expect(preview).toHaveAttribute('src', /^blob:/)
+  return preview
+}
+
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 }
@@ -20,19 +39,39 @@ test('moves from the landing page to camera setup', async ({ page }) => {
 })
 
 test('uses a generated local image through the upload path', async ({ page }) => {
-  await page.goto('/setup')
-
-  await page.getByLabel('Pilih foto dari perangkat').setInputFiles(
-    Array.from({ length: 4 }, (_, index) => ({
-      name: `generated-fixture-${index + 1}.png`,
-      mimeType: 'image/png',
-      buffer: generatedPng,
-    })),
-  )
-
-  await expect(page).toHaveURL(/\/editor$/)
+  await importGeneratedPhotos(page, 4)
   await expect(page.getByRole('heading', { level: 1, name: 'Kustomisasi hasil fotomu' })).toBeVisible()
 })
+
+test('decorated frame preserves three photos across layouts and exports the restored Sakura Diary', async ({ page }) => {
+  await importGeneratedPhotos(page, 3)
+
+  await selectDecoratedFrame(page, 'Sakura Diary')
+  await selectDecoratedFrame(page, 'Strawberry Date')
+  await selectDecoratedFrame(page, 'Sakura Diary')
+
+  await expect(page.getByRole('alert')).not.toBeVisible()
+  await page.getByRole('button', { name: 'Lanjut ke unduh dan cetak' }).click()
+
+  await expect(page).toHaveURL(/\/result$/)
+  await expect(page.getByRole('img', { name: 'Hasil PhotoBooth siap disimpan' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Unduh foto/i })).toBeEnabled()
+})
+
+const decoratedFrameMatrix = [
+  { frame: 'Love Letter Portrait', shots: 1 },
+  { frame: 'Strawberry Date', shots: 2 },
+  { frame: 'Sakura Diary', shots: 3 },
+  { frame: 'Candy Scrapbook', shots: 4 },
+]
+
+for (const { frame, shots } of decoratedFrameMatrix) {
+  test(`decorated frame renders ${frame} with ${shots} shot${shots === 1 ? '' : 's'}`, async ({ page }) => {
+    await importGeneratedPhotos(page, shots)
+
+    await selectDecoratedFrame(page, frame)
+  })
+}
 
 test('guards a direct editor visit without photos', async ({ page }) => {
   await page.goto('/editor')
