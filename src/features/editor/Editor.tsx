@@ -6,18 +6,18 @@ import { frameById } from '../../catalog/frames'
 import type { FilterCategory, FrameCategory, FrameOrientation } from '../../catalog/types'
 import { composePhotoStrip } from '../export/compositor'
 import { useSessionStore } from '../../store/session-store'
+import type { EditorHistorySnapshot } from '../../store/session-store'
 import { FilterBrowser } from './FilterBrowser'
 import { FrameBrowser } from './FrameBrowser'
 import { Inspector } from './Inspector'
 import { PrintPreview } from './PrintPreview'
 import './editor.css'
 
-type EditorSnapshot = Pick<ReturnType<typeof useSessionStore.getState>, 'selectedFrame' | 'selectedFilter' | 'filterIntensity' | 'caption' | 'showDate'>
 type Tool = 'frames' | 'filters'
 
-const snapshot = (): EditorSnapshot => {
+const snapshot = (): EditorHistorySnapshot => {
   const state = useSessionStore.getState()
-  return { selectedFrame: state.selectedFrame, selectedFilter: state.selectedFilter, filterIntensity: state.filterIntensity, caption: state.caption, showDate: state.showDate }
+  return { selectedLayout: state.selectedLayout, selectedFrame: state.selectedFrame, selectedFilter: state.selectedFilter, requiredShots: state.requiredShots, photos: [...state.photos], filterIntensity: state.filterIntensity, caption: state.caption, showDate: state.showDate }
 }
 
 export function Editor() {
@@ -30,8 +30,8 @@ export function Editor() {
   const [filterCategory, setFilterCategory] = useState<FilterCategory | 'all'>('all')
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [previewError, setPreviewError] = useState<string | null>(null)
-  const undo = useRef<EditorSnapshot[]>([])
-  const redo = useRef<EditorSnapshot[]>([])
+  const undo = useRef<EditorHistorySnapshot[]>([])
+  const redo = useRef<EditorHistorySnapshot[]>([])
   const generation = useRef(0)
 
   const frame = frameById(session.selectedFrame)
@@ -39,15 +39,16 @@ export function Editor() {
   const isComplete = session.photos.length >= session.requiredShots
   const editorKey = `${session.selectedFrame}|${session.selectedFilter}|${session.filterIntensity}|${session.caption}|${session.showDate}|${session.photos.join('|')}`
 
-  const applySnapshot = (next: EditorSnapshot) => {
-    const store = useSessionStore.getState()
-    store.setFrame(next.selectedFrame)
-    store.setFilter(next.selectedFilter)
-    store.setFilterIntensity(next.filterIntensity)
-    store.setCaption(next.caption)
-    useSessionStore.setState({ showDate: next.showDate })
+  const markPreviewDirty = () => {
+    useSessionStore.getState().setComposedResult(null, null)
+    setPreviewStatus('loading')
+    setPreviewError(null)
   }
-  const record = (change: () => void) => { undo.current.push(snapshot()); redo.current = []; change() }
+  const applySnapshot = (next: EditorHistorySnapshot) => {
+    markPreviewDirty()
+    useSessionStore.getState().restoreEditorSnapshot(next)
+  }
+  const record = (change: () => void) => { undo.current.push(snapshot()); redo.current = []; markPreviewDirty(); change() }
   const updateShowDate = (showDate: boolean) => record(() => useSessionStore.setState({ showDate }))
 
   useEffect(() => {

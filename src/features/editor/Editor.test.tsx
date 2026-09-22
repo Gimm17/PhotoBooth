@@ -125,6 +125,21 @@ describe('Editor', () => {
     expect(useSessionStore.getState().caption).toBe('Kita')
   })
 
+  it('restores every captured photo in order when undoing a frame layout change', () => {
+    useSessionStore.setState({
+      selectedLayout: 'grid-2x2', selectedFrame: 'minimal-grid', requiredShots: 4,
+      photos: ['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three', 'data:image/png;base64,four'],
+    })
+    renderEditor()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Classic Polaroid' }))
+    expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Batalkan perubahan' }))
+    expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'grid-2x2', selectedFrame: 'minimal-grid', requiredShots: 4 })
+    expect(useSessionStore.getState().photos).toEqual(['data:image/png;base64,one', 'data:image/png;base64,two', 'data:image/png;base64,three', 'data:image/png;base64,four'])
+  })
+
   it('keeps newer preview results when an older composition resolves later', async () => {
     readySession()
     let resolveFirst!: (blob: Blob) => void
@@ -152,6 +167,55 @@ describe('Editor', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Tidak dapat membuat cetakan')
     expect(screen.getByRole('button', { name: 'Lanjut ke unduh dan cetak' })).toBeDisabled()
+  })
+
+  it('clears a successful preview before a replacement composition fails', async () => {
+    readySession()
+    mocks.composePhotoStrip
+      .mockResolvedValueOnce(new Blob(['first']))
+      .mockRejectedValueOnce(new Error('Komposisi baru gagal'))
+    renderEditor()
+
+    await waitFor(() => expect(useSessionStore.getState().composedResultUrl).toBe('blob:preview'))
+    fireEvent.change(screen.getByLabelText('Caption foto'), { target: { value: 'coba lagi' } })
+
+    await waitFor(() => expect(useSessionStore.getState().composedResultUrl).toBeNull())
+    expect(screen.queryByRole('img', { name: /Pratinjau hasil foto/i })).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Komposisi baru gagal')
+    expect(screen.getByRole('button', { name: 'Lanjut ke unduh dan cetak' })).toBeDisabled()
+  })
+
+  it('revokes a replaced preview URL and ignores a stale late composition', async () => {
+    readySession()
+    let resolveLate!: (blob: Blob) => void
+    mocks.createObjectURL.mockReturnValueOnce('blob:initial').mockReturnValueOnce('blob:current')
+    mocks.composePhotoStrip
+      .mockResolvedValueOnce(new Blob(['initial']))
+      .mockImplementationOnce(() => new Promise<Blob>((resolve) => { resolveLate = resolve }))
+      .mockResolvedValueOnce(new Blob(['current']))
+    renderEditor()
+
+    await waitFor(() => expect(useSessionStore.getState().composedResultUrl).toBe('blob:initial'))
+    fireEvent.change(screen.getByLabelText('Caption foto'), { target: { value: 'kedua' } })
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledTimes(2))
+    fireEvent.change(screen.getByLabelText('Caption foto'), { target: { value: 'ketiga' } })
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledTimes(3))
+    await act(async () => { resolveLate(new Blob(['late'])) })
+
+    await waitFor(() => expect(useSessionStore.getState().composedResultUrl).toBe('blob:current'))
+    expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:initial')
+    expect(mocks.createObjectURL).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps frame, orientation, and filter choices accessible at touch-target size', () => {
+    readySession()
+    renderEditor()
+
+    expect(screen.getByRole('button', { name: 'Minimal' })).toHaveStyle({ minHeight: '44px' })
+    expect(screen.getByRole('button', { name: 'Kotak' })).toHaveStyle({ minHeight: '44px' })
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    expect(screen.getByRole('button', { name: 'Film' })).toHaveStyle({ minHeight: '44px' })
+    expect(screen.getByRole('button', { name: '1977' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('navigates to the result only after the current composition succeeds', async () => {

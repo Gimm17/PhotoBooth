@@ -39,3 +39,10 @@
 ## Concerns
 
 - None for this task. The preview uses the real compositor, so browser image decoding remains the expected integration point for manual end-to-end camera validation.
+
+## Review fix evidence
+
+- **RED:** Added editor regressions for four-photo restoration after a frame layout undo, immediate preview invalidation after a successful composition, replacement URL revocation with a late stale composition, and 44px accessible frame/filter controls. The focused suite failed because history retained only settings, stale previews remained visible, and catalog chips were 36px tall.
+- **GREEN:** `EditorHistorySnapshot` and the atomic `restoreEditorSnapshot` store action now restore frame, layout, required shot count, and captured photos in original order. Every editor mutation clears the composed Blob/URL and marks the preview loading before recomposition; the store releases the old object URL. Late composition completions remain ignored, while the current completion replaces the cleared result safely.
+- The frame category and orientation chips now have a 44px minimum target; tests assert the accessible controls and their selection state.
+- Verification after the review fixes: focused editor suite 12/12 passed; full suite 92/92 passed; typecheck, production build, and `git diff --check` passed.
