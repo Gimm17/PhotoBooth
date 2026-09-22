@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { FRAME_TEMPLATES } from '../catalog/frames'
+import type { PhotoSlot } from '../catalog/types'
 import { useSessionStore } from './session-store'
 
 const initialState = () => useSessionStore.getState().resetSession()
@@ -104,6 +106,55 @@ describe('session store', () => {
       selectedFilter: 'original',
       photos: [],
       caption: '',
+      composedResultUrl: null,
+      composedResultBlob: null,
+    })
+  })
+
+  it('uses normalized turns for every rotated frame slot', () => {
+    const rotations = FRAME_TEMPLATES.flatMap((frame) =>
+      (frame.slots as PhotoSlot[])
+        .map((slot) => slot.rotation)
+        .filter((rotation): rotation is number => rotation !== undefined),
+    )
+
+    expect(rotations).toEqual([
+      0.994, 0.006, 0.994, 0.006,
+      0.994, 0.006, 0.994, 0.006,
+    ])
+    expect(rotations.every((rotation) => rotation >= 0 && rotation <= 1)).toBe(true)
+  })
+
+  it('switches to a selected four-shot frame while preserving captured photos', () => {
+    useSessionStore.getState().addPhoto('data:image/png;base64,first')
+
+    useSessionStore.getState().setFrame('pastel-grid')
+
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'pastel-grid',
+      selectedLayout: 'grid-2x2',
+      requiredShots: 4,
+      photos: ['data:image/png;base64,first'],
+    })
+  })
+
+  it('switches to a one-shot frame by trimming photos and cleaning up the result URL', () => {
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
+    useSessionStore.getState().setLayout('grid-2x2')
+    useSessionStore.getState().addPhoto('data:image/png;base64,first')
+    useSessionStore.getState().addPhoto('data:image/png;base64,second')
+    useSessionStore.getState().addPhoto('data:image/png;base64,third')
+    useSessionStore.getState().addPhoto('data:image/png;base64,fourth')
+    useSessionStore.getState().setComposedResult('blob:grid-result', new Blob(['grid']))
+
+    useSessionStore.getState().setFrame('classic-polaroid')
+
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:grid-result')
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'classic-polaroid',
+      selectedLayout: 'polaroid-single',
+      requiredShots: 1,
+      photos: ['data:image/png;base64,first'],
       composedResultUrl: null,
       composedResultBlob: null,
     })

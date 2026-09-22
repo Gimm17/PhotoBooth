@@ -26,6 +26,7 @@ export interface PhotoSlot {
   y: number
   width: number
   height: number
+  /** Normalized clockwise turns from 0 through 1; values near 1 rotate slightly counter-clockwise. */
   rotation?: number
 }
 

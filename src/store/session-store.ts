@@ -77,7 +77,25 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (filterById(filterId)) set({ selectedFilter: filterId })
   },
   setFrame: (frameId) => {
-    if (frameById(frameId)) set({ selectedFrame: frameId })
+    const frame = frameById(frameId)
+    if (!frame) return
+
+    set((state) => {
+      if (frame.layoutId === state.selectedLayout) {
+        return { selectedFrame: frame.id }
+      }
+
+      const layout = layoutById(frame.layoutId)!
+      revokeObjectUrl(state.composedResultUrl)
+      return {
+        selectedFrame: frame.id,
+        selectedLayout: layout.id,
+        requiredShots: layout.requiredShots,
+        photos: state.photos.slice(0, layout.requiredShots),
+        composedResultUrl: null,
+        composedResultBlob: null,
+      }
+    })
   },
   setFilterIntensity: (intensity) => set({ filterIntensity: Math.min(100, Math.max(0, intensity)) }),
   setCaption: (caption) => set({ caption }),
