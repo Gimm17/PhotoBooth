@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore } from '../../store/session-store'
@@ -88,6 +88,72 @@ describe('ResultPanel', () => {
     await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledWith(expect.objectContaining({ format: 'jpeg' })))
     await waitFor(() => expect(useSessionStore.getState().composedResultBlob?.type).toBe('image/jpeg'))
     expect(screen.getByRole('img', { name: 'Hasil PhotoBooth siap disimpan' })).toHaveAttribute('src', 'blob:jpeg-result')
+    fireEvent.click(screen.getByRole('button', { name: /Unduh foto/i }))
+    expect(mocks.downloadBlob).toHaveBeenCalledWith(expect.objectContaining({ type: 'image/jpeg' }), expect.stringMatching(/\.jpeg$/))
+  })
+
+  it('disables every result-consuming action while a new format is recomposing', async () => {
+    let resolveComposition!: (blob: Blob) => void
+    mocks.composePhotoStrip.mockImplementation(() => new Promise<Blob>((resolve) => { resolveComposition = resolve }))
+    const saveToGallery = vi.fn()
+    renderPanel(saveToGallery)
+
+    fireEvent.click(screen.getByRole('radio', { name: /JPEG/i }))
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledWith(expect.objectContaining({ format: 'jpeg' })))
+
+    const download = screen.getByRole('button', { name: /Unduh foto/i })
+    const print = screen.getByRole('button', { name: /Cetak langsung/i })
+    const share = screen.getByRole('button', { name: /Bagikan foto/i })
+    const save = screen.getByRole('button', { name: /Simpan ke galeri/i })
+    expect(download).toBeDisabled()
+    expect(print).toBeDisabled()
+    expect(share).toBeDisabled()
+    expect(save).toBeDisabled()
+
+    fireEvent.click(download)
+    fireEvent.click(print)
+    fireEvent.click(share)
+    fireEvent.click(save)
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    expect(mocks.printBlob).not.toHaveBeenCalled()
+    expect(mocks.shareBlob).not.toHaveBeenCalled()
+    expect(saveToGallery).not.toHaveBeenCalled()
+
+    await act(async () => { resolveComposition(new Blob(['jpeg'], { type: 'image/jpeg' })) })
+  })
+
+  it('discards a late recomposition after the active session is reset', async () => {
+    let resolveComposition!: (blob: Blob) => void
+    mocks.composePhotoStrip.mockImplementation(() => new Promise<Blob>((resolve) => { resolveComposition = resolve }))
+    renderPanel()
+
+    fireEvent.click(screen.getByRole('radio', { name: /WebP/i }))
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledWith(expect.objectContaining({ format: 'webp' })))
+    act(() => useSessionStore.getState().resetSession())
+    await act(async () => { resolveComposition(new Blob(['webp'], { type: 'image/webp' })) })
+
+    expect(useSessionStore.getState().composedResultBlob).toBeNull()
+    expect(useSessionStore.getState().composedResultUrl).toBeNull()
+    expect(mocks.createObjectURL).not.toHaveBeenCalled()
+  })
+
+  it('keeps a newer externally committed result actionable when an older recomposition resolves late', async () => {
+    let resolveComposition!: (blob: Blob) => void
+    mocks.composePhotoStrip.mockImplementation(() => new Promise<Blob>((resolve) => { resolveComposition = resolve }))
+    renderPanel()
+
+    fireEvent.click(screen.getByRole('radio', { name: /JPEG/i }))
+    await waitFor(() => expect(mocks.composePhotoStrip).toHaveBeenCalledWith(expect.objectContaining({ format: 'jpeg' })))
+    const newerBlob = new Blob(['webp'], { type: 'image/webp' })
+    act(() => useSessionStore.getState().setComposedResult('blob:newer-result', newerBlob))
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: /WebP/i })).toBeChecked())
+    expect(screen.getByRole('button', { name: /Unduh foto/i })).toBeEnabled()
+    await act(async () => { resolveComposition(new Blob(['jpeg'], { type: 'image/jpeg' })) })
+
+    expect(useSessionStore.getState().composedResultBlob).toBe(newerBlob)
+    expect(useSessionStore.getState().composedResultUrl).toBe('blob:newer-result')
+    expect(mocks.createObjectURL).not.toHaveBeenCalled()
   })
 
   it('reports action outcomes and passes the current blob to the injected gallery callback', async () => {
