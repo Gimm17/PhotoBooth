@@ -173,6 +173,19 @@ describe('ResultPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Foto disimpan ke galeri lokal.')
   })
 
+  it('does not start a second gallery save while the first save is pending', async () => {
+    let finishSave!: () => void
+    const saveToGallery = vi.fn().mockImplementation(() => new Promise<void>((resolve) => { finishSave = resolve }))
+    renderPanel(saveToGallery)
+
+    const save = screen.getByRole('button', { name: /Simpan ke galeri/i })
+    fireEvent.click(save)
+    fireEvent.click(save)
+
+    expect(saveToGallery).toHaveBeenCalledTimes(1)
+    await act(async () => { finishSave() })
+  })
+
   it('resets the session before creating a new photo session', async () => {
     renderPanel()
 

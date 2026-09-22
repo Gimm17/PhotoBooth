@@ -8,7 +8,7 @@ const routes = [
   ['/studio', 'Studio pengambilan foto'],
   ['/editor', 'Kustomisasi hasil fotomu'],
   ['/result', 'Hasil foto belum siap'],
-  ['/gallery', 'Galeri lokal'],
+  ['/gallery', 'Galeri Foto Pribadi'],
 ] as const
 
 describe('application routes', () => {

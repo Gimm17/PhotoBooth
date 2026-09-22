@@ -41,6 +41,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const [isRecomposing, setIsRecomposing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const recompositionRequest = useRef(0)
+  const saveInFlight = useRef(false)
 
   useEffect(() => {
     recompositionRequest.current += 1
@@ -147,7 +148,8 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   }
 
   const handleSave = async () => {
-    if (!saveToGallery || isRecomposing) return
+    if (!saveToGallery || isRecomposing || saveInFlight.current) return
+    saveInFlight.current = true
     setIsSaving(true)
     try {
       await saveToGallery(blob, filename())
@@ -155,6 +157,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Foto tidak dapat disimpan ke galeri lokal.' })
     } finally {
+      saveInFlight.current = false
       setIsSaving(false)
     }
   }
