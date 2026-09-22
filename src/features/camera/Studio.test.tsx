@@ -35,6 +35,45 @@ describe('Studio', () => {
     expect(screen.getAllByRole('button', { name: 'Jepret pose' })).toHaveLength(1)
   })
 
+  it('captures every pose after increasing the layout and cancels a pending incompatible capture', () => {
+    vi.useFakeTimers()
+    mocks.cameraSnapshot = camera('active')
+    renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+    act(() => useSessionStore.getState().setLayout('classic-strip'))
+    act(() => vi.advanceTimersByTime(3_165))
+    expect(useSessionStore.getState().photos).toHaveLength(0)
+    for (let index = 0; index < 4; index++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+      act(() => vi.advanceTimersByTime(3_165))
+    }
+    expect(useSessionStore.getState().photos).toHaveLength(4)
+    expect(screen.getByRole('status')).toHaveTextContent('Semua foto siap untuk diedit')
+  })
+
+  it('replaces a selected pose after completion without appending an extra photo', () => {
+    vi.useFakeTimers()
+    mocks.cameraSnapshot = camera('active')
+    useSessionStore.getState().addPhoto('data:image/jpeg;base64,old')
+    renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Ambil ulang pose 1' }))
+    expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+    act(() => vi.advanceTimersByTime(3_165))
+    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,captured'])
+    expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
+  })
+
+  it('keeps quick filters on the preview while capturing unfiltered source pixels', () => {
+    vi.useFakeTimers()
+    mocks.cameraSnapshot = camera('active')
+    renderStudio()
+    fireEvent.change(screen.getByLabelText('Pilih filter cepat'), { target: { value: 'inkwell' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+    act(() => vi.advanceTimersByTime(3_165))
+    expect(mocks.captureFrame).toHaveBeenCalledWith(expect.any(HTMLVideoElement), { mirror: true, filter: 'none' })
+  })
+
   it('uses Space for the shutter but ignores it while a button has focus', () => {
     renderStudio()
 

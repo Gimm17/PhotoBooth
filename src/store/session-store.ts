@@ -6,6 +6,8 @@ import type { LayoutId, PhotoSession } from '../catalog/types'
 export type EditorHistorySnapshot = Pick<PhotoSession, 'selectedLayout' | 'selectedFrame' | 'selectedFilter' | 'requiredShots' | 'photos' | 'filterIntensity' | 'caption' | 'showDate'>
 
 interface SessionActions {
+  cameraDeviceId: string | null
+  setCameraDeviceId: (deviceId: string) => void
   setLayout: (layoutId: LayoutId) => void
   addPhoto: (dataUrl: string) => void
   setImportedPhotos: (dataUrls: string[]) => void
@@ -52,6 +54,8 @@ const revokeObjectUrl = (url: string | null) => {
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   ...createInitialSession(),
+  cameraDeviceId: null,
+  setCameraDeviceId: (cameraDeviceId) => set({ cameraDeviceId }),
   setLayout: (layoutId) => {
     const layout = layoutById(layoutId)
     if (!layout) return

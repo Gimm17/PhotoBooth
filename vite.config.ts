@@ -19,11 +19,15 @@ function releaseServiceWorker() {
     closeBundle() {
       const distDirectory = join(process.cwd(), 'dist')
       const serviceWorkerPath = join(distDirectory, 'sw.js')
-      const serviceWorker = readFileSync(serviceWorkerPath, 'utf8')
+      const emittedFiles = listFiles(distDirectory)
+      const precacheUrls = ['/', ...emittedFiles
+        .map((file) => '/' + relative(distDirectory, file).replaceAll('\\', '/'))
+        .filter((path) => /^\/assets\/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/.test(path) || path === '/manifest.webmanifest' || path.startsWith('/icons/'))]
+      const serviceWorker = readFileSync(serviceWorkerPath, 'utf8').replace('/* __PHOTOBOOTH_PRECACHE__ */ []', JSON.stringify(precacheUrls))
       if (!serviceWorker.includes(cacheRevisionToken)) throw new Error('Service worker cache revision token is missing.')
 
       const hash = createHash('sha256')
-      for (const file of listFiles(distDirectory)) {
+      for (const file of emittedFiles) {
         hash.update(relative(distDirectory, file).replaceAll('\\', '/'))
         hash.update('\0')
         hash.update(file === serviceWorkerPath

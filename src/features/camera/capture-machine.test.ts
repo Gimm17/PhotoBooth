@@ -2,6 +2,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { createCaptureMachine } from './capture-machine'
 
 describe('capture machine', () => {
+  it('retakes a completed slot but rejects overflow and invalid retake indices', () => {
+    vi.useFakeTimers()
+    const photos = ['first', 'second']
+    const machine = createCaptureMachine({ timer: 3, requiredShots: 2, photoCount: () => photos.length,
+      capture: (index) => { if (index === null) photos.push('overflow'); else photos[index] = 'replacement' } })
+    machine.sync()
+    machine.trigger()
+    vi.advanceTimersByTime(3_165)
+    expect(photos).toEqual(['first', 'second'])
+    machine.retake(1)
+    machine.trigger()
+    vi.advanceTimersByTime(3_165)
+    expect(photos).toEqual(['first', 'replacement'])
+    machine.retake(2)
+    machine.trigger()
+    vi.advanceTimersByTime(3_165)
+    expect(photos).toHaveLength(2)
+    machine.dispose()
+    vi.useRealTimers()
+  })
   it.each([3, 5, 10] as const)('counts down from %s seconds before flashing', (timer) => {
     vi.useFakeTimers()
     const capture = vi.fn()

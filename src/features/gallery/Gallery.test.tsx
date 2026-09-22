@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GalleryRecord } from './gallery-db'
 import { Gallery } from './Gallery'
+import { useSessionStore } from '../../store/session-store'
 
 const mocks = vi.hoisted(() => ({
   downloadBlob: vi.fn(),
@@ -41,6 +42,19 @@ function renderGallery(repository = createRepository(), estimate?: () => Promise
 }
 
 describe('Gallery', () => {
+  it.each(['Mulai sesi baru', 'Mulai membuat foto'])('clears the active completed session through %s without deleting saved records', async (label) => {
+    const repository = createRepository()
+    useSessionStore.getState().addPhoto('data:image/png;base64,old')
+    useSessionStore.getState().setComposedResult('blob:completed-session', new Blob(['print']))
+    renderGallery(repository)
+    fireEvent.click(await screen.findByRole('link', { name: label }))
+    expect(useSessionStore.getState().photos).toEqual([])
+    expect(useSessionStore.getState().composedResultBlob).toBeNull()
+    expect(useSessionStore.getState().composedResultUrl).toBeNull()
+    expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:completed-session')
+    expect(repository.clear).not.toHaveBeenCalled()
+    useSessionStore.getState().resetSession()
+  })
   beforeEach(() => {
     mocks.downloadBlob.mockReset().mockReturnValue({ status: 'success' })
     mocks.createObjectURL.mockReset().mockImplementation((blob: Blob) => `blob:${blob.size}`)

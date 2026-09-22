@@ -32,13 +32,12 @@ export function Studio() {
   if (!machineRef.current) {
     machineRef.current = createCaptureMachine({
       timer: () => latest.current.timer,
-      requiredShots: latest.current.requiredShots,
-      photoCount: () => latest.current.photos.length,
+      requiredShots: () => useSessionStore.getState().requiredShots,
+      photoCount: () => useSessionStore.getState().photos.length,
       capture: (replaceIndex) => {
         const video = videoRef.current
         if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
-        const filter = filterById(latest.current.selectedFilter)
-        const image = captureFrame(video, { mirror: latest.current.mirror, filter: filter?.cssFilter ?? 'none' })
+        const image = captureFrame(video, { mirror: latest.current.mirror, filter: 'none' })
         if (replaceIndex === null) latest.current.addPhoto(image)
         else latest.current.replacePhoto(replaceIndex, image)
       },
@@ -53,12 +52,20 @@ export function Studio() {
   const canEdit = complete || uploadContinuation
 
   useEffect(() => {
-    void camera.start()
+    const deviceId = useSessionStore.getState().cameraDeviceId
+    if (deviceId) void camera.start(deviceId)
   }, [camera.start])
 
   useEffect(() => {
     machine.sync()
   }, [machine, session.photos.length, session.requiredShots])
+
+  useEffect(() => useSessionStore.subscribe((next, previous) => {
+    if (next.selectedLayout !== previous.selectedLayout) {
+      machine.cancel()
+      machine.sync()
+    }
+  }), [machine])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -74,8 +81,6 @@ export function Studio() {
 
   const updateLayout = (layoutId: LayoutId) => {
     session.setLayout(layoutId)
-    const matchingFrame = FRAME_TEMPLATES.find((frame) => frame.layoutId === layoutId)
-    if (matchingFrame) session.setFrame(matchingFrame.id)
   }
 
   const progressLabel = complete
@@ -138,7 +143,7 @@ export function Studio() {
       <div className="studio-actions">
         {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel}>Batalkan hitung mundur</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]}><RotateCcw aria-hidden="true" size={18} />Ulang pose</button>}
         <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={21} /></button>
-        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || complete} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
+        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
         <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
       </div>
       {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}

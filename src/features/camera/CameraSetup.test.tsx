@@ -50,12 +50,34 @@ describe('CameraSetup', () => {
     expect(screen.getByText(/Kamera aktif dan siap/i)).toBeInTheDocument()
   })
 
-  it('enters the studio only after the camera request succeeds', async () => {
+  it('keeps camera selection reachable and reopens the chosen device in Studio after explicit continuation', async () => {
+    const stopped: string[] = []
+    vi.mocked(navigator.mediaDevices.enumerateDevices).mockResolvedValue([
+      { kind: 'videoinput', deviceId: 'front', label: 'Front' },
+      { kind: 'videoinput', deviceId: 'rear', label: 'Rear' },
+    ] as MediaDeviceInfo[])
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockImplementation(async (constraints) => {
+      const id = constraints?.video === true ? 'front' : 'rear'
+      const track = { stop: () => stopped.push(id), getSettings: () => ({ deviceId: id }) }
+      return { getTracks: () => [track], getVideoTracks: () => [track] } as unknown as MediaStream
+    })
     render(<App initialEntries={['/setup']} />)
 
     fireEvent.click(screen.getByRole('button', { name: /Aktifkan Kamera/i }))
-
+    await screen.findByText(/Kamera aktif dan siap/i)
+    expect(screen.getByRole('heading', { name: 'Izinkan Akses Kamera' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Pilih sumber masukan')).toBeEnabled())
+    fireEvent.change(screen.getByLabelText('Pilih sumber masukan'), { target: { value: 'rear' } })
+    await waitFor(() => expect(screen.getByLabelText('Pilih sumber masukan')).toHaveValue('rear'))
+    fireEvent.click(screen.getByRole('button', { name: 'Masuk Studio' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Studio pengambilan foto' })).toBeInTheDocument()
+    await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(3))
+    expect(vi.mocked(navigator.mediaDevices.getUserMedia).mock.calls.map(([value]) => value)).toEqual([
+      { audio: false, video: true },
+      { audio: false, video: { deviceId: { exact: 'rear' } } },
+      { audio: false, video: { deviceId: { exact: 'rear' } } },
+    ])
+    expect(stopped).toEqual(['front', 'rear'])
   })
 
   it('shows guidance when browser permission is denied', async () => {

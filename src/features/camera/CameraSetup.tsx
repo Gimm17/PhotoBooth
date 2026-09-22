@@ -30,9 +30,8 @@ export function CameraSetup() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  const { setImportedPhotos } = useSessionStore()
+  const { setImportedPhotos, mirror, setMirror, setCameraDeviceId, cameraDeviceId } = useSessionStore()
   const camera = useCamera(videoRef)
-  const [mirror, setMirror] = useState(true)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   const selectedDevice = camera.devices.find((device) => device.deviceId === camera.activeDeviceId)
@@ -61,7 +60,7 @@ export function CameraSetup() {
   }
 
   const activateCamera = async () => {
-    if (await camera.start()) navigate('/studio')
+    await camera.start(cameraDeviceId ?? undefined)
   }
 
   return <section className="camera-setup page-width" aria-labelledby="setup-heading">
@@ -109,7 +108,12 @@ export function CameraSetup() {
       </div>
 
       <div className="troubleshooting"><p>PANDUAN MASALAH IZIN &amp; PERANGKAT</p>{troubleshooting.map(([question, answer]) => <details key={question}><summary>{question}<ChevronDown aria-hidden="true" size={18} /></summary><p>{answer}</p></details>)}</div>
-      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/editor')}>Lewati &amp; Pilih Template Dulu</button><button className="button primary-button" type="button" onClick={() => void activateCamera()} disabled={camera.status === 'requesting'}><Camera aria-hidden="true" size={20} />{camera.status === 'requesting' ? 'Meminta izin…' : 'Aktifkan Kamera & Masuk Studio'}</button></div>
+      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/editor')}>Lewati &amp; Pilih Template Dulu</button><button className="button primary-button" type="button" onClick={() => {
+        if (camera.status === 'active' && camera.activeDeviceId) {
+          setCameraDeviceId(camera.activeDeviceId)
+          navigate('/studio')
+        } else void activateCamera()
+      }} disabled={camera.status === 'requesting'}><Camera aria-hidden="true" size={20} />{camera.status === 'requesting' ? 'Meminta izin…' : camera.status === 'active' ? 'Masuk Studio' : 'Aktifkan Kamera'}</button></div>
     </div>
     <p className="setup-footer-note"><FolderOpen aria-hidden="true" size={14} /> Foto tetap di memori lokal browser selama sesi ini.</p>
   </section>

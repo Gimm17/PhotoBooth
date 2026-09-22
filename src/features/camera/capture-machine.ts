@@ -9,7 +9,7 @@ export interface CaptureState {
 
 interface CaptureMachineOptions {
   timer: (3 | 5 | 10) | (() => 3 | 5 | 10)
-  requiredShots: number
+  requiredShots: number | (() => number)
   photoCount: () => number
   capture: (replaceIndex: number | null) => void
   onStateChange?: (state: CaptureState) => void
@@ -30,6 +30,8 @@ export function createCaptureMachine(options: CaptureMachineOptions): CaptureMac
   let state: CaptureState = { status: 'ready', remaining: 0, retakeIndex: null, error: null }
   let countdownId: ReturnType<typeof setInterval> | null = null
   let flashId: ReturnType<typeof setTimeout> | null = null
+  const requiredShots = () => typeof options.requiredShots === 'function' ? options.requiredShots() : options.requiredShots
+  let lastRequiredShots = requiredShots()
 
   const publish = () => options.onStateChange?.({ ...state })
   const setState = (next: Partial<CaptureState>) => {
@@ -43,17 +45,23 @@ export function createCaptureMachine(options: CaptureMachineOptions): CaptureMac
     flashId = null
   }
   const sync = () => {
+    if (lastRequiredShots !== requiredShots()) {
+      clearTimers()
+      lastRequiredShots = requiredShots()
+      state = { ...state, status: 'ready', retakeIndex: null }
+    }
     if (state.status === 'countdown' || state.status === 'flashing') return
-    const status: CaptureStatus = options.photoCount() === options.requiredShots
+    const status: CaptureStatus = state.retakeIndex !== null ? 'ready' : options.photoCount() >= requiredShots()
       ? 'complete'
       : options.photoCount() > 0 ? 'captured' : 'ready'
     setState({ status, remaining: 0, error: null })
   }
   const completeFlash = () => {
     flashId = null
+    if (lastRequiredShots !== requiredShots()) { sync(); return }
     try {
       options.capture(state.retakeIndex)
-      const complete = options.photoCount() === options.requiredShots
+      const complete = options.photoCount() >= requiredShots()
       setState({ status: complete ? 'complete' : 'captured', remaining: 0, retakeIndex: null, error: null })
     } catch (error) {
       setState({ status: 'error', remaining: 0, error: error instanceof Error ? error.message : 'Foto belum dapat diambil.' })
@@ -69,8 +77,9 @@ export function createCaptureMachine(options: CaptureMachineOptions): CaptureMac
   return {
     getState: () => ({ ...state }),
     trigger: () => {
-      if (state.status === 'countdown' || state.status === 'flashing' || state.status === 'complete') return
-      if (options.photoCount() >= options.requiredShots) {
+      if (lastRequiredShots !== requiredShots()) sync()
+      if (state.status === 'countdown' || state.status === 'flashing') return
+      if (state.retakeIndex === null && options.photoCount() >= requiredShots()) {
         sync()
         return
       }
@@ -83,17 +92,17 @@ export function createCaptureMachine(options: CaptureMachineOptions): CaptureMac
       }, 1_000)
     },
     retake: (index) => {
-      if (index < 0 || index >= options.photoCount()) return
+      if (!Number.isInteger(index) || index < 0 || index >= Math.min(options.photoCount(), requiredShots())) return
       clearTimers()
       setState({ status: 'ready', remaining: 0, retakeIndex: index, error: null })
     },
     sync,
     cancel: () => {
       clearTimers()
-      const status: CaptureStatus = options.photoCount() === options.requiredShots
+      const status: CaptureStatus = options.photoCount() >= requiredShots()
         ? 'complete'
         : options.photoCount() > 0 ? 'captured' : 'ready'
-      setState({ status, remaining: 0, error: null })
+      setState({ status, remaining: 0, retakeIndex: null, error: null })
     },
     dispose: () => {
       clearTimers()
