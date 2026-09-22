@@ -80,6 +80,14 @@ describe('session store', () => {
     expect(useSessionStore.getState().filterIntensity).toBe(0)
   })
 
+  it('keeps capture preferences in the active session', () => {
+    useSessionStore.getState().setTimer(10)
+    useSessionStore.getState().setMirror(false)
+    useSessionStore.getState().setShowGrid(true)
+
+    expect(useSessionStore.getState()).toMatchObject({ timer: 10, mirror: false, showGrid: true })
+  })
+
   it('revokes the superseded composed result URL without touching captured data URLs', () => {
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
     const firstBlob = new Blob(['first'], { type: 'image/png' })

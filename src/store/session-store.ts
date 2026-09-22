@@ -12,6 +12,9 @@ interface SessionActions {
   setFilter: (filterId: string) => void
   setFrame: (frameId: string) => void
   setFilterIntensity: (intensity: number) => void
+  setTimer: (timer: 3 | 5 | 10) => void
+  setMirror: (mirror: boolean) => void
+  setShowGrid: (showGrid: boolean) => void
   setCaption: (caption: string) => void
   setComposedResult: (url: string | null, blob: Blob | null) => void
   resetSession: () => void
@@ -100,6 +103,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })
   },
   setFilterIntensity: (intensity) => set({ filterIntensity: Math.min(100, Math.max(0, intensity)) }),
+  setTimer: (timer) => set({ timer }),
+  setMirror: (mirror) => set({ mirror }),
+  setShowGrid: (showGrid) => set({ showGrid }),
   setCaption: (caption) => set({ caption }),
   setComposedResult: (url, blob) => set((state) => {
     if (state.composedResultUrl !== url) revokeObjectUrl(state.composedResultUrl)
