@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html lang="de"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Outfit:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#fdf9f5;}body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-container-high": "#ebe7e4", "on-secondary": "#ffffff", "on-secondary-container": "#7c4653", "error-container": "#ffdad6", "surface-variant": "#e6e2de", "outline-variant": "#c1c7cd", "on-tertiary": "#ffffff", "inverse-primary": "#9ccde8", "secondary-fixed-dim": "#fab4c3", "surface": "#fdf9f5", "on-tertiary-fixed": "#1b1c19", "tertiary": "#5f5f5a", "secondary-container": "#ffb9c8", "surface-container-lowest": "#ffffff", "primary": "#32647b", "on-tertiary-fixed-variant": "#474743", "on-background": "#1c1b1a", "surface-dim": "#ddd9d6", "tertiary-fixed": "#e4e2dd", "primary-fixed": "#c1e8ff", "on-secondary-fixed": "#360d1a", "on-primary-fixed-variant": "#154c63", "secondary": "#854e5c", "on-surface-variant": "#41484c", "on-primary": "#ffffff", "on-error": "#ffffff", "primary-fixed-dim": "#9ccde8", "inverse-surface": "#31302e", "surface-container-highest": "#e6e2de", "on-primary-container": "#2b5e75", "inverse-on-surface": "#f4f0ec", "tertiary-fixed-dim": "#c8c6c1", "on-surface": "#1c1b1a", "surface-bright": "#fdf9f5", "tertiary-container": "#d1cfca", "on-secondary-fixed-variant": "#6a3744", "surface-tint": "#32647b", "background": "#fdf9f5", "outline": "#71787d", "on-tertiary-container": "#585854", "on-primary-fixed": "#001e2b", "surface-container": "#f1edea", "error": "#ba1a1a", "primary-container": "#a5d6f1", "surface-container-low": "#f7f3ef", "on-error-container": "#93000a", "secondary-fixed": "#ffd9e0" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1.5rem", "gutter-mobile": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "margin-mobile": "1rem", "space-xl": "2rem", "space-xs": "0.25rem", "margin": "2.5rem", "space-md": "1rem" }, "fontFamily": { "headline-lg-mobile": ["Outfit"], "body-lg": ["Outfit"], "mono-data": ["JetBrains Mono"], "mono-caption": ["JetBrains Mono"], "headline-lg": ["Outfit"], "label-sm": ["Outfit"], "display-lg-mobile": ["Outfit"], "headline-md": ["Outfit"], "display-lg": ["Outfit"], "label-lg": ["Outfit"], "body-sm": ["Outfit"], "label-md": ["Outfit"], "body-md": ["Outfit"], "headline-sm": ["Outfit"] }, "fontSize": { "headline-lg-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }], "mono-data": ["13px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500" }], "mono-caption": ["11px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "400" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "display-lg-mobile": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "22px", "fontWeight": "600" }], "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "label-md": ["14px", { "lineHeight": "18px", "fontWeight": "500" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "500" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_2px_12px_rgba(44,43,41,0.04)]"><div class="h-16 px-gutter-mobile flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Zurück" class="w-11 h-11 -ml-1 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container-high transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[20px]">arrow_back</span></button><img alt="PhotoBooth Studio Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VFC5zGGZU9zuq69Yo-M7ztSYMBuzz0dzt5HqGAbsi8eB3kKuIiznehHmXYA8S8PT_cdBH-V0ln-7r_XWTaqDp2A4Klt9oJq5Lsev8Qh-tMTLArC-qIc-HYeT8ZPrLBWzm8sQ482Sin8yr90ty9qFAC65Q19YEOvJrrSMuz8mQxhKDtqRsaoRoITAmQudF_cKhNJjY7ulawbJ-HIl80bdYyWSFgH9HGZ5u2cPFUq6ODk0qsVE1qgjuLFual"/><h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight ml-1">Streifen Details</h1></div><div class="flex items-center gap-space-sm"><div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface"><span class="material-symbols-outlined text-[14px] text-primary">lock</span><span class="font-mono-caption text-mono-caption uppercase tracking-wider text-on-surface-variant font-medium">100% Privat</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-safe bg-surface"><div class="flex flex-col w-full">
+<!-- Sticky Workspace Artboard Canvas -->
+<section class="sticky top-0 z-20 px-gutter-mobile pt-space-xs pb-space-sm bg-surface/95 backdrop-blur-md">
+<div class="relative w-full rounded-2xl bg-surface-container-low shadow-sm p-3 flex flex-col items-center justify-center overflow-hidden">
+<!-- Floating History Controls (Top Right) -->
+<div class="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-full shadow-sm">
+<button aria-label="Undo riwayat" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container transition-all active:scale-90" id="btn-undo">
+<span class="material-symbols-outlined text-[19px]">undo</span>
+</button>
+<button aria-label="Redo riwayat" class="w-9 h-9 rounded-full flex items-center justify-center text-outline-variant hover:text-on-surface transition-all active:scale-90" id="btn-redo">
+<span class="material-symbols-outlined text-[19px]">redo</span>
+</button>
+</div>
+<!-- Live Zoom/Aspect Ratio Indicator (Top Left) -->
+<div class="absolute top-3 left-3 z-30 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-lowest/90 shadow-sm text-on-surface-variant font-mono-caption text-mono-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>2x6 STRIP</span>
+</div>
+<!-- Photostrip Workspace with Tactile Scrapbook Accents -->
+<div class="relative my-1 flex flex-col items-center">
+<!-- Decorative Mint Washi Tape at Top -->
+<div class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-20 w-16 h-4 bg-primary-container/85 shadow-sm transform -rotate-1 rounded-xs pointer-events-none"></div>
+<!-- Decorative Pastel Pink Paperclip Accent -->
+<div class="absolute -top-3.5 right-3 z-30 w-5 h-10 pointer-events-none flex items-center justify-center">
+<svg class="drop-shadow-sm" fill="none" height="34" viewbox="0 0 18 34" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M5 28V6C5 3.79 6.79 2 9 2C11.21 2 13 3.79 13 6V26C13 29.31 10.31 32 7 32C3.69 32 1 29.31 1 26V8" stroke="#854e5c" stroke-linecap="round" stroke-width="2.2"></path>
+</svg>
+</div>
+<!-- Physical Strip Slab -->
+<div class="w-48 bg-surface-container-lowest shadow-md rounded-lg p-2.5 pt-3.5 pb-3 flex flex-col gap-1.5 transition-all duration-300" id="photostrip-canvas">
+<!-- Shot 1: Candid Laugh -->
+<div class="relative w-full aspect-[4/3] rounded-md overflow-hidden bg-surface-container-high shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Two youthful friends laughing spontaneously in a vintage photobooth with warm honeyed glow, light pastel pink background, analog film grain, editorial polaroid look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVbIo593fSW0rUQxAiXs-KYdpcx3cE0Qqd94SXtohXgTuFMT6IznDaRL16YnBoyyggWD7X1s6jYElrXczJ4cBSRCMN7Qyce_9WdBaK_XqYR6pMug1I76yWe43o4vJOm15s3ci6CYlqPmU0WETmLCmQUiL6LS0NmRNiTGH9nYfG_mB0rs85A4fcYlhzqPSk1uCoGBejff17ikWQKIUnruMPSAxUuRlmc__vm87wRRpFH1iwL9jPcfnplw"/>
+</div>
+<!-- Shot 2: Playful Wink + Interactive Active Sticker -->
+<div class="relative w-full aspect-[4/3] rounded-md overflow-hidden bg-surface-container-high shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Close up playful portrait of girls making peace signs in photobooth, soft studio lighting, subtle nostalgic grain, pastel teal accents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_NcFbmuFADUvvjjkQaEoesHJGJ79rSwV0ZkCl_4CQf1m9R3-yFIJZT5LwakkaSC9DRLrU0N5IyZDMbCqtDMqWn7fN0_ZQbr5dvqet73AXMxCB-JQUXwnbfuQOTdSx9GRp2vTf-g-BhMBrFyMkd71_Rw0ljIal0taoOYvG_GUOu4qXblx-mgT7Kxh9eVSfx04vDHxr95CXiqHhyUCWFslWKdUL0GuJNn2WbIbYRPSUwNa4Ss7SgvUGKQ"/>
+<!-- Active Selected Sticker & Bounding Box with Touch Handles -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-auto">
+<div class="relative p-1.5 group cursor-move">
+<!-- Bounding Box Frame (no border utility, pure tactile shadow box) -->
+<div class="absolute -inset-1.5 rounded-lg bg-primary-container/20 shadow-[0_0_0_1.5px_#32647b]"></div>
+<!-- Doodle Sticker Asset -->
+<div class="relative z-10 flex items-center justify-center transform -rotate-3 select-none">
+<span class="material-symbols-outlined text-[32px] text-secondary drop-shadow-sm" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="material-symbols-outlined text-[20px] text-primary -ml-2 -mt-3 drop-shadow-sm" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+</div>
+<!-- Touch Handle (Top Left - Delete) -->
+<button aria-label="Hapus stiker" class="absolute -top-3 -left-3 z-20 w-6 h-6 rounded-full bg-surface-container-lowest shadow-md text-error flex items-center justify-center active:scale-90">
+<span class="material-symbols-outlined text-[13px]">close</span>
+</button>
+<!-- Touch Handle (Top Right - Duplicate) -->
+<button aria-label="Duplikasi stiker" class="absolute -top-3 -right-3 z-20 w-6 h-6 rounded-full bg-surface-container-lowest shadow-md text-primary flex items-center justify-center active:scale-90">
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+</button>
+<!-- Touch Handle (Bottom Right - Scale & Rotate) -->
+<div class="absolute -bottom-3 -right-3 z-20 w-6 h-6 rounded-full bg-primary text-on-primary shadow-md flex items-center justify-center cursor-se-resize active:scale-110">
+<span class="material-symbols-outlined text-[13px]">crop_rotate</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Shot 3: Sweet Smile -->
+<div class="relative w-full aspect-[4/3] rounded-md overflow-hidden bg-surface-container-high shadow-inner">
+<img class="w-full h-full object-cover" data-alt="Charming vintage photo booth frame with friends smiling cheek to cheek, retro warm flash lighting, candid organic scrapbook mood" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApUZirOw3Iy8In9UBvombDEt-n3nEMxMia35pTwcYVGmQ7wCOM6g2gzJ9wdWN2FR6Pcht1-HWErqzTZCOqcBC2tpj5LkZ0v3SXGA4UQRvTjPQ5--LouhIWcog0NnKnQrUCxZ89pJsepHRS-R7muCODbqKKUOXxlsuO7MLSHrSKscIzIlyxul_upa1IMWzPwnSzotpE5Sivzm3-frW29DGktCJlwt9qUDIpGkJK2wzZ2PlJ3k0vSC2qdg"/>
+</div>
+<!-- Bottom Keepsake Stamp & Timestamp -->
+<div class="pt-1.5 pb-0.5 px-1 flex items-center justify-between">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">local_see</span>
+<span class="font-headline-sm text-[12px] font-semibold tracking-tight text-on-surface">MEMORY.LAB</span>
+</div>
+<span class="font-mono-caption text-mono-caption text-on-surface-variant font-medium">18.05.2024</span>
+</div>
+</div>
+<!-- Decorative Bottom Washi Tape Accent -->
+<div class="absolute -bottom-2.5 right-6 z-20 w-14 h-3.5 bg-secondary-fixed/90 shadow-sm transform rotate-2 rounded-xs pointer-events-none"></div>
+</div>
+</div>
+</section>
+<!-- Horizontal Tool Category Navigation (Min 44px Touch Targets) -->
+<nav aria-label="Kategori Peralatan Edit" class="w-full px-gutter-mobile pt-2 pb-3 overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-2 min-w-max">
+<!-- Active Tab: Bingkai -->
+<button aria-current="page" class="h-11 px-4 rounded-full bg-primary-container text-on-primary-container font-label-md text-label-md flex items-center gap-2 shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">crop_portrait</span>
+<span>Bingkai</span>
+</button>
+<!-- Tab: Filter -->
+<button class="h-11 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]">auto_fix_high</span>
+<span>Filter</span>
+</button>
+<!-- Tab: Stiker -->
+<button class="h-11 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]">cruelty_free</span>
+<span>Stiker</span>
+</button>
+<!-- Tab: Teks -->
+<button class="h-11 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+<span>Teks</span>
+</button>
+<!-- Tab: Warna -->
+<button class="h-11 px-4 rounded-full bg-surface-container text-on-surface font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px]">palette</span>
+<span>Warna</span>
+</button>
+</div>
+</nav>
+<!-- Tactile Bottom Sheet Tool Drawer -->
+<section class="w-full bg-surface-container-lowest rounded-t-3xl shadow-xl px-gutter-mobile pt-3 pb-6 flex flex-col gap-4">
+<!-- Sheet Grabber Handle -->
+<div class="w-full flex justify-center py-1">
+<div class="w-12 h-1.5 rounded-full bg-surface-dim"></div>
+</div>
+<!-- Category Filter Pills (Micro categories inside Bingkai) -->
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full pb-0.5">
+<button class="h-9 px-3.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm whitespace-nowrap active:scale-95">
+        Semua
+      </button>
+<button class="h-9 px-3.5 rounded-full bg-primary-container text-on-primary-container font-label-sm text-label-sm font-semibold whitespace-nowrap shadow-sm active:scale-95">
+        Cute &amp; Pastel
+      </button>
+<button class="h-9 px-3.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm whitespace-nowrap active:scale-95">
+        Klasik Retro
+      </button>
+<button class="h-9 px-3.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm whitespace-nowrap active:scale-95">
+        Minimalis
+      </button>
+<button class="h-9 px-3.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm whitespace-nowrap active:scale-95">
+        Klub Y2K
+      </button>
+</div>
+<!-- Frame Templates Interactive Carousel Grid (2 Rows / Horizontal Scroll) -->
+<div class="w-full">
+<div class="grid grid-rows-2 grid-flow-col gap-3 overflow-x-auto pb-2 pt-1 no-scrollbar">
+<!-- Item 1: Selected (Sweet Pastel Cream) -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-[0_0_0_2px_#32647b] cursor-pointer group flex-shrink-0 active:scale-95 transition-transform">
+<!-- Corner Tape Simulation -->
+<div class="absolute -top-1 left-2 w-8 h-2.5 bg-primary-container/90 rounded-xs -rotate-3 z-10"></div>
+<div class="w-full h-16 rounded-xl bg-surface-container-lowest p-1 shadow-sm flex flex-col gap-1 items-center justify-center">
+<div class="w-full h-3 rounded bg-secondary-fixed"></div>
+<div class="w-full h-3 rounded bg-primary-fixed"></div>
+<div class="w-full h-3 rounded bg-tertiary-fixed"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold truncate">Pastel Dream</span>
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Item 2: Butter Buttercup -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-sm cursor-pointer group flex-shrink-0 active:scale-95 transition-transform hover:bg-surface-container">
+<div class="absolute -top-1 right-2 w-7 h-2.5 bg-secondary-fixed-dim/80 rounded-xs rotate-3 z-10"></div>
+<div class="w-full h-16 rounded-xl bg-surface-container-lowest p-1 shadow-sm flex flex-col gap-1 items-center justify-center">
+<div class="w-full h-8 rounded bg-surface-container-highest"></div>
+<div class="w-full h-3 rounded bg-secondary-container"></div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Butter Milk</span>
+</div>
+<!-- Item 3: Film Strip 35mm -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-sm cursor-pointer group flex-shrink-0 active:scale-95 transition-transform hover:bg-surface-container">
+<div class="w-full h-16 rounded-xl bg-inverse-surface p-1 shadow-sm flex items-center justify-between px-1">
+<div class="flex flex-col gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-surface"></span>
+</div>
+<span class="font-mono-caption text-[9px] text-inverse-on-surface">KODAK 400</span>
+<div class="flex flex-col gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-surface"></span>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Film Strip 35</span>
+</div>
+<!-- Item 4: Washi Stamp Romance -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-sm cursor-pointer group flex-shrink-0 active:scale-95 transition-transform hover:bg-surface-container">
+<div class="w-full h-16 rounded-xl bg-secondary-fixed p-1 shadow-sm flex flex-col items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-secondary">favorite</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Washi Cinta</span>
+</div>
+<!-- Item 5: Cyber Pop Y2K -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-sm cursor-pointer group flex-shrink-0 active:scale-95 transition-transform hover:bg-surface-container">
+<div class="w-full h-16 rounded-xl bg-primary-fixed p-1 shadow-sm flex flex-col items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-primary">auto_awesome</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Cyber Y2K</span>
+</div>
+<!-- Item 6: Clean Botanical -->
+<div class="relative w-28 h-28 rounded-2xl bg-surface-container-low p-2 flex flex-col justify-between shadow-sm cursor-pointer group flex-shrink-0 active:scale-95 transition-transform hover:bg-surface-container">
+<div class="w-full h-16 rounded-xl bg-surface-container-high p-1 shadow-sm flex flex-col items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-tertiary">spa</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface truncate">Botanical Soft</span>
+</div>
+</div>
+</div>
+<!-- Tactile Adjustment Slider: Intensitas Efek -->
+<div class="w-full bg-surface-container-low rounded-2xl p-3.5 flex flex-col gap-2 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">tune</span>
+<label class="font-label-md text-label-md text-on-surface font-medium cursor-pointer" for="effect-intensity">
+            Intensitas Efek
+          </label>
+</div>
+<span class="font-mono-data text-mono-data text-primary px-2 py-0.5 rounded-full bg-primary-container font-semibold" id="intensity-value">
+          75%
+        </span>
+</div>
+<!-- Native Range Input Custom Styled via Tailwind Accent -->
+<div class="relative flex items-center w-full py-1">
+<input class="w-full h-2.5 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-[#32647b]" id="effect-intensity" max="100" min="0" oninput="document.getElementById('intensity-value').innerText = this.value + '%'" type="range" value="75"/>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-mono-caption text-mono-caption">
+<span>Halus</span>
+<span>Seimbang</span>
+<span>Tajam Retro</span>
+</div>
+</div>
+</section>
+<!-- Sticky Bottom Action Bar with Ergonomic Touch Targets -->
+<footer class="sticky bottom-0 z-30 w-full px-gutter-mobile pt-3 pb-4 bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_-4px_16px_rgba(44,43,41,0.06)] flex flex-col items-center gap-2.5">
+<!-- Primary Conversion Button -->
+<button class="w-full h-[52px] rounded-2xl bg-primary-container text-on-primary-fixed font-headline-sm text-headline-sm font-semibold flex items-center justify-center gap-2 shadow-sm hover:brightness-105 active:scale-[0.99] transition-all">
+<span class="material-symbols-outlined text-[22px]">print</span>
+<span>Lanjut ke Unduh &amp; Cetak</span>
+</button>
+<!-- Secondary Action: Simpan Draf -->
+<button class="h-11 px-4 flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface active:scale-95 transition-colors font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">bookmark_border</span>
+<span>Simpan Draf Foto</span>
+</button>
+</footer>
+</div>
+<script>
+  // Simple interactive micro-state feedback for Undo / Redo
+  (function initPhotoEditor() {
+    const undoBtn = document.getElementById('btn-undo');
+    const redoBtn = document.getElementById('btn-redo');
+    const canvas = document.getElementById('photostrip-canvas');
+
+    if (undoBtn && redoBtn && canvas) {
+      undoBtn.addEventListener('click', () => {
+        canvas.style.transform = 'scale(0.98)';
+        setTimeout(() => { canvas.style.transform = 'scale(1)'; }, 150);
+      });
+      redoBtn.addEventListener('click', () => {
+        canvas.style.transform = 'scale(1.02)';
+        setTimeout(() => { canvas.style.transform = 'scale(1)'; }, 150);
+      });
+    }
+  })();
+</script></main></body></html>

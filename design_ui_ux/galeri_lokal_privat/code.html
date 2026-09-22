@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+
+<html lang="id"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Outfit:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container-high":"#ebe7e4","on-secondary":"#ffffff","on-secondary-container":"#7c4653","error-container":"#ffdad6","surface-variant":"#e6e2de","outline-variant":"#c1c7cd","on-tertiary":"#ffffff","inverse-primary":"#9ccde8","secondary-fixed-dim":"#fab4c3","surface":"#fdf9f5","on-tertiary-fixed":"#1b1c19","tertiary":"#5f5f5a","secondary-container":"#ffb9c8","surface-container-lowest":"#ffffff","primary":"#32647b","on-tertiary-fixed-variant":"#474743","on-background":"#1c1b1a","surface-dim":"#ddd9d6","tertiary-fixed":"#e4e2dd","primary-fixed":"#c1e8ff","on-secondary-fixed":"#360d1a","on-primary-fixed-variant":"#154c63","secondary":"#854e5c","on-surface-variant":"#41484c","on-primary":"#ffffff","on-error":"#ffffff","primary-fixed-dim":"#9ccde8","inverse-surface":"#31302e","surface-container-highest":"#e6e2de","on-primary-container":"#2b5e75","inverse-on-surface":"#f4f0ec","tertiary-fixed-dim":"#c8c6c1","on-surface":"#1c1b1a","surface-bright":"#fdf9f5","tertiary-container":"#d1cfca","on-secondary-fixed-variant":"#6a3744","surface-tint":"#32647b","background":"#fdf9f5","outline":"#71787d","on-tertiary-container":"#585854","on-primary-fixed":"#001e2b","surface-container":"#f1edea","error":"#ba1a1a","primary-container":"#a5d6f1","surface-container-low":"#f7f3ef","on-error-container":"#93000a","secondary-fixed":"#ffd9e0"},borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},spacing:{"gutter":"1.5rem","gutter-mobile":"1rem","space-lg":"1.5rem","space-sm":"0.5rem","margin-mobile":"1rem","space-xl":"2rem","space-xs":"0.25rem","margin":"2.5rem","space-md":"1rem"},fontFamily:{"headline-lg-mobile":["Outfit"],"body-lg":["Outfit"],"mono-data":["JetBrains Mono"],"mono-caption":["JetBrains Mono"],"headline-lg":["Outfit"],"label-sm":["Outfit"],"display-lg-mobile":["Outfit"],"headline-md":["Outfit"],"display-lg":["Outfit"],"label-lg":["Outfit"],"body-sm":["Outfit"],"label-md":["Outfit"],"body-md":["Outfit"],"headline-sm":["Outfit"]},fontSize:{"headline-lg-mobile":["26px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-lg":["18px",{"lineHeight":"28px","fontWeight":"400"}],"mono-data":["13px",{"lineHeight":"18px","letterSpacing":"0.02em","fontWeight":"500"}],"mono-caption":["11px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"400"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.015em","fontWeight":"600"}],"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"display-lg-mobile":["36px",{"lineHeight":"44px","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-md":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"500"}],"display-lg":["48px",{"lineHeight":"56px","letterSpacing":"-0.02em","fontWeight":"600"}],"label-lg":["16px",{"lineHeight":"22px","fontWeight":"600"}],"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-md":["14px",{"lineHeight":"18px","fontWeight":"500"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"500"}]}}}}</script></head><body class="bg-surface text-on-surface selection:bg-secondary-container selection:text-on-secondary-container min-h-screen"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_2px_8px_-2px_rgba(44,43,41,0.08),0_1px_3px_0_rgba(44,43,41,0.04)]"><div class="h-20 max-w-7xl mx-auto px-margin flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md shrink-0"><img alt="PhotoBooth Studio Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VFC5zGGZU9zuq69Yo-M7ztSYMBuzz0dzt5HqGAbsi8eB3kKuIiznehHmXYA8S8PT_cdBH-V0ln-7r_XWTaqDp2A4Klt9oJq5Lsev8Qh-tMTLArC-qIc-HYeT8ZPrLBWzm8sQ482Sin8yr90ty9qFAC65Q19YEOvJrrSMuz8mQxhKDtqRsaoRoITAmQudF_cKhNJjY7ulawbJ-HIl80bdYyWSFgH9HGZ5u2cPFUq6ODk0qsVE1qgjuLFual"/><div class="flex flex-col"><span class="font-label-lg text-label-lg text-on-surface tracking-tight leading-none">PhotoBooth</span><span class="font-mono-caption text-mono-caption text-tertiary leading-tight mt-space-xs">Est. Analog Feel</span></div></div><nav class="hidden md:flex items-center gap-space-xs p-space-xs bg-surface-container rounded-xl shadow-[inset_0_1px_2px_rgba(44,43,41,0.04)]" data-active-classes="bg-primary-container text-on-primary-container font-label-md text-label-md shadow-[0_1px_3px_0_rgba(44,43,41,0.08)]"><a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-space-md py-space-sm rounded-xl transition-all" data-path="beranda" href="#">Beranda</a><a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-space-md py-space-sm rounded-xl transition-all" data-path="kamera" href="#">Kamera</a><a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-space-md py-space-sm rounded-xl transition-all" data-path="editor" href="#">Editor</a><a aria-current="page" class="px-space-md py-space-sm rounded-xl transition-all bg-primary-container text-on-primary-container font-label-md text-label-md shadow-[0_1px_3px_0_rgba(44,43,41,0.08)]" data-path="galeri-lokal" href="#">Galeri Lokal</a></nav><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-md py-space-xs bg-surface-container-lowest rounded-xl shadow-[0_1px_3px_0_rgba(44,43,41,0.06)]"><span class="material-symbols-outlined text-primary text-[16px]">lock</span><span class="font-mono-caption text-mono-caption text-on-surface-variant tracking-wider uppercase">100% Privat di Browser</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-[0_1px_3px_rgba(44,43,41,0.12)]"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-20 bg-surface min-h-[calc(100vh-140px)]"><div class="flex flex-col w-full">
+<div class="w-full max-w-7xl mx-auto px-margin py-space-xl flex flex-col gap-space-xl">
+<!-- Top Gallery Vault Header & Storage Indicator -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg bg-surface-container-low rounded-xl p-space-xl relative overflow-hidden shadow-sm">
+<!-- Decorative Washi Tape Accent at Top Center -->
+<div class="absolute -top-3 left-12 w-28 h-6 bg-secondary-container/70 -rotate-2 rounded-sm shadow-sm backdrop-blur-sm pointer-events-none"></div>
+<div class="flex flex-col gap-space-sm max-w-2xl">
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container-lowest text-primary shadow-sm">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">encrypted</span>
+<span class="font-mono-caption text-mono-caption tracking-wider uppercase">Tersimpan hanya di perangkat ini</span>
+</span>
+<span class="inline-flex items-center gap-space-xs px-space-sm py-space-xs rounded-lg bg-surface-container text-tertiary">
+<span class="material-symbols-outlined text-[14px]">offline_bolt</span>
+<span class="font-mono-caption text-mono-caption">IndexedDB Storage</span>
+</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight mt-space-xs">
+          Galeri Foto Pribadi
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Semua cetakan photo booth, strip kolase, dan lembar stiker kamu tersimpan utuh di memori lokal peramban. Tanpa unggah ke cloud, sepenuhnya aman dan rahasia.
+        </p>
+<!-- Storage Bar Pill -->
+<div class="mt-space-md p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md max-w-xl">
+<div class="flex flex-col gap-space-xs flex-1">
+<div class="flex items-center justify-between text-on-surface">
+<span class="font-mono-caption text-mono-caption text-tertiary">Penyimpanan Browser</span>
+<span class="font-mono-data text-mono-data text-on-surface font-semibold">14.8 MB <span class="text-tertiary font-normal">/ 2.0 GB</span></span>
+</div>
+<!-- Progress Line -->
+<div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[12%] transition-all duration-500"></div>
+</div>
+</div>
+<div class="flex items-center gap-space-xs text-primary shrink-0 self-start sm:self-auto">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span class="font-mono-caption text-mono-caption text-on-surface-variant">Kapasitas Aman</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-wrap items-center gap-space-sm shrink-0">
+<button class="px-space-md py-space-sm rounded-xl font-label-md text-label-md text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all flex items-center gap-space-xs" id="btn-purge-all" type="button">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+          Bersihkan Semua Galeri
+        </button>
+<button class="px-space-lg py-space-sm rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md shadow-sm hover:brightness-95 active:translate-y-[1px] transition-all flex items-center gap-space-xs" type="button">
+<span class="material-symbols-outlined text-[18px]">photo_camera</span>
+          Mulai Sesi Baru
+        </button>
+</div>
+</div>
+<!-- Filter & Vault Stats Toolbar -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md py-space-xs">
+<div class="flex items-center gap-space-xs overflow-x-auto pb-space-xs sm:pb-0">
+<button class="px-space-md py-space-xs rounded-xl bg-primary-container text-on-primary-container font-label-sm text-label-sm shadow-sm flex items-center gap-space-xs whitespace-nowrap">
+<span>Semua Strip</span>
+<span class="px-1.5 py-0.5 rounded-full bg-surface-container-lowest/80 text-[10px] font-mono-data">4</span>
+</button>
+<button class="px-space-md py-space-xs rounded-xl bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shadow-sm hover:bg-surface-container hover:text-on-surface flex items-center gap-space-xs whitespace-nowrap transition-colors">
+<span>Strip Klasik</span>
+</button>
+<button class="px-space-md py-space-xs rounded-xl bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shadow-sm hover:bg-surface-container hover:text-on-surface flex items-center gap-space-xs whitespace-nowrap transition-colors">
+<span>Grid 2x2</span>
+</button>
+<button class="px-space-md py-space-xs rounded-xl bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm shadow-sm hover:bg-surface-container hover:text-on-surface flex items-center gap-space-xs whitespace-nowrap transition-colors">
+<span>Polaroid Duo</span>
+</button>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs text-tertiary">
+<span class="material-symbols-outlined text-[18px]">sort</span>
+<span class="font-mono-caption text-mono-caption">Terbaru Ditambahkan</span>
+</div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant"></div>
+<button class="font-label-sm text-label-sm text-primary hover:underline flex items-center gap-space-xs" id="toggle-empty-state-btn">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Lihat Tampilan Kosong</span>
+</button>
+</div>
+</div>
+<!-- Editorial Gallery Masonry Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-lg items-start" id="gallery-masonry">
+<!-- CARD 1: 4-Pose Summer Vintage Strip -->
+<div class="group relative flex flex-col bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+<!-- Washi Tape Pin Top -->
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-5 bg-secondary-container/85 -rotate-1 rounded-sm shadow-sm z-10 pointer-events-none"></div>
+<!-- Photo Strip Visual Container -->
+<div class="bg-surface-container-low p-2 rounded-lg flex flex-col gap-2 relative overflow-hidden">
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="Four smiling friends at an outdoor summer picnic bathed in warm golden hour sunlight with vintage 35mm film grain and nostalgic pastel tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQcmMDkg6lBfCcwSwvScLvnntt1jXBJT0HDCUNzJVoPv9nSR0bRmmrLvptS6EWyv7Hf-d-5xUgEyJYi4igFKOBlYxwl08D4aCP5tvBFAnMgmPZMcxeAmSVBxiz9-OQ_mZvFoKrTil3X1FW-3b9f6DDdNGovh0DfvBtgLk6BQB0Sn4Nxh_h-s2r-lfswxrYKCLJiF_S17v21kxaJaW2eS7FGTrmSNkEyfk4rkORBpubD0Z0gmtB5wD-Ug"/>
+</div>
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Close up candid photo of two friends laughing with sunglasses reflecting blue sky with analog warm paper texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuAtA_3olLQrVHhwmD2KmEjV7yi51hLnHICaDW1eRi-gFwNeGrzXI3hEtzc3Me0HW2sgUnzSNwEbmS7AmsZENxk4gMGs8CGTtCjyE6ilWIT2iPgUqWsOHQsC0PLorIuMzHOOk7zkAYVV1Fam4RMuKk_YssyarTBO-sYvqwF3j4NzSq3q74gHMGY_zL3sju1wL4j-TLdwcTzRneBW-ycuAfDLHvOK3ZUkCH9qz3RkVUp40ZkXI2PwArKQ"/>
+</div>
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Silly candid pose of friends holding ice cream cones under warm pastel retro photobooth illumination." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVjAcYg_-8HlSOFP27pthWNonPA5r-_zCSxkX4tMWRgD0HyZs6ZnPayz3XmfOcz31xHyfhoBeHJse86XuffXEZd6VWEgj04CEBaXXo1PMgbA_0pcPu__xEnc91Ts0rVW0H1Arm7n-KlQ0hy55f24JByXE_E3Idw26YlmIDiyTJAEBlu9rSpEH8LG0AxFumfeqHGsgbo9P1_VRfPn9L4x0Jv3GrkWF_10rszxYeGT8DBxHfqpt78S2cRw"/>
+</div>
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Group peace sign pose outdoors during sunset with soft lens flare and authentic film frame softness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBElhemMpulN2M3uN8T9FaofVgMMJ9s5bFNP8f3SptnRsvp9a_8Q9Ihjmm7B6KOGMbLIDmvMOjjBvZuG3s2Sof-YFX8axnOG3LhpasL1eyodU4Rc1eLsjdbKaqLmlTyojPm5Ln4-dy8xyafmJrCnEt48X9ZusLDaA_fUQE2x2T_h4igCHIHJcR7rmYEkF8iMHr00v7Ax4kYeh-MacxgQo1nI7CKl4PYhlgqOOiyqVTR9E3ugoq-651KGg"/>
+</div>
+<!-- Bottom Strip Watermark -->
+<div class="pt-1 pb-0.5 px-1 flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-[9px] tracking-wider uppercase">PhotoBooth • Studio</span>
+<span class="font-mono-caption text-[9px]">#PB-8821</span>
+</div>
+<!-- Card Hover Quick Action Bar Overlay -->
+<div class="absolute inset-0 bg-inverse-surface/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-space-md gap-space-xs rounded-lg">
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors" onclick="previewItem('Summer Vintage Strip')">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span> Pratinjau
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-primary-container text-on-primary-container font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:brightness-95 transition-all" onclick="downloadItem('Summer-Vintage-Strip.png')">
+<span class="material-symbols-outlined text-[16px]">download</span> Unduh
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]">print</span> Cetak
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-error font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-error-container hover:text-on-error-container transition-colors" onclick="triggerDeleteModal('Summer Vintage Strip (4 Pose)')">
+<span class="material-symbols-outlined text-[16px]">delete</span> Hapus
+              </button>
+</div>
+</div>
+</div>
+<!-- Metadata & Tags Footer -->
+<div class="mt-space-md flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Strip Musim Panas</h2>
+<span class="font-mono-caption text-mono-caption text-primary font-medium">PNG • 3.2 MB</span>
+</div>
+<div class="flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-mono-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              24 Okt 2024, 15:42
+            </span>
+<span class="font-mono-caption text-mono-caption">4 Pose</span>
+</div>
+<div class="flex flex-wrap gap-1 mt-space-xs">
+<span class="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-mono-caption text-[10px]">Retro Film</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container text-tertiary font-mono-caption text-[10px]">Pastel Pink Tape</span>
+</div>
+</div>
+</div>
+<!-- CARD 2: 2x2 Photobooth Grid with Friends -->
+<div class="group relative flex flex-col bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+<!-- Washi Tape Top Right -->
+<div class="absolute -top-3 right-6 w-14 h-5 bg-primary-container/80 rotate-2 rounded-sm shadow-sm z-10 pointer-events-none"></div>
+<!-- 2x2 Photobooth Collage Container -->
+<div class="bg-surface-container-low p-2 rounded-lg relative overflow-hidden">
+<div class="grid grid-cols-2 gap-2 bg-inverse-surface/5 p-1 rounded">
+<div class="aspect-square rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover grayscale contrast-125" data-alt="Black and white monochrome vintage photobooth capture of two best friends making funny surprise faces with paper party hats." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_y4z-2VwlUZCLU6Io668SkkE_IumNXOulD542cRfWPBzBIHs8e-1u8VVSskRCwGudT1SYDOE-P4iPA5uuP0QKBUKM-G9qrBrBy28hdgxg8ybD5UF2tCH5cAvsoOF_nVpPYOQxG5fDsp9UZ1IiQBltKCmq5d4QNi6NEYvZTsJjESva9Mn6zHpj5kpou-YfYPSmBMHT9FnipHTK4X_cbtaIUZmgLDyzq08pF1kPSaHChCINZOlmGFjA9g"/>
+</div>
+<div class="aspect-square rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover grayscale contrast-125" data-alt="Monochrome close-up of friends giving double thumbs up under bright flash photobooth lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCNoChcIJ2Cm1Pe28buK7-gy_RqQpIVAlaPghO82UppF5zrySWXjH-P-4bgPiaiVL6_cKGTHXBptRVSQrJD_yUeQ7g2lJF1wyjqeiNBeuNxQSNQjHG2mLDp_x4x9x4Ug9fwoic4ZJgQTIye5hQif7yBH6Q7gkH1EztRoIXu_k86i6hLdNS-WU2nxzBqyyNqJ2IiGiL3YAPhaFvBGnzYhKdrSnDA9ZuqDzi-sQ4cJZdvugZ8LUTe7yLtAA"/>
+</div>
+<div class="aspect-square rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover grayscale contrast-125" data-alt="Black and white candid shot of friends blowing party whistles with celebratory confetti around them." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxA6nEEN0xXaKPprWW45NcgtH99UKt9VEdUvJUoEzFT0tl1teAxRE2l1_ZLZiCu8fXMjGPQYr7PfktiRGgQU5LXAF6zA8hsNW43lP4DO78Ep6pFCkR-BUi1lOCOgBN9uakv2skyWIg8EnirSMX8IVAXI6EKZ03vB-HzI7BVcgkfDx1OXG0bPia8pn0S3AVD_AfaCHLWh1mrkg3aFS5i_RWSV8YxXhISHTmkMMIi1J27CjaqlsOc7VoOA"/>
+</div>
+<div class="aspect-square rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover grayscale contrast-125" data-alt="Monochrome photo of friends smiling warmly arm in arm under cozy studio flash." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyp7cV5p_eG47ZNZSzRStTILoZcC9Nu8AwQhiqOEN841lBObZKXcORRjaf5lsgfqSp8vhExXoK-X1bLoQ4nSiPAPOBPmwalfp_QxdmcOLOgmTya1Qk9UjHDq57wfS_VYG1YVlySSQcURGrHyWmBgZdlc-f3CmZxidaAvjkpITlwL_bVUdinCbScW7Ml0knzBGNzmEqbt6H-CsyarnaTY1UxqC1mYjewsYb99K6tmD1CwvaIkAgMh0niw"/>
+</div>
+</div>
+<div class="pt-2 pb-0.5 px-1 flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-[9px] tracking-widest uppercase">Grid 2x2 Monokrom</span>
+<span class="font-mono-caption text-[9px]">ISO 400</span>
+</div>
+<!-- Card Hover Quick Action Bar Overlay -->
+<div class="absolute inset-0 bg-inverse-surface/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-space-md gap-space-xs rounded-lg">
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors" onclick="previewItem('Grid Ulang Tahun Monokrom')">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span> Pratinjau
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-primary-container text-on-primary-container font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:brightness-95 transition-all" onclick="downloadItem('Photobooth-Birthday-Grid.png')">
+<span class="material-symbols-outlined text-[16px]">download</span> Unduh
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]">print</span> Cetak
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-error font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-error-container hover:text-on-error-container transition-colors" onclick="triggerDeleteModal('Grid Ulang Tahun Monokrom (2x2)')">
+<span class="material-symbols-outlined text-[16px]">delete</span> Hapus
+              </button>
+</div>
+</div>
+</div>
+<!-- Metadata & Tags Footer -->
+<div class="mt-space-md flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Ulang Tahun Monokrom</h2>
+<span class="font-mono-caption text-mono-caption text-primary font-medium">PNG • 2.8 MB</span>
+</div>
+<div class="flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-mono-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              22 Okt 2024, 19:15
+            </span>
+<span class="font-mono-caption text-mono-caption">Format 2x2</span>
+</div>
+<div class="flex flex-wrap gap-1 mt-space-xs">
+<span class="px-2 py-0.5 rounded-md bg-surface-container text-tertiary font-mono-caption text-[10px]">Monochrome</span>
+<span class="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-mono-caption text-[10px]">Birthday</span>
+</div>
+</div>
+</div>
+<!-- CARD 3: 3-Pose Classic Bookmark Strip -->
+<div class="group relative flex flex-col bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+<!-- Bookmark Notch Simulated Accent -->
+<div class="absolute -top-3 left-8 w-12 h-5 bg-tertiary-container/80 -rotate-3 rounded-sm shadow-sm z-10 pointer-events-none"></div>
+<!-- 3-Pose Strip Layout -->
+<div class="bg-surface-container-low p-2 rounded-lg flex flex-col gap-2 relative overflow-hidden">
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Gentle natural sunlight indoor photo of a girl reading a novel with soft warm bokeh, minimal styling, cream palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaf8OXEtj9qVigeHuV8m_gf3roxCM8l_QIh1ShA9IxQsvDvg35icQBR829aHNYjvSozlpwgntasN50dbxLw3HnqMSCL2VrvA_ISkYlkkBASOVk6BB-RVqaeTREg-Y7a6v271GIeywLdMTpEjaARdAwvjCLGU347e00EQQZ5kuDAydI5a9CFK8rpuVC7vtG7-Jsn1Vw4FqbyEBeaTdH0TiUlwn4HY1bYGJluhw00e65PfdJRZgs8OL9oQ"/>
+</div>
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Artistic candid close up looking upward through cafe window with soft reflections and cute handwritten heart doodle stamp." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUwPuWzfIJfTzI3jnOUH1qr-g4oRilxVSkJVcsfPxxU2prGZSODcx814bgoRdWxQAwwMMxgoqjYHgKYDwvKZaMazc9G7ucxA5cklpv_CDkHoTH_Gu3O9x_Bl0qFVj0mnm5Yl-C1hTLMg3dYrXCsFuY9rRnoElDjRp3Mkg3whQtYLKbAQZBLpJaRjBI0E_HYO_fTcPGZ_PegA4rohynFzKvC58AVwdxSwxbo3AqwNqB_SVN6PAmJKwurA"/>
+</div>
+<div class="w-full aspect-[4/3] rounded overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Peaceful portrait drinking coffee in an aesthetic ceramic mug with cozy morning atmosphere and warm ambient light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBknPY3VnIUO9dVLu5dKBYpvRicZaKXqO20hnF8XFzMQG7F9OUJVRYNW3FYafmfTZxvm7SJaLXQvjLEndHNyWmHgNLt0RKXOutFlEVKoAEFGxXMXuGUaZuioT9VcK6u6EXY1X0SfI8DwYOtXDBTVMVwkdOqb2WK-Dj5YjKgKaz8JtmVmcU_xgDRr6uTLvKmpmWZ8l8S6XbaweM7fZemLe7cqiOQmMAMUE-4eU7jSaPkbnpQl23OjlQJSg"/>
+</div>
+<!-- Bottom Strip Detail -->
+<div class="pt-1 pb-0.5 px-1 flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-[9px] tracking-wider uppercase">Bookmark Series</span>
+<span class="font-mono-caption text-[9px]">35mm f/2.0</span>
+</div>
+<!-- Card Hover Quick Action Bar Overlay -->
+<div class="absolute inset-0 bg-inverse-surface/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-space-md gap-space-xs rounded-lg">
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors" onclick="previewItem('Pembatas Buku Sore')">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span> Pratinjau
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-primary-container text-on-primary-container font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:brightness-95 transition-all" onclick="downloadItem('Bookmark-Strip-Sore.webp')">
+<span class="material-symbols-outlined text-[16px]">download</span> Unduh
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]">print</span> Cetak
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-error font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-error-container hover:text-on-error-container transition-colors" onclick="triggerDeleteModal('Pembatas Buku Sore (3 Pose)')">
+<span class="material-symbols-outlined text-[16px]">delete</span> Hapus
+              </button>
+</div>
+</div>
+</div>
+<!-- Metadata & Tags Footer -->
+<div class="mt-space-md flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Pembatas Buku Sore</h2>
+<span class="font-mono-caption text-mono-caption text-primary font-medium">WebP • 1.4 MB</span>
+</div>
+<div class="flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-mono-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              18 Okt 2024, 12:04
+            </span>
+<span class="font-mono-caption text-mono-caption">3 Pose</span>
+</div>
+<div class="flex flex-wrap gap-1 mt-space-xs">
+<span class="px-2 py-0.5 rounded-md bg-surface-container text-tertiary font-mono-caption text-[10px]">Natural</span>
+<span class="px-2 py-0.5 rounded-md bg-primary-container/50 text-on-primary-container font-mono-caption text-[10px]">Cute Doodle</span>
+</div>
+</div>
+</div>
+<!-- CARD 4: Polaroid Duo with Handwritten Sticker "Besties" -->
+<div class="group relative flex flex-col bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+<!-- Pink Tape Top Left -->
+<div class="absolute -top-3 left-10 w-16 h-5 bg-secondary-container/80 1 rotate-3 rounded-sm shadow-sm z-10 pointer-events-none"></div>
+<!-- Polaroid Duo Container -->
+<div class="bg-surface-container-low p-2 rounded-lg flex flex-col gap-3 relative overflow-hidden">
+<!-- Polaroid 1 -->
+<div class="bg-surface-container-lowest p-2 pb-5 rounded shadow-sm rotate-[-1.5deg] relative">
+<div class="aspect-[4/3] rounded-sm overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Polaroid snapshot of two best friends making funny duck faces with flash photography in a vintage photo booth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHH_d8WyZkfDdt5C0bC4KIE-8thEl1pGFItORVOEp71spUl5HWShMdJajfWQK-wu56K8vDO-eQETqod4xPJArkG8tJ9qXyHr37MCbaAhM7sHpkUEnxn6DUFVIIcNuby5hD9jNmovfPeqmU3GjRoPvsDj7FBKSDaMtBLr5s4bLv1x87aoeOh389bsfjl_JrintF-cv2B6exKVz4Rre09kVOExYFiCuq6xgUFqDC4NEoBTgdNKj2xce3iw"/>
+</div>
+<!-- Sticker Label -->
+<div class="absolute -bottom-1 right-2 px-2 py-0.5 bg-secondary text-on-secondary rounded text-[11px] font-medium tracking-wide rotate-2 shadow-sm">
+              Besties ❤️
+            </div>
+</div>
+<!-- Polaroid 2 -->
+<div class="bg-surface-container-lowest p-2 pb-5 rounded shadow-sm rotate-[1.5deg]">
+<div class="aspect-[4/3] rounded-sm overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Second polaroid snap of the two friends doing high five with genuine warm laughter and cozy sweater texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDR_ONEtYinymkrCiEhTbMR7x_R4jCkMk9py31AKJZ5dfGSyFf8Umec3L17U2b4KOYV9XG6MIU1tcDeNIc4Qhz6ABHudKRVV3WYl10cOqz0KfcJM9XcTVJWo3sUL6BOtTL94TJNqsoDmxibbCXRCPZBsry904ibz6zV-gHAMvHFHT7KeEFKDiY1Jcgk-wLFrPlBnCMvArnZzE3_x-CiTMA5wuUXUmP9b6O8TqmjlWpS240467vWEYilUw"/>
+</div>
+<div class="mt-1 text-center font-mono-caption text-[9px] text-tertiary italic">
+              "Never grow up"
+            </div>
+</div>
+<!-- Bottom Meta Note -->
+<div class="pt-0.5 pb-0.5 px-1 flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-[9px] tracking-wider uppercase">Polaroid Duo</span>
+<span class="font-mono-caption text-[9px]">Instax Style</span>
+</div>
+<!-- Card Hover Quick Action Bar Overlay -->
+<div class="absolute inset-0 bg-inverse-surface/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-space-md gap-space-xs rounded-lg">
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors" onclick="previewItem('Polaroid Duo Besties')">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span> Pratinjau
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-primary-container text-on-primary-container font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:brightness-95 transition-all" onclick="downloadItem('Polaroid-Besties-Duo.png')">
+<span class="material-symbols-outlined text-[16px]">download</span> Unduh
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]">print</span> Cetak
+              </button>
+<button class="px-space-xs py-space-sm rounded-lg bg-surface-container-lowest text-error font-label-sm text-label-sm shadow flex items-center justify-center gap-space-xs hover:bg-error-container hover:text-on-error-container transition-colors" onclick="triggerDeleteModal('Polaroid Duo (Besties)')">
+<span class="material-symbols-outlined text-[16px]">delete</span> Hapus
+              </button>
+</div>
+</div>
+</div>
+<!-- Metadata & Tags Footer -->
+<div class="mt-space-md flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-sm text-headline-sm text-on-surface line-clamp-1">Polaroid Duo "Besties"</h2>
+<span class="font-mono-caption text-mono-caption text-primary font-medium">PNG • 2.1 MB</span>
+</div>
+<div class="flex items-center justify-between text-tertiary">
+<span class="font-mono-caption text-mono-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">calendar_today</span>
+              15 Okt 2024, 21:30
+            </span>
+<span class="font-mono-caption text-mono-caption">Duo Snap</span>
+</div>
+<div class="flex flex-wrap gap-1 mt-space-xs">
+<span class="px-2 py-0.5 rounded-md bg-secondary-container/40 text-on-secondary-container font-mono-caption text-[10px]">Sticker Besties</span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container text-tertiary font-mono-caption text-[10px]">Cozy Warm</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Alternate Empty State Showcase Panel (Can be toggled or reviewed) -->
+<div class="hidden flex-col items-center justify-center text-center p-space-xl bg-surface-container-lowest rounded-xl shadow-sm relative overflow-hidden transition-all duration-300" id="empty-state-panel">
+<!-- Decorative Paperclip & Washi Tape -->
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 w-24 h-6 bg-primary-container/70 rotate-1 rounded-sm shadow-sm pointer-events-none"></div>
+<div class="max-w-md flex flex-col items-center gap-space-md py-space-xl">
+<!-- Line-Art Camera Icon Illustration -->
+<div class="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center text-primary shadow-inner relative">
+<span class="material-symbols-outlined text-[44px]">photo_camera_front</span>
+<!-- Paper clip decoration pin -->
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center text-secondary shadow-sm">
+<span class="material-symbols-outlined text-[16px]">attach_file</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<h3 class="font-headline-md text-headline-md text-on-surface">Belum ada foto tersimpan</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Brankas album lokasimu masih kosong. Ambil 4 pose bersama temanmu di booth analog dan kreasikan strip foto pertamamu hari ini!
+          </p>
+</div>
+<div class="flex flex-wrap items-center justify-center gap-space-sm mt-space-sm">
+<button class="px-space-lg py-space-sm rounded-xl bg-primary-container text-on-primary-container font-label-md text-label-md shadow-sm hover:brightness-95 active:translate-y-[1px] transition-all flex items-center gap-space-xs" type="button">
+<span class="material-symbols-outlined text-[18px]">add_a_photo</span>
+            Ambil Foto Pertamamu
+          </button>
+<button class="px-space-md py-space-sm rounded-xl bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors" onclick="toggleEmptyState()">
+            Kembali ke Galeri
+          </button>
+</div>
+<div class="mt-space-md p-space-sm rounded-lg bg-surface-container-low flex items-center gap-space-xs text-tertiary">
+<span class="material-symbols-outlined text-[15px] text-primary">lock_clock</span>
+<span class="font-mono-caption text-mono-caption">Foto tidak akan hilang selama cache peramban tidak dihapus manual.</span>
+</div>
+</div>
+</div>
+<!-- Deletion Confirmation Dialog Component (Modal Overlay / Inline Sheet) -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="delete-modal">
+<div class="bg-surface-container-lowest max-w-md w-full rounded-xl p-space-xl shadow-xl flex flex-col gap-space-lg relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<!-- Danger Tape Accent -->
+<div class="absolute -top-3 right-10 w-20 h-5 bg-secondary-container/85 -rotate-2 rounded-sm shadow-sm pointer-events-none"></div>
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-error-container/40 text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[26px]">delete_forever</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Hapus strip foto ini?</h3>
+<p class="font-mono-caption text-mono-caption text-secondary font-medium" id="delete-modal-target">Strip Musim Panas (4 Pose)</p>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-low text-on-surface-variant flex flex-col gap-space-xs">
+<p class="font-body-sm text-body-sm">
+            Tindakan ini tidak dapat dibatalkan. Foto strip akan langsung dimusnahkan dari memori lokal browser (RAM / IndexedDB) dan tidak dapat dipulihkan karena tidak tersimpan di cloud.
+          </p>
+<div class="flex items-center gap-1 text-tertiary mt-1">
+<span class="material-symbols-outlined text-[14px]">info</span>
+<span class="font-mono-caption text-mono-caption">Format file asli &amp; stiker akan terhapus</span>
+</div>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-space-md py-space-sm rounded-xl bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors" id="cancel-delete-btn" type="button">
+            Batal
+          </button>
+<button class="px-space-lg py-space-sm rounded-xl bg-error-container text-on-error-container font-label-md text-label-md shadow-sm hover:brightness-95 active:translate-y-[1px] transition-all flex items-center gap-space-xs" id="confirm-delete-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+            Ya, Hapus Permanen
+          </button>
+</div>
+</div>
+</div>
+<!-- Notification Toast (Feedback Micro-interaction) -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none bg-surface-container-lowest text-on-surface px-space-lg py-space-md rounded-xl shadow-xl flex items-center gap-space-md" id="gallery-toast">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center" id="toast-icon-wrap">
+<span class="material-symbols-outlined text-[18px]" id="toast-icon">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface" id="toast-title">Berhasil</span>
+<span class="font-mono-caption text-mono-caption text-tertiary" id="toast-message">Foto strip berhasil diunduh ke perangkat.</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple Micro-Interactions for Local Photo Gallery
+  const deleteModal = document.getElementById('delete-modal');
+  const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+  const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+  const deleteModalTarget = document.getElementById('delete-modal-target');
+  const toast = document.getElementById('gallery-toast');
+  const toastTitle = document.getElementById('toast-title');
+  const toastMessage = document.getElementById('toast-message');
+  const emptyStatePanel = document.getElementById('empty-state-panel');
+  const galleryMasonry = document.getElementById('gallery-masonry');
+  const toggleEmptyStateBtn = document.getElementById('toggle-empty-state-btn');
+  const btnPurgeAll = document.getElementById('btn-purge-all');
+
+  function showToast(title, msg, isError = false) {
+    toastTitle.textContent = title;
+    toastMessage.textContent = msg;
+    const iconWrap = document.getElementById('toast-icon-wrap');
+    const toastIcon = document.getElementById('toast-icon');
+    
+    if (isError) {
+      iconWrap.className = 'w-8 h-8 rounded-full bg-error-container text-on-error-container flex items-center justify-center';
+      toastIcon.textContent = 'delete';
+    } else {
+      iconWrap.className = 'w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center';
+      toastIcon.textContent = 'check';
+    }
+
+    toast.classList.remove('translate-y-24', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+      toast.classList.add('translate-y-24', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 3200);
+  }
+
+  function triggerDeleteModal(itemName) {
+    deleteModalTarget.textContent = itemName;
+    deleteModal.classList.remove('hidden');
+    deleteModal.classList.add('flex');
+  }
+
+  cancelDeleteBtn.addEventListener('click', () => {
+    deleteModal.classList.add('hidden');
+    deleteModal.classList.remove('flex');
+  });
+
+  confirmDeleteBtn.addEventListener('click', () => {
+    deleteModal.classList.add('hidden');
+    deleteModal.classList.remove('flex');
+    showToast('Foto Dihapus', 'File strip telah dihapus permanen dari IndexedDB lokal.', true);
+  });
+
+  btnPurgeAll.addEventListener('click', () => {
+    triggerDeleteModal('Seluruh Galeri Lokal (4 Item Foto)');
+  });
+
+  function downloadItem(fileName) {
+    showToast('Unduhan Disiapkan', 'Menyimpan ' + fileName + ' langsung ke folder unduhan perangkat.');
+  }
+
+  function previewItem(title) {
+    showToast('Mode Pratinjau', 'Membuka tampilan pembesar detail cetakan untuk: ' + title);
+  }
+
+  function toggleEmptyState() {
+    const isShowingEmpty = !emptyStatePanel.classList.contains('hidden');
+    if (isShowingEmpty) {
+      emptyStatePanel.classList.add('hidden');
+      emptyStatePanel.classList.remove('flex');
+      galleryMasonry.classList.remove('hidden');
+      galleryMasonry.classList.add('grid');
+      toggleEmptyStateBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">visibility</span><span>Lihat Tampilan Kosong</span>';
+    } else {
+      emptyStatePanel.classList.remove('hidden');
+      emptyStatePanel.classList.add('flex');
+      galleryMasonry.classList.add('hidden');
+      galleryMasonry.classList.remove('grid');
+      toggleEmptyStateBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">grid_view</span><span>Kembali ke Galeri Foto</span>';
+    }
+  }
+
+  toggleEmptyStateBtn.addEventListener('click', toggleEmptyState);
+</script></main><footer class="w-full bg-surface-container-low mt-space-xl"><div class="max-w-7xl mx-auto px-margin py-space-xl flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex flex-col items-center md:items-start gap-space-xs"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-primary text-[18px]">photo_camera</span><span class="font-label-lg text-label-lg text-on-surface">PhotoBooth Analog Studio</span></div><p class="font-body-sm text-body-sm text-tertiary">Foto strip bernuansa taktil langsung dari perangkatmu tanpa server upload.</p></div><div class="flex items-center gap-space-lg"><span class="font-mono-caption text-mono-caption text-tertiary">Semua foto diproses di memori lokal RAM browser</span><div class="w-2 h-2 rounded-full bg-secondary"></div><span class="font-mono-caption text-mono-caption text-tertiary">Crafted for Keepers</span></div></div></footer></body></html>
