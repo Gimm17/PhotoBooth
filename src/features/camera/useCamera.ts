@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import {
+  attachCamera,
   cameraErrorDetails,
   listVideoInputs,
-  startCamera,
+  requestCamera,
   stopCamera,
   type CameraStatus,
 } from './camera-service'
@@ -59,9 +60,15 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
         audio: false,
         video: deviceId ? { deviceId: { exact: deviceId } } : true,
       }
-      const nextStream = await startCamera(videoRef.current, constraints)
+      const nextStream = await requestCamera(constraints)
       if (!isMounted.current || generation !== requestGeneration.current) {
         stopCamera(nextStream)
+        return false
+      }
+      await attachCamera(videoRef.current, nextStream)
+      if (!isMounted.current || generation !== requestGeneration.current) {
+        stopCamera(nextStream)
+        if (videoRef.current?.srcObject === nextStream) videoRef.current.srcObject = streamRef.current
         return false
       }
       streamRef.current = nextStream

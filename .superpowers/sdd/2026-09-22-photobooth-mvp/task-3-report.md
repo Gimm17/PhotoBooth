@@ -75,3 +75,21 @@
 - `useCamera` uses a mounted flag and monotonic request generation so unmounted or superseded requests stop their late stream without updating state. Successful starts return `true`, allowing the setup action to navigate only after camera activation.
 - The mirror checkbox is now a 44px focusable control with a matching `:focus-visible` selector.
 - Empty file selections stay on setup with inline feedback.
+
+## Review follow-up 2
+
+### RED evidence
+
+- Deferred A/B switching with a late A playback rejection left `video.srcObject` as `null` instead of the newer B stream. This traced to `startCamera` attaching A before the hook could check its request generation, then clearing the shared video element in its playback-failure handler.
+
+### GREEN evidence
+
+- Focused camera service and setup tests: 22 passed.
+- Full suite: 41 passed across 4 files.
+- `npm run typecheck`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed.
+
+### Fix
+
+- Split camera acquisition from preview attachment. `useCamera` now validates the mounted/request-generation guard immediately after obtaining a stream and before it can attach to the shared video element. A second guard handles a request superseded while playback is pending. The attachment failure handler clears the video only if it still owns that stream. Deferred tests cover both a late A resolution and an already-attached A that fails playback after B becomes active, asserting stale-track cleanup and B preview preservation.

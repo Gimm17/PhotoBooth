@@ -178,7 +178,7 @@ describe('useCamera', () => {
     expect(track.stop).toHaveBeenCalledOnce()
   })
 
-  it('keeps a newer device stream active when an older request resolves late', async () => {
+  it('keeps the newer preview attached when an older request resolves late and playback fails', async () => {
     let resolveFirst!: (stream: MediaStream) => void
     const firstRequest = new Promise<MediaStream>((resolve) => { resolveFirst = resolve })
     const firstTrack = { stop: vi.fn() }
@@ -188,8 +188,11 @@ describe('useCamera', () => {
       configurable: true,
       value: { enumerateDevices: vi.fn().mockResolvedValue([]), getUserMedia: vi.fn().mockReturnValueOnce(firstRequest).mockResolvedValueOnce(secondStream) },
     })
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+    vi.spyOn(HTMLMediaElement.prototype, 'play')
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('Late playback failure'))
     render(createElement(CameraHarness))
+    const preview = document.querySelector('video') as HTMLVideoElement
 
     fireEvent.click(screen.getByRole('button', { name: 'Mulai' }))
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ganti' })) })
@@ -197,5 +200,32 @@ describe('useCamera', () => {
 
     expect(firstTrack.stop).toHaveBeenCalledOnce()
     expect(secondTrack.stop).not.toHaveBeenCalled()
+    expect(preview.srcObject).toBe(secondStream)
+  })
+
+  it('preserves the newer preview when an older attached stream later fails to play', async () => {
+    let rejectFirstPlay!: (error: Error) => void
+    const firstPlay = new Promise<void>((_resolve, reject) => { rejectFirstPlay = reject })
+    const firstTrack = { stop: vi.fn() }
+    const secondTrack = { stop: vi.fn() }
+    const firstStream = streamWithTracks(firstTrack)
+    const secondStream = streamWithTracks(secondTrack)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { enumerateDevices: vi.fn().mockResolvedValue([]), getUserMedia: vi.fn().mockResolvedValueOnce(firstStream).mockResolvedValueOnce(secondStream) },
+    })
+    vi.spyOn(HTMLMediaElement.prototype, 'play')
+      .mockImplementationOnce(() => firstPlay)
+      .mockResolvedValueOnce(undefined)
+    render(createElement(CameraHarness))
+    const preview = document.querySelector('video') as HTMLVideoElement
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai' })); await Promise.resolve() })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Ganti' })) })
+    await act(async () => { rejectFirstPlay(new Error('Late playback failure')); await Promise.resolve() })
+
+    expect(firstTrack.stop).toHaveBeenCalledOnce()
+    expect(secondTrack.stop).not.toHaveBeenCalled()
+    expect(preview.srcObject).toBe(secondStream)
   })
 })

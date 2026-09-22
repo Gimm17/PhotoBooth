@@ -37,20 +37,27 @@ function mediaDevices() {
   return navigator.mediaDevices
 }
 
-export async function startCamera(
-  videoElement: HTMLVideoElement,
-  constraints: MediaStreamConstraints,
-): Promise<MediaStream> {
-  const stream = await mediaDevices().getUserMedia(constraints)
+export async function requestCamera(constraints: MediaStreamConstraints): Promise<MediaStream> {
+  return mediaDevices().getUserMedia(constraints)
+}
+
+export async function attachCamera(videoElement: HTMLVideoElement, stream: MediaStream): Promise<MediaStream> {
   try {
     videoElement.srcObject = stream
     await videoElement.play()
     return stream
   } catch (error) {
-    videoElement.srcObject = null
+    if (videoElement.srcObject === stream) videoElement.srcObject = null
     stopCamera(stream)
     throw error
   }
+}
+
+export async function startCamera(
+  videoElement: HTMLVideoElement,
+  constraints: MediaStreamConstraints,
+): Promise<MediaStream> {
+  return attachCamera(videoElement, await requestCamera(constraints))
 }
 
 export function stopCamera(stream: MediaStream | null | undefined): void {
