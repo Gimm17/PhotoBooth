@@ -8,7 +8,9 @@ a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
 .page-width { width: min(100% - (var(--page-padding) * 2), var(--page-max)); margin-inline: auto; }
 .app-shell { min-height: 100dvh; display: flex; flex-direction: column; overflow: clip; }
-main { flex: 1; min-width: 0; }
+main { flex: 1; min-width: 0; position: relative; }
+main:focus { outline: none; }
+main:focus::before { background: #32647B; border-radius: 99px; content: ''; height: 4px; left: var(--page-padding); pointer-events: none; position: absolute; top: .5rem; width: 3.25rem; z-index: 1; }
 .skip-link { align-items: center; background: var(--color-ink); color: var(--color-paper); display: inline-flex; left: 1rem; min-height: 44px; padding: .75rem 1rem; position: fixed; top: -4rem; z-index: 100; border-radius: .5rem; }
 .skip-link:focus { top: 1rem; }
 

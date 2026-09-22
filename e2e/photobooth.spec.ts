@@ -49,6 +49,26 @@ test('guards a direct result visit without a composed photo', async ({ page }) =
   await expectNoHorizontalOverflow(page)
 })
 
+test('makes the route destination and skip-link target visibly discoverable', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Mulai PhotoBooth/i }).click()
+
+  const main = page.locator('main')
+  await expect(page).toHaveURL(/\/setup$/)
+  await expect(main).toBeFocused()
+  await expect.poll(() => main.evaluate((element) => {
+    const marker = getComputedStyle(element, '::before')
+    return { backgroundColor: marker.backgroundColor, height: marker.height, width: marker.width }
+  })).toEqual({ backgroundColor: 'rgb(50, 100, 123)', height: '4px', width: '52px' })
+
+  const skipLink = page.getByRole('link', { name: 'Lewati ke konten utama' })
+  await skipLink.focus()
+  await expect(skipLink).toBeFocused()
+  await expect(skipLink).toHaveCSS('top', '16px')
+  await page.keyboard.press('Enter')
+  await expect(main).toBeFocused()
+})
+
 test('shows the private gallery empty state', async ({ page }) => {
   await page.goto('/gallery')
 
