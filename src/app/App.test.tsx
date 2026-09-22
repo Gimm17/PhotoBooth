@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { App } from './App'
+import '../shared/styles/global.css'
 
 const routes = [
   ['/', 'PhotoBooth untuk kenanganmu'],
@@ -20,11 +21,18 @@ describe('application routes', () => {
   it('opens the mobile navigation control', () => {
     render(<App initialEntries={['/']} />)
 
-    const menu = screen.getByRole('button', { name: 'Buka navigasi' })
+    const menu = screen.getByLabelText('Buka navigasi', { selector: 'button' })
     expect(menu).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(menu)
 
     expect(menu).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('gives the skip link a 44px minimum touch target', () => {
+    render(<App initialEntries={['/']} />)
+
+    const skipLink = screen.getByRole('link', { name: 'Lewati ke konten utama' })
+    expect(skipLink).toHaveStyle({ minHeight: '44px' })
   })
 })
