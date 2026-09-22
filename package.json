@@ -12,7 +12,7 @@
     "test:unit": "vitest run",
     "setup:e2e": "playwright install chromium",
     "test:e2e": "playwright test",
-    "test:release": "npm run build && node scripts/check-release.mjs",
+    "test:release": "npm run build && node scripts/check-release.mjs && node scripts/check-release-harness.mjs",
     "verify": "npm run test:unit && npm run typecheck && npm run test:release && npm run test:e2e"
   },
   "dependencies": {

@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process'
 
 const checkerPath = new URL('./check-release.mjs', import.meta.url)
 const svgAsset = 'frame-abcdefgh.svg'
+const secondSvgAsset = 'frame-qrstuvwx.svg'
 const pngAsset = 'frame-hijklmno.png'
 
 function writeFixture({ assets, precacheUrls, comments = [] }) {
@@ -55,5 +56,10 @@ expectReleaseFailure('frame outside precache', {
   precacheUrls: [],
   comments: [`/assets/${svgAsset}`, `/assets/${pngAsset}`],
 }, `Frame asset missing from service-worker precache: /assets/${svgAsset}`)
+
+expectReleaseFailure('non-first same-format frame outside precache', {
+  assets: [svgAsset, secondSvgAsset, pngAsset],
+  precacheUrls: [`/assets/${svgAsset}`, `/assets/${pngAsset}`],
+}, `Frame asset missing from service-worker precache: /assets/${secondSvgAsset}`)
 
 console.log('Release checker failure coverage passed.')

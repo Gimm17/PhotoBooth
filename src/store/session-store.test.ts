@@ -179,6 +179,22 @@ describe('session store', () => {
     })
   })
 
+  it('preserves all captured sources through a three-to-two-to-three layout round trip', () => {
+    const photos = [
+      'data:image/png;base64,photo-1',
+      'data:image/png;base64,photo-2',
+      'data:image/png;base64,photo-3',
+    ]
+    useSessionStore.getState().setLayout('three-postcard')
+    for (const photo of photos) useSessionStore.getState().addPhoto(photo)
+
+    useSessionStore.getState().setLayout('wide-duo')
+    expect(useSessionStore.getState().photos).toEqual(photos)
+
+    useSessionStore.getState().setLayout('three-postcard')
+    expect(useSessionStore.getState().photos).toEqual(photos)
+  })
+
   it('preserves all data URLs through the Sakura Diary to Strawberry Date round trip', () => {
     const photos = [
       'data:image/png;base64,photo-1',

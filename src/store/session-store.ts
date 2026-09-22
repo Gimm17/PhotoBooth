@@ -65,7 +65,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       selectedLayout: layout.id,
       selectedFrame: matchingFrame?.id ?? state.selectedFrame,
       requiredShots: layout.requiredShots,
-      photos: state.photos.slice(0, layout.requiredShots),
     }))
   },
   addPhoto: (dataUrl) => set((state) => (

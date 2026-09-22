@@ -33,12 +33,12 @@ const fingerprintedFrameAssets = existsSync(assetsDirectory)
     .map((file) => '/' + relative(distDirectory, file).replaceAll('\\', '/'))
     .filter((path) => /^\/assets\/.+-[A-Za-z0-9_-]{8,}\.(svg|png)$/.test(path))
   : []
-const svgFrameAsset = fingerprintedFrameAssets.find((path) => path.endsWith('.svg'))
-const pngFrameAsset = fingerprintedFrameAssets.find((path) => path.endsWith('.png'))
+const hasSvgFrameAsset = fingerprintedFrameAssets.some((path) => path.endsWith('.svg'))
+const hasPngFrameAsset = fingerprintedFrameAssets.some((path) => path.endsWith('.png'))
 
-assert(svgFrameAsset, 'No fingerprinted SVG frame asset found')
-assert(pngFrameAsset, 'No fingerprinted PNG frame asset found')
-for (const frameAsset of [svgFrameAsset, pngFrameAsset]) {
+assert(hasSvgFrameAsset, 'No fingerprinted SVG frame asset found')
+assert(hasPngFrameAsset, 'No fingerprinted PNG frame asset found')
+for (const frameAsset of fingerprintedFrameAssets) {
   assert(precacheUrlSet.has(frameAsset), `Frame asset missing from service-worker precache: ${frameAsset}`)
 }
 

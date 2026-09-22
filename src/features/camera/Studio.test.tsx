@@ -124,6 +124,24 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Lanjut ke editor' })).toBeEnabled()
   })
 
+  it('keeps all captured sources available when layout controls switch three to two to three', () => {
+    const photos = [
+      'data:image/jpeg;base64,first',
+      'data:image/jpeg;base64,second',
+      'data:image/jpeg;base64,third',
+    ]
+    useSessionStore.getState().setLayout('three-postcard')
+    useSessionStore.getState().setImportedPhotos(photos)
+    renderStudio()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Wide Duo' }))
+    expect(useSessionStore.getState().photos).toEqual(photos)
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Three-photo Postcard' }))
+    expect(useSessionStore.getState().photos).toEqual(photos)
+    expect(screen.getByRole('button', { name: 'Ambil ulang pose 3' })).toBeInTheDocument()
+  })
+
   it('captures successfully after the camera becomes active', () => {
     vi.useFakeTimers()
     const view = renderStudio()
