@@ -4,9 +4,13 @@ import { filterById } from '../catalog/filters'
 import { saveGalleryRecord } from '../features/gallery/gallery-db'
 import { useSessionStore } from '../store/session-store'
 import { PageShell } from '../shared/layout/PageShell'
+import { Navigate } from 'react-router-dom'
 
 export function ResultPage() {
   const session = useSessionStore()
+  if (!frameById(session.selectedFrame)) return <Navigate to="/frames" replace />
+  if (session.photos.length < session.requiredShots) return <Navigate to="/studio" replace />
+  if (!session.composedResultBlob) return <Navigate to="/editor" replace />
   const saveCurrentResult = async (media: GallerySaveRequest) => {
     const frame = frameById(session.selectedFrame)
     const layout = layoutById(session.selectedLayout)

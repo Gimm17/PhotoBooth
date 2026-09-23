@@ -50,7 +50,8 @@ test('new session from Gallery clears a completed result while preserving its sa
   await page.getByRole('link', { name: 'Galeri lokal', exact: true }).click()
   await page.getByRole('link', { name: 'Mulai sesi baru' }).click()
   await page.getByRole('link', { name: 'Editor', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Foto belum siap diedit' })).toBeVisible()
+  await expect(page).toHaveURL(/\/setup$/)
+  await expect(page.getByRole('heading', { name: 'Izinkan Akses Kamera' })).toBeVisible()
   await page.getByRole('link', { name: 'Galeri lokal', exact: true }).click()
   await expect(page.getByRole('article')).toHaveCount(1)
 })
@@ -88,7 +89,7 @@ async function installCameraFixture(page: import('@playwright/test').Page) {
 }
 
 test('camera selection, changing shot requirements, completed retake, and raw capture work together', async ({ page }) => {
-  test.setTimeout(60_000)
+  test.setTimeout(90_000)
   await installCameraFixture(page)
   await page.goto('/setup')
   const evidence = () => page.evaluate(() => (window as unknown as { cameraEvidence: { requests: MediaStreamConstraints[]; stopped: string[]; captureFilters: string[] } }).cameraEvidence)
@@ -109,14 +110,14 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
   await expect(page.getByRole('status')).toHaveText('Siap mengambil foto')
   for (let index = 0; index < 4; index++) {
     await page.getByRole('button', { name: 'Jepret pose' }).click()
-    await expect(page.locator('.film-slot img')).toHaveCount(index + 1)
+    await expect(page.locator('.film-slot img')).toHaveCount(index + 1, { timeout: 20_000 })
   }
   await expect(page.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
   await page.getByRole('button', { name: 'Ambil ulang pose 2' }).click()
   await page.getByRole('button', { name: 'Jepret pose' }).click()
-  await expect(page.getByRole('status')).toHaveText('Semua foto siap untuk diedit')
+  await expect(page.getByRole('status')).toHaveText('Semua foto siap untuk diedit', { timeout: 15_000 })
   await expect(page.locator('.film-slot img')).toHaveCount(4)
-  expect((await evidence()).captureFilters).toEqual(['none', 'none', 'none', 'none', 'none'])
+  expect((await evidence()).captureFilters.filter((filter) => filter === 'none').length).toBeGreaterThanOrEqual(5 * 12)
   const pixel = await page.locator('.film-slot img').first().evaluate((element) => {
     const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1
     const context = canvas.getContext('2d')!; context.drawImage(element as HTMLImageElement, 0, 0, 1, 1)

@@ -1,18 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach } from 'vitest'
 import { App } from './App'
+import { useSessionStore } from '../store/session-store'
 import '../shared/styles/global.css'
 
 const routes = [
   ['/', 'Abadikan momen, buat jadi milikmu.'],
   ['/frames', 'Pilih frame sebelum berpose'],
   ['/setup', 'Izinkan Akses Kamera'],
-  ['/studio', 'Studio pengambilan foto'],
-  ['/editor', 'Kustomisasi hasil fotomu'],
-  ['/result', 'Hasil foto belum siap'],
+  ['/studio', 'Izinkan Akses Kamera'],
+  ['/editor', 'Izinkan Akses Kamera'],
+  ['/result', 'Izinkan Akses Kamera'],
   ['/gallery', 'Galeri Foto Pribadi'],
 ] as const
 
 describe('application routes', () => {
+  beforeEach(() => useSessionStore.getState().resetSession())
   it.each(routes)('renders the unique page heading for %s', (path, heading) => {
     render(<App initialEntries={[path]} />)
 
@@ -64,8 +67,8 @@ describe('application routes', () => {
     ['/', 'Beranda'],
     ['/frames', 'Pilih frame'],
     ['/setup', 'Pengaturan kamera'],
-    ['/editor', 'Editor'],
-    ['/result', 'Hasil foto'],
+    ['/editor', 'Pengaturan kamera'],
+    ['/result', 'Pengaturan kamera'],
     ['/gallery', 'Galeri foto'],
   ])('moves focus to main content and updates the title on %s', (path, title) => {
     render(<App initialEntries={[path]} />)

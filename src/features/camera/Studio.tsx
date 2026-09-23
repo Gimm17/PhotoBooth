@@ -58,6 +58,7 @@ export function Studio() {
   const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
   const activeFilter = filterById(session.selectedFilter) ?? FILTER_PRESETS[0]
   const captureBusy = captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing'
+  const settingsLocked = captureState.status === 'flashing' || captureState.status === 'capturing'
   const uploadContinuation = camera.status !== 'active' && session.photos.length > 0
   const canEdit = complete || uploadContinuation
 
@@ -132,9 +133,9 @@ export function Studio() {
       <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan">
         <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2></div>
         <button className="settings-close" type="button" onClick={() => setMobileSettingsOpen(false)} aria-label="Tutup setelan tangkapan">Tutup</button>
-        <fieldset disabled={captureBusy}><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
+        <fieldset disabled={settingsLocked}><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
         <label className="studio-select-label" htmlFor="frame-select">Frame yang kompatibel</label>
-        <select id="frame-select" disabled={captureBusy} value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
+        <select id="frame-select" disabled={settingsLocked} value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
         <fieldset disabled={captureBusy}><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
         <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
         <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>

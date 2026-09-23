@@ -28,14 +28,14 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 }
 
-test('moves from the landing page to camera setup', async ({ page }) => {
+test('moves from the landing page to frame selection', async ({ page }) => {
   await page.goto('/')
 
   await expect(page.getByRole('heading', { level: 1, name: 'Abadikan momen, buat jadi milikmu.' })).toBeVisible()
   await page.getByRole('link', { name: /Mulai PhotoBooth/i }).click()
 
-  await expect(page).toHaveURL(/\/setup$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Izinkan Akses Kamera' })).toBeVisible()
+  await expect(page).toHaveURL(/\/frames$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Pilih frame sebelum berpose' })).toBeVisible()
 })
 
 test('uses a generated local image through the upload path', async ({ page }) => {
@@ -76,15 +76,16 @@ for (const { frame, shots } of decoratedFrameMatrix) {
 test('guards a direct editor visit without photos', async ({ page }) => {
   await page.goto('/editor')
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Kustomisasi hasil fotomu' })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 2, name: 'Foto belum siap diedit' })).toBeVisible()
+  await expect(page).toHaveURL(/\/setup$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Izinkan Akses Kamera' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })
 
 test('guards a direct result visit without a composed photo', async ({ page }) => {
   await page.goto('/result')
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Hasil foto belum siap' })).toBeVisible()
+  await expect(page).toHaveURL(/\/setup$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Izinkan Akses Kamera' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })
 
@@ -93,7 +94,7 @@ test('makes the route destination and skip-link target visibly discoverable', as
   await page.getByRole('link', { name: /Mulai PhotoBooth/i }).click()
 
   const main = page.locator('main')
-  await expect(page).toHaveURL(/\/setup$/)
+  await expect(page).toHaveURL(/\/frames$/)
   await expect(main).toBeFocused()
   await expect.poll(() => main.evaluate((element) => {
     const marker = getComputedStyle(element, '::before')
@@ -127,7 +128,7 @@ test('opens and closes mobile navigation without overflowing at 390px', async ({
   await expectNoHorizontalOverflow(page)
 
   await page.getByRole('link', { name: 'Kamera', exact: true }).click()
-  await expect(page).toHaveURL(/\/setup$/)
+  await expect(page).toHaveURL(/\/frames$/)
   await expect(menu).toHaveAttribute('aria-expanded', 'false')
   await expectNoHorizontalOverflow(page)
 })
