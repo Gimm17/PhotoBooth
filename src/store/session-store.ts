@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { filterById } from '../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../catalog/frames'
-import type { LayoutId, PhotoSession } from '../catalog/types'
+import type { BoomerangResult, CapturedPose, LayoutId, PhotoSession } from '../catalog/types'
 
 export type EditorHistorySnapshot = Pick<PhotoSession, 'selectedLayout' | 'selectedFrame' | 'selectedFilter' | 'requiredShots' | 'photos' | 'filterIntensity' | 'caption' | 'showDate'>
 
@@ -20,6 +20,12 @@ interface SessionActions {
   setMirror: (mirror: boolean) => void
   setShowGrid: (showGrid: boolean) => void
   setCaption: (caption: string) => void
+  setShowDate: (showDate: boolean) => void
+  setLiveEnabled: (enabled: boolean) => void
+  commitCapturedPose: (index: number, pose: CapturedPose) => void
+  clearLiveSequences: () => void
+  setBoomerangResult: (result: BoomerangResult | null) => void
+  invalidateOutputs: () => void
   restoreEditorSnapshot: (snapshot: EditorHistorySnapshot) => void
   setComposedResult: (url: string | null, blob: Blob | null) => void
   resetSession: () => void
@@ -44,12 +50,31 @@ const createInitialSession = (): PhotoSession => ({
   showDate: true,
   composedResultUrl: null,
   composedResultBlob: null,
+  liveEnabled: true,
+  liveSequences: [],
+  liveErrors: [],
+  boomerangResult: null,
 })
 
 const revokeObjectUrl = (url: string | null) => {
   if (url?.startsWith('blob:')) {
     URL.revokeObjectURL(url)
   }
+}
+
+const invalidateGeneratedOutputs = (state: PhotoSession) => {
+  revokeObjectUrl(state.composedResultUrl)
+  revokeObjectUrl(state.boomerangResult?.url ?? null)
+  return {
+    composedResultUrl: null,
+    composedResultBlob: null,
+    boomerangResult: null,
+  }
+}
+
+const invalidateBoomerang = (state: PhotoSession) => {
+  revokeObjectUrl(state.boomerangResult?.url ?? null)
+  return { boomerangResult: null }
 }
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -62,6 +87,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     const matchingFrame = FRAME_TEMPLATES.find((frame) => frame.layoutId === layoutId)
     set((state) => ({
+      ...invalidateGeneratedOutputs(state),
       selectedLayout: layout.id,
       selectedFrame: matchingFrame?.id ?? state.selectedFrame,
       requiredShots: layout.requiredShots,
@@ -70,22 +96,41 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   addPhoto: (dataUrl) => set((state) => (
     state.photos.length >= state.requiredShots
       ? state
-      : { photos: [...state.photos, dataUrl] }
+      : {
+          ...invalidateGeneratedOutputs(state),
+          photos: [...state.photos, dataUrl],
+          liveSequences: [...state.liveSequences, null],
+          liveErrors: [...state.liveErrors, null],
+        }
   )),
-  setImportedPhotos: (dataUrls) => set({ photos: dataUrls }),
+  setImportedPhotos: (dataUrls) => set((state) => ({
+    ...invalidateGeneratedOutputs(state),
+    photos: dataUrls,
+    liveSequences: [],
+    liveErrors: [],
+  })),
   replacePhoto: (index, dataUrl) => set((state) => {
     if (index < 0 || index >= state.photos.length) return state
     const photos = [...state.photos]
     photos[index] = dataUrl
-    return { photos }
+    const liveSequences = [...state.liveSequences]
+    const liveErrors = [...state.liveErrors]
+    liveSequences[index] = null
+    liveErrors[index] = null
+    return { ...invalidateGeneratedOutputs(state), photos, liveSequences, liveErrors }
   }),
   removePhoto: (index) => set((state) => (
     index < 0 || index >= state.photos.length
       ? state
-      : { photos: state.photos.filter((_, photoIndex) => photoIndex !== index) }
+      : {
+          ...invalidateGeneratedOutputs(state),
+          photos: state.photos.filter((_, photoIndex) => photoIndex !== index),
+          liveSequences: state.liveSequences.filter((_, photoIndex) => photoIndex !== index),
+          liveErrors: state.liveErrors.filter((_, photoIndex) => photoIndex !== index),
+        }
   )),
   setFilter: (filterId) => {
-    if (filterById(filterId)) set({ selectedFilter: filterId })
+    if (filterById(filterId)) set((state) => ({ ...invalidateGeneratedOutputs(state), selectedFilter: filterId }))
   },
   setFrame: (frameId) => {
     const frame = frameById(frameId)
@@ -93,26 +138,51 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     set((state) => {
       if (frame.layoutId === state.selectedLayout) {
-        return { selectedFrame: frame.id }
+        return { ...invalidateGeneratedOutputs(state), selectedFrame: frame.id }
       }
 
       const layout = layoutById(frame.layoutId)!
-      revokeObjectUrl(state.composedResultUrl)
       return {
+        ...invalidateGeneratedOutputs(state),
         selectedFrame: frame.id,
         selectedLayout: layout.id,
         requiredShots: layout.requiredShots,
         photos: state.photos,
-        composedResultUrl: null,
-        composedResultBlob: null,
       }
     })
   },
-  setFilterIntensity: (intensity) => set({ filterIntensity: Math.min(100, Math.max(0, intensity)) }),
+  setFilterIntensity: (intensity) => set((state) => ({ ...invalidateGeneratedOutputs(state), filterIntensity: Math.min(100, Math.max(0, intensity)) })),
   setTimer: (timer) => set({ timer }),
   setMirror: (mirror) => set({ mirror }),
   setShowGrid: (showGrid) => set({ showGrid }),
-  setCaption: (caption) => set({ caption }),
+  setCaption: (caption) => set((state) => ({ ...invalidateGeneratedOutputs(state), caption })),
+  setShowDate: (showDate) => set((state) => ({ ...invalidateGeneratedOutputs(state), showDate })),
+  setLiveEnabled: (liveEnabled) => set((state) => liveEnabled ? { liveEnabled } : {
+    ...invalidateBoomerang(state),
+    liveEnabled,
+    liveSequences: [],
+    liveErrors: [],
+  }),
+  commitCapturedPose: (index, pose) => set((state) => {
+    if (!Number.isInteger(index) || index < 0 || index > state.photos.length) return state
+    const photos = [...state.photos]
+    const liveSequences = [...state.liveSequences]
+    const liveErrors = [...state.liveErrors]
+    photos[index] = pose.photo
+    liveSequences[index] = pose.sequence
+    liveErrors[index] = pose.liveError ?? null
+    return { ...invalidateGeneratedOutputs(state), photos, liveSequences, liveErrors }
+  }),
+  clearLiveSequences: () => set((state) => ({
+    ...invalidateBoomerang(state),
+    liveSequences: [],
+    liveErrors: [],
+  })),
+  setBoomerangResult: (boomerangResult) => set((state) => {
+    if (state.boomerangResult?.url !== boomerangResult?.url) revokeObjectUrl(state.boomerangResult?.url ?? null)
+    return { boomerangResult }
+  }),
+  invalidateOutputs: () => set((state) => invalidateGeneratedOutputs(state)),
   restoreEditorSnapshot: (snapshot) => {
     const layout = layoutById(snapshot.selectedLayout)
     const frame = frameById(snapshot.selectedFrame)
@@ -120,8 +190,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (!layout || !frame || frame.layoutId !== layout.id || !filter) return
 
     set((state) => {
-      revokeObjectUrl(state.composedResultUrl)
       return {
+        ...invalidateGeneratedOutputs(state),
         selectedLayout: layout.id,
         selectedFrame: frame.id,
         selectedFilter: filter.id,
@@ -130,8 +200,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         filterIntensity: Math.min(100, Math.max(0, snapshot.filterIntensity)),
         caption: snapshot.caption,
         showDate: snapshot.showDate,
-        composedResultUrl: null,
-        composedResultBlob: null,
       }
     })
   },
@@ -141,6 +209,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   }),
   resetSession: () => {
     revokeObjectUrl(get().composedResultUrl)
+    revokeObjectUrl(get().boomerangResult?.url ?? null)
     set(createInitialSession())
   },
 }))

@@ -73,6 +73,29 @@ export interface FrameTemplate {
   assets?: FrameAssetLayer[]
 }
 
+export interface LiveFrameSample {
+  blob: Blob
+}
+
+export interface LiveSequence {
+  frames: LiveFrameSample[]
+  width: number
+  height: number
+  fps: number
+}
+
+export interface CapturedPose {
+  photo: string
+  sequence: LiveSequence | null
+  liveError?: string
+}
+
+export interface BoomerangResult {
+  blob: Blob
+  url: string
+  mimeType: string
+}
+
 export interface PhotoSession {
   selectedLayout: LayoutId
   selectedFrame: string
@@ -87,4 +110,8 @@ export interface PhotoSession {
   showDate: boolean
   composedResultUrl: string | null
   composedResultBlob: Blob | null
+  liveEnabled: boolean
+  liveSequences: Array<LiveSequence | null>
+  liveErrors: Array<string | null>
+  boomerangResult: BoomerangResult | null
 }

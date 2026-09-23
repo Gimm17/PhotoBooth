@@ -88,6 +88,86 @@ describe('session store', () => {
     expect(useSessionStore.getState()).toMatchObject({ timer: 10, mirror: false, showGrid: true })
   })
 
+  it('starts with Live capture enabled and no motion data', () => {
+    expect(useSessionStore.getState()).toMatchObject({
+      liveEnabled: true,
+      liveSequences: [],
+      liveErrors: [],
+      boomerangResult: null,
+    })
+  })
+
+  it('stores a still and live sequence atomically at its slot', () => {
+    const sequence = {
+      frames: [{ blob: new Blob(['a'], { type: 'image/webp' }) }],
+      width: 320,
+      height: 240,
+      fps: 10,
+    }
+
+    useSessionStore.getState().commitCapturedPose(0, {
+      photo: 'data:image/jpeg;base64,one',
+      sequence,
+    })
+
+    expect(useSessionStore.getState()).toMatchObject({
+      photos: ['data:image/jpeg;base64,one'],
+      liveSequences: [sequence],
+      liveErrors: [null],
+    })
+  })
+
+  it('replaces still and Live data at the same retake slot', () => {
+    const first = { frames: [{ blob: new Blob(['first']) }], width: 320, height: 240, fps: 10 }
+    const retake = { frames: [{ blob: new Blob(['retake']) }], width: 320, height: 240, fps: 10 }
+    useSessionStore.getState().commitCapturedPose(0, { photo: 'first', sequence: first })
+
+    useSessionStore.getState().commitCapturedPose(0, { photo: 'retake', sequence: retake })
+
+    expect(useSessionStore.getState()).toMatchObject({ photos: ['retake'], liveSequences: [retake] })
+  })
+
+  it('keeps surplus still and Live media when switching to a smaller frame', () => {
+    useSessionStore.getState().setFrame('candy-scrapbook')
+    for (let index = 0; index < 4; index += 1) {
+      useSessionStore.getState().commitCapturedPose(index, {
+        photo: `photo-${index}`,
+        sequence: { frames: [{ blob: new Blob([String(index)]) }], width: 320, height: 240, fps: 10 },
+      })
+    }
+
+    useSessionStore.getState().setFrame('sakura-diary')
+
+    expect(useSessionStore.getState().requiredShots).toBe(3)
+    expect(useSessionStore.getState().photos).toHaveLength(4)
+    expect(useSessionStore.getState().liveSequences).toHaveLength(4)
+  })
+
+  it('disabling Live clears motion sources and invalidates only the video result', () => {
+    const photoBlob = new Blob(['photo'])
+    const videoBlob = new Blob(['video'], { type: 'video/webm' })
+    const revoke = vi.spyOn(URL, 'revokeObjectURL')
+    useSessionStore.getState().commitCapturedPose(0, {
+      photo: 'photo',
+      sequence: { frames: [{ blob: new Blob(['frame']) }], width: 320, height: 240, fps: 10 },
+    })
+    useSessionStore.getState().setComposedResult('blob:photo', photoBlob)
+    useSessionStore.getState().setBoomerangResult({ blob: videoBlob, url: 'blob:video', mimeType: 'video/webm' })
+
+    useSessionStore.getState().setLiveEnabled(false)
+
+    expect(revoke).toHaveBeenCalledWith('blob:video')
+    expect(revoke).not.toHaveBeenCalledWith('blob:photo')
+    expect(useSessionStore.getState()).toMatchObject({
+      liveEnabled: false,
+      liveSequences: [],
+      liveErrors: [],
+      boomerangResult: null,
+      composedResultUrl: 'blob:photo',
+      composedResultBlob: photoBlob,
+    })
+  })
+
   it('revokes the superseded composed result URL without touching captured data URLs', () => {
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
     const firstBlob = new Blob(['first'], { type: 'image/png' })
@@ -125,6 +205,20 @@ describe('session store', () => {
       composedResultUrl: null,
       composedResultBlob: null,
     })
+  })
+
+  it('revokes both generated result URLs on reset', () => {
+    const revoke = vi.spyOn(URL, 'revokeObjectURL')
+    useSessionStore.setState({
+      composedResultUrl: 'blob:photo',
+      composedResultBlob: new Blob(['photo']),
+      boomerangResult: { blob: new Blob(['video']), url: 'blob:video', mimeType: 'video/webm' },
+    })
+
+    useSessionStore.getState().resetSession()
+
+    expect(revoke).toHaveBeenCalledWith('blob:photo')
+    expect(revoke).toHaveBeenCalledWith('blob:video')
   })
 
   it('uses normalized turns for every rotated frame slot', () => {
