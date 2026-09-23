@@ -27,13 +27,23 @@ const newFrames = [
   ['mermaid-party', 'Mermaid Party', 'Celebration', 'grid-2x2'],
   ['holiday-polaroid', 'Holiday Polaroid', 'Seasonal', 'classic-strip'],
 ]
+const importedFrames = [
+  ['postal-wedding-strip', 'Postal Wedding Strip', 'Celebration', 'three-postcard'],
+  ['midnight-film-strip', 'Midnight Film Strip', 'Classic', 'three-postcard'],
+  ['vintage-camera-strip', 'Vintage Camera Strip', 'Classic', 'three-postcard'],
+  ['denim-scrapbook', 'Denim Scrapbook', 'Cute & Pastel', 'classic-strip'],
+  ['ruby-jazz-strip', 'Ruby Jazz Strip', 'Celebration', 'three-postcard'],
+  ['cowboy-vibes', 'Cowboy Vibes', 'Classic', 'polaroid-single'],
+  ['negative-film-strip', 'Negative Film Strip', 'Classic', 'classic-strip'],
+  ['mono-memory-collage', 'Mono Memory Collage', 'Coquette', 'three-postcard'],
+]
 
 describe('curated frame catalog', () => {
-  it('offers exactly 25 unique frames and keeps the default first', () => {
-    expect(FRAME_TEMPLATES).toHaveLength(25)
-    expect(new Set(FRAME_TEMPLATES.map(({ id }) => id)).size).toBe(25)
+  it('offers exactly 33 unique frames and keeps the default first', () => {
+    expect(FRAME_TEMPLATES).toHaveLength(33)
+    expect(new Set(FRAME_TEMPLATES.map(({ id }) => id)).size).toBe(33)
     expect(FRAME_TEMPLATES[0].id).toBe('classic-polaroid')
-    expect(FRAME_TEMPLATES.map(({ id }) => id).sort()).toEqual([...retainedIds, ...newFrames.map(([id]) => id)].sort())
+    expect(FRAME_TEMPLATES.map(({ id }) => id).sort()).toEqual([...retainedIds, ...newFrames.map(([id]) => id), ...importedFrames.map(([id]) => id)].sort())
   })
   it('retains exactly the five approved legacy IDs', () => {
     expect(FRAME_TEMPLATES.filter(({ id }) => [...retainedIds, ...removedIds].includes(id)).map(({ id }) => id).sort()).toEqual([...retainedIds].sort())
@@ -47,10 +57,27 @@ describe('curated frame catalog', () => {
     expect(frame?.assets?.some(({ placement }) => placement === 'overlay')).toBe(true)
     expect(frame?.assets?.some(({ src }) => src === frame.thumbnail)).toBe(true)
   })
+  it.each(importedFrames)('provides the imported transparent overlay for %s', (id, name, category, layoutId) => {
+    const frame: FrameTemplate | undefined = frameById(id)
+    expect(frame).toMatchObject({ id, name, category, layoutId })
+    expect(frame?.thumbnail?.trim()).toBeTruthy()
+    expect(frame?.assets?.[0].src).not.toBe(frame?.thumbnail)
+    expect(frame?.assets).toEqual([
+      expect.objectContaining({
+        placement: 'overlay',
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        fit: 'stretch',
+      }),
+    ])
+    expect(frame?.slots).toHaveLength(layoutById(layoutId as LayoutDefinition['id'])?.requiredShots ?? 0)
+  })
   it('covers the promised new-frame shot counts and category totals', () => {
-    const added = FRAME_TEMPLATES.filter(({ id }) => !retainedIds.includes(id))
+    const added = FRAME_TEMPLATES.filter(({ id }) => newFrames.some(([newId]) => newId === id))
     expect([1, 2, 3, 4].map((shots) => added.filter((frame) => layoutById(frame.layoutId)?.requiredShots === shots).length)).toEqual([4, 6, 6, 4])
-    expect(['Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal'].map((category) => FRAME_TEMPLATES.filter((frame) => frame.category === category).length)).toEqual([2, 3, 5, 8, 5, 2])
+    expect(['Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal'].map((category) => FRAME_TEMPLATES.filter((frame) => frame.category === category).length)).toEqual([6, 4, 6, 8, 7, 2])
   })
   it('validates every catalog frame against its layout', () => {
     expect(FRAME_TEMPLATES.flatMap((frame) => validateFrameTemplate(frame, layoutById(frame.layoutId)!))).toEqual([])

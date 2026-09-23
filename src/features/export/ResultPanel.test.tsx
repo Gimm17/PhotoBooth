@@ -166,7 +166,7 @@ describe('ResultPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Foto sedang diunduh.')
 
     fireEvent.click(screen.getByRole('button', { name: /Bagikan/i }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Berbagi file belum didukung di perangkat ini.')
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Berbagi file belum didukung di perangkat ini.'))
 
     fireEvent.click(screen.getByRole('button', { name: /Simpan ke galeri/i }))
     await waitFor(() => expect(saveToGallery).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/\.png$/)))

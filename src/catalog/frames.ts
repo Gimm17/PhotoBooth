@@ -5,6 +5,7 @@ import { CUTE_PASTEL_FRAMES } from './frames/cute-pastel'
 import { NATURE_DREAMY_FRAMES } from './frames/nature-dreamy'
 import { CELEBRATION_FRAMES } from './frames/celebration'
 import { SEASONAL_FRAMES } from './frames/seasonal'
+import { IMPORTED_FRAMES } from './frames/imported'
 
 export { caption, single, duo, postcard, strip, grid } from './frame-geometry'
 
@@ -23,6 +24,7 @@ export const FRAME_TEMPLATES = [
   ...NATURE_DREAMY_FRAMES,
   ...CELEBRATION_FRAMES,
   ...SEASONAL_FRAMES,
+  ...IMPORTED_FRAMES,
 ] satisfies FrameTemplate[]
 
 export const frameById = (id: string) => FRAME_TEMPLATES.find((frame) => frame.id === id)

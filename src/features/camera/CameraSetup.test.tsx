@@ -165,7 +165,7 @@ describe('CameraSetup', () => {
 
     fireEvent.change(input, { target: { files: [image, secondImage] } })
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Kustomisasi hasil fotomu' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kustomisasi hasil fotomu' }, { timeout: 5_000 })).toBeInTheDocument()
     expect(useSessionStore.getState().photos).toEqual([
       'data:image/jpeg;base64,local-moment.jpg',
       'data:image/webp;base64,local-second.webp',

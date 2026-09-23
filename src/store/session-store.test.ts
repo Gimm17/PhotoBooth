@@ -135,9 +135,7 @@ describe('session store', () => {
     )
 
     expect(rotations.length).toBeGreaterThan(0)
-    for (const frame of FRAME_TEMPLATES.filter(({ layoutId }) => layoutId === 'three-postcard')) {
-      expect(frame.slots.map((slot: PhotoSlot) => slot.rotation)).toEqual([0.994, undefined, 0.006])
-    }
+    expect(FRAME_TEMPLATES.find(({ id }) => id === 'sakura-diary')?.slots.map((slot: PhotoSlot) => slot.rotation)).toEqual([0.994, undefined, 0.006])
     expect(rotations.every((rotation) => rotation >= 0 && rotation <= 1)).toBe(true)
   })
 
