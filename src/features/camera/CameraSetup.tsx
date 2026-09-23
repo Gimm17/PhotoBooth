@@ -68,7 +68,7 @@ export function CameraSetup() {
   }
 
   return <section className="camera-setup page-width" aria-labelledby="setup-heading">
-    <div className="setup-meta"><span>01</span> LANGKAH 1 DARI 3: KONFIGURASI PERANGKAT &amp; IZIN</div>
+    <div className="setup-meta"><span>02</span> LANGKAH 2 DARI 5: KONFIGURASI PERANGKAT &amp; IZIN</div>
     <div className="camera-setup-card">
       <div className="setup-heading-row">
         <div>
@@ -112,7 +112,7 @@ export function CameraSetup() {
       </div>
 
       <div className="troubleshooting"><p>PANDUAN MASALAH IZIN &amp; PERANGKAT</p>{troubleshooting.map(([question, answer]) => <details key={question}><summary>{question}<ChevronDown aria-hidden="true" size={18} /></summary><p>{answer}</p></details>)}</div>
-      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/editor')}>Lewati &amp; Pilih Template Dulu</button><button className="button primary-button" type="button" onClick={() => {
+      <div className="setup-actions"><button className="skip-button" type="button" onClick={() => navigate('/frames')}>Kembali &amp; ganti frame</button><button className="button primary-button" type="button" onClick={() => {
         if (camera.status === 'active' && camera.activeDeviceId) {
           setCameraDeviceId(camera.activeDeviceId)
           navigate('/studio')

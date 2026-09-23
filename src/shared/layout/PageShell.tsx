@@ -9,6 +9,7 @@ interface PageShellProps {
 
 const routeTitles: Record<string, string> = {
   '/': 'Beranda',
+  '/frames': 'Pilih frame',
   '/setup': 'Pengaturan kamera',
   '/studio': 'Studio foto',
   '/editor': 'Editor',

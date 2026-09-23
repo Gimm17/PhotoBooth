@@ -132,14 +132,14 @@ describe('Editor', () => {
     })
     renderEditor()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Strawberry Date' }))
+    fireEvent.click(screen.getByRole('button', { name: /Strawberry Date.*2 pose/ }))
     expect(useSessionStore.getState().photos).toEqual([
       'data:image/png;base64,one',
       'data:image/png;base64,two',
       'data:image/png;base64,three',
     ])
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sakura Diary' }))
+    fireEvent.click(screen.getByRole('button', { name: /Sakura Diary.*3 pose/ }))
     expect(useSessionStore.getState()).toMatchObject({ selectedLayout: 'three-postcard', selectedFrame: 'sakura-diary', requiredShots: 3 })
     expect(useSessionStore.getState().photos).toEqual([
       'data:image/png;base64,one',

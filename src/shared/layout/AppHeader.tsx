@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom'
 
 const navigation = [
   { to: '/', label: 'Beranda', end: true },
-  { to: '/setup', label: 'Kamera' },
+  { to: '/frames', label: 'Kamera' },
   { to: '/editor', label: 'Editor' },
   { to: '/gallery', label: 'Galeri lokal' },
 ]

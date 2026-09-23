@@ -1,5 +1,5 @@
 import { Check, Search } from 'lucide-react'
-import { FRAME_TEMPLATES } from '../../catalog/frames'
+import { FRAME_TEMPLATES, layoutById } from '../../catalog/frames'
 import type { FrameCategory, FrameOrientation } from '../../catalog/types'
 import { FrameThumbnail } from './FrameThumbnail'
 
@@ -39,6 +39,7 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
       {frames.map((frame) => <button key={frame.id} className={`frame-card ${selectedFrame === frame.id ? 'is-selected' : ''}`} type="button" onClick={() => onSelect(frame.id)} aria-pressed={selectedFrame === frame.id}>
         <FrameThumbnail frame={frame} />
         <span>{frame.name}</span>
+        <small className="frame-card-pose-count">{layoutById(frame.layoutId)?.requiredShots ?? frame.slots.length} pose</small>
         {selectedFrame === frame.id && <Check aria-label="Dipilih" size={16} />}
       </button>)}
     </div>

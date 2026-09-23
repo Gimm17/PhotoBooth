@@ -4,6 +4,7 @@ import '../shared/styles/global.css'
 
 const routes = [
   ['/', 'Abadikan momen, buat jadi milikmu.'],
+  ['/frames', 'Pilih frame sebelum berpose'],
   ['/setup', 'Izinkan Akses Kamera'],
   ['/studio', 'Studio pengambilan foto'],
   ['/editor', 'Kustomisasi hasil fotomu'],
@@ -29,6 +30,14 @@ describe('application routes', () => {
     expect(menu).toHaveAttribute('aria-expanded', 'true')
   })
 
+  it('starts a new session at frame selection', () => {
+    render(<App initialEntries={['/']} />)
+
+    fireEvent.click(screen.getByRole('link', { name: /Mulai PhotoBooth/i }))
+
+    expect(screen.getByRole('heading', { level: 1, name: /Pilih frame sebelum berpose/i })).toBeInTheDocument()
+  })
+
   it('closes mobile navigation after following a navigation link', () => {
     render(<App initialEntries={['/']} />)
 
@@ -37,7 +46,7 @@ describe('application routes', () => {
     fireEvent.click(screen.getByRole('link', { name: /^Kamera$/ }))
 
     expect(menu).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('heading', { level: 1, name: 'Izinkan Akses Kamera' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Pilih frame sebelum berpose' })).toBeInTheDocument()
   })
 
   it('closes mobile navigation with Escape and restores the menu trigger focus', () => {
@@ -53,6 +62,7 @@ describe('application routes', () => {
 
   it.each([
     ['/', 'Beranda'],
+    ['/frames', 'Pilih frame'],
     ['/setup', 'Pengaturan kamera'],
     ['/editor', 'Editor'],
     ['/result', 'Hasil foto'],

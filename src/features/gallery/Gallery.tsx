@@ -195,7 +195,7 @@ export function Gallery({ repository = defaultRepository, getStorageEstimate }: 
       <div className="gallery-storage"><span>Penyimpanan browser</span><strong>{estimate}</strong></div>
       <div className="gallery-vault-actions">
         <button type="button" className="gallery-clear-button" disabled={records.length === 0 || Boolean(pending)} onClick={(event) => openConfirmation({ type: 'clear' }, event.currentTarget)}><Trash2 aria-hidden="true" size={18} /> Bersihkan semua galeri</button>
-        <Link className="button primary-button" to="/setup" onClick={() => useSessionStore.getState().resetSession()}><Images aria-hidden="true" size={19} /> Mulai sesi baru</Link>
+        <Link className="button primary-button" to="/frames" onClick={() => useSessionStore.getState().resetSession()}><Images aria-hidden="true" size={19} /> Mulai sesi baru</Link>
       </div>
     </div>
 
@@ -203,7 +203,7 @@ export function Gallery({ repository = defaultRepository, getStorageEstimate }: 
     {loading ? <p className="gallery-loading" role="status">Memuat galeri lokal…</p> : records.length === 0 ? <div className="gallery-empty">
       <Images aria-hidden="true" size={42} />
       <h2>Belum ada foto tersimpan</h2><p>Hasil PhotoBooth yang disimpan akan muncul di sini. Foto tetap privat dan tersimpan hanya di browser ini.</p>
-      <Link className="button primary-button" to="/setup" onClick={() => useSessionStore.getState().resetSession()}>Mulai membuat foto</Link>
+      <Link className="button primary-button" to="/frames" onClick={() => useSessionStore.getState().resetSession()}>Mulai membuat foto</Link>
     </div> : <>
       <div className="gallery-toolbar" aria-label="Filter galeri">
         <div className="gallery-filters" role="group" aria-label="Filter jenis foto">

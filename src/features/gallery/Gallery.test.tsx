@@ -77,7 +77,7 @@ describe('Gallery', () => {
     renderGallery()
 
     expect(await screen.findByRole('heading', { name: 'Belum ada foto tersimpan' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Mulai membuat foto' })).toHaveAttribute('href', '/setup')
+    expect(screen.getByRole('link', { name: 'Mulai membuat foto' })).toHaveAttribute('href', '/frames')
   })
 
   it('derives filter counts from saved layouts and filters visible cards', async () => {

@@ -20,7 +20,7 @@ export function HomePage() {
           </h1>
           <p className="hero-summary">Studio foto digital langsung dari browsermu. Tangkap momen spontan, buat strip foto bergaya scrapbook, lalu simpan tanpa server.</p>
           <div className="hero-actions">
-            <Link className="button primary-button" to="/setup">Mulai PhotoBooth <ArrowRight aria-hidden="true" size={19} /></Link>
+            <Link className="button primary-button" to="/frames">Mulai PhotoBooth <ArrowRight aria-hidden="true" size={19} /></Link>
             <a className="button secondary-button" href="#fitur"><Images aria-hidden="true" size={19} /> Lihat fitur</a>
           </div>
           <p className="privacy-note"><ShieldCheck aria-hidden="true" size={15} /> Foto tidak diunggah ke cloud. Semuanya diproses secara lokal.</p>
@@ -73,7 +73,7 @@ export function HomePage() {
         <p className="section-kicker">Kamera siap digunakan</p>
         <h2>Siap membuat kenangan barumu hari ini?</h2>
         <p>Nyalakan kamera perangkatmu, berpose bersama orang tersayang, dan simpan strip kenangan berkualitas cetak dalam hitungan detik.</p>
-        <Link className="button primary-button" to="/setup"><Camera aria-hidden="true" size={19} /> Buka kamera sekarang</Link>
+        <Link className="button primary-button" to="/frames"><Camera aria-hidden="true" size={19} /> Pilih frame dan mulai</Link>
       </section>
     </PageShell>
   )
