@@ -33,7 +33,7 @@ describe('gallery database', () => {
     Object.assign(globalThis, { indexedDB: originalIndexedDb, IDBKeyRange: originalKeyRange, Blob: originalBlob })
   })
 
-  it('initializes schema version 1 and round-trips a Blob with its display metadata', async () => {
+  it('initializes schema version 2 and round-trips a Blob with its display metadata', async () => {
     const blob = new Blob(['photo bytes'], { type: 'image/webp' })
 
     const saved = await saveGalleryRecord({
@@ -46,6 +46,7 @@ describe('gallery database', () => {
       layoutLabel: 'Strip Klasik',
       filterId: '1977',
       filterLabel: '1977',
+      kind: 'image',
     })
 
     expect(saved).toMatchObject({
@@ -63,9 +64,42 @@ describe('gallery database', () => {
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
     })
-    expect(database.version).toBe(1)
+    expect(database.version).toBe(2)
     expect(database.objectStoreNames.contains('gallery-records')).toBe(true)
     database.close()
+  })
+
+  it('persists a video and its static poster', async () => {
+    const blob = new Blob(['video'], { type: 'video/webm' })
+    const posterBlob = new Blob(['poster'], { type: 'image/png' })
+    const saved = await saveGalleryRecord({
+      kind: 'video', id: 'live-1', blob, posterBlob, frameId: 'f', frameLabel: 'Frame',
+      layoutId: 'polaroid-single', layoutLabel: 'Polaroid', filterId: 'original', filterLabel: 'Original',
+    })
+
+    expect(saved).toMatchObject({ kind: 'video', mimeType: 'video/webm', posterBlob })
+    expect(await listGalleryRecords()).toEqual([saved])
+  })
+
+  it('normalizes a version-one image record without a kind during migration', async () => {
+    const legacy = {
+      id: 'old', createdAt: 1, blob: new Blob(['old'], { type: 'image/png' }), mimeType: 'image/png', size: 3,
+      frameId: 'f', frameLabel: 'Frame', layoutId: 'polaroid-single', layoutLabel: 'Polaroid', filterId: 'original', filterLabel: 'Original',
+    }
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(GALLERY_DATABASE_NAME, 1)
+      request.onupgradeneeded = () => request.result.createObjectStore('gallery-records', { keyPath: 'id' })
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const database = request.result
+        const transaction = database.transaction('gallery-records', 'readwrite')
+        transaction.objectStore('gallery-records').put(legacy)
+        transaction.oncomplete = () => { database.close(); resolve() }
+        transaction.onerror = () => reject(transaction.error)
+      }
+    })
+
+    expect(await listGalleryRecords()).toEqual([expect.objectContaining({ id: 'old', kind: 'image' })])
   })
 
   it('lists records newest first with stable ID tie-breaking', async () => {

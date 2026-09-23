@@ -1,8 +1,8 @@
-import { Download, Eye, HardDrive, Images, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Download, Eye, HardDrive, Images, Play, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSessionStore } from '../../store/session-store'
-import { createExportFilename, downloadBlob } from '../export/export-service'
+import { createBoomerangFilename, createExportFilename, downloadBlob } from '../export/export-service'
 import { clearGallery, deleteGalleryRecord, listGalleryRecords } from './gallery-db'
 import type { GalleryRecord } from './gallery-db'
 import './gallery.css'
@@ -38,28 +38,47 @@ const formatFromMime = (mime: string) => mime === 'image/jpeg' ? 'jpeg' : mime =
 
 function GalleryCard({ record, onDelete, onDownload, actionsDisabled }: { record: GalleryRecord; onDelete: (record: GalleryRecord, target: HTMLElement) => void; onDownload: (record: GalleryRecord) => void; actionsDisabled: boolean }) {
   const [url, setUrl] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    const objectUrl = URL.createObjectURL(record.blob)
+    const objectUrl = URL.createObjectURL(record.kind === 'video' ? record.posterBlob : record.blob)
     setUrl(objectUrl)
     return () => URL.revokeObjectURL(objectUrl)
-  }, [record.blob])
+  }, [record])
+
+  const openVideo = () => {
+    if (record.kind !== 'video' || actionsDisabled || videoUrl) return
+    setVideoUrl(URL.createObjectURL(record.blob))
+  }
+  const closeVideo = () => {
+    setVideoUrl(null)
+  }
+
+  useEffect(() => () => { if (videoUrl) URL.revokeObjectURL(videoUrl) }, [videoUrl])
 
   return <article className="gallery-card" aria-label={`${record.layoutLabel}, ${record.frameLabel}`}>
     <div className="gallery-photo-wrap">
-      {url && <img src={url} alt={`Pratinjau ${record.frameLabel}`} />}
+      {url && <img src={url} alt={record.kind === 'video' ? `Pratinjau boomerang ${record.frameLabel}` : `Pratinjau ${record.frameLabel}`} />}
       <span className="gallery-tape" aria-hidden="true" />
     </div>
     <div className="gallery-card-body">
       <div className="gallery-card-title"><h2>{record.frameLabel}</h2><span>{formatBytes(record.size)}</span></div>
       <p className="gallery-card-meta">{dateLabel(record.createdAt)} · {record.layoutLabel}</p>
-      <p className="gallery-tags"><span>{record.filterLabel}</span><span>{record.mimeType.replace('image/', '').toUpperCase()}</span></p>
+      <p className="gallery-tags"><span>{record.filterLabel}</span><span>{record.mimeType.replace(/^(image|video)\//, '').toUpperCase()}</span></p>
       <div className="gallery-card-actions" aria-label={`Aksi ${record.frameLabel}`}>
-        {url && <a href={actionsDisabled ? undefined : url} target={actionsDisabled ? undefined : '_blank'} rel="noreferrer" aria-disabled={actionsDisabled} tabIndex={actionsDisabled ? -1 : undefined}><Eye aria-hidden="true" size={17} />Pratinjau</a>}
+        {record.kind === 'video'
+          ? <button type="button" disabled={actionsDisabled} onClick={openVideo}><Play aria-hidden="true" size={17} />Putar boomerang</button>
+          : url && <a href={actionsDisabled ? undefined : url} target={actionsDisabled ? undefined : '_blank'} rel="noreferrer" aria-disabled={actionsDisabled} tabIndex={actionsDisabled ? -1 : undefined}><Eye aria-hidden="true" size={17} />Pratinjau</a>}
         <button type="button" disabled={actionsDisabled} onClick={() => onDownload(record)}><Download aria-hidden="true" size={17} />Unduh</button>
         <button type="button" className="gallery-delete-button" disabled={actionsDisabled} aria-label={`Hapus ${record.layoutLabel}`} onClick={(event) => onDelete(record, event.currentTarget)}><Trash2 aria-hidden="true" size={17} />Hapus</button>
       </div>
     </div>
+    {record.kind === 'video' && videoUrl && <div className="gallery-video-backdrop" role="dialog" aria-modal="true" aria-label="Pratinjau boomerang">
+      <div className="gallery-video-dialog">
+        <button type="button" aria-label="Tutup video boomerang" onClick={closeVideo}><X aria-hidden="true" /></button>
+        <video src={videoUrl} aria-label="Video boomerang" poster={url ?? undefined} muted loop playsInline controls autoPlay={typeof matchMedia !== 'function' || !matchMedia('(prefers-reduced-motion: reduce)').matches} />
+      </div>
+    </div>}
   </article>
 }
 
@@ -179,7 +198,10 @@ export function Gallery({ repository = defaultRepository, getStorageEstimate }: 
     }
   }
   const handleDownload = (record: GalleryRecord) => {
-    const result = downloadBlob(record.blob, createExportFilename(formatFromMime(record.mimeType), new Date(record.createdAt)))
+    const outputName = record.kind === 'video'
+      ? createBoomerangFilename(record.mimeType, new Date(record.createdAt))
+      : createExportFilename(formatFromMime(record.mimeType), new Date(record.createdAt))
+    const result = downloadBlob(record.blob, outputName)
     setStatus(result.status === 'success'
       ? { kind: 'success', message: 'Foto sedang diunduh.' }
       : { kind: 'error', message: result.status === 'error' ? result.message : 'Unduhan tidak didukung di perangkat ini.' })

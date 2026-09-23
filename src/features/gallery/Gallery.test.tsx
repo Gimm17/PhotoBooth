@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../export/export-service', () => ({ downloadBlob: mocks.downloadBlob }))
 
 const record = (id: string, layoutId: GalleryRecord['layoutId'] = 'classic-strip'): GalleryRecord => ({
+  kind: 'image',
   id,
   createdAt: 1_725_000_000_000,
   blob: new Blob([id], { type: 'image/png' }),
@@ -24,6 +25,14 @@ const record = (id: string, layoutId: GalleryRecord['layoutId'] = 'classic-strip
   layoutLabel: layoutId === 'grid-2x2' ? 'Grid 2x2' : 'Strip Klasik',
   filterId: 'original',
   filterLabel: 'Original',
+})
+
+const videoRecord = (): GalleryRecord => ({
+  ...record('live'),
+  kind: 'video',
+  blob: new Blob(['video'], { type: 'video/webm' }),
+  mimeType: 'video/webm',
+  posterBlob: new Blob(['poster'], { type: 'image/png' }),
 })
 
 function createRepository(records: GalleryRecord[] = []) {
@@ -175,5 +184,16 @@ describe('Gallery', () => {
     await waitFor(() => expect(mocks.revokeObjectURL).toHaveBeenCalledWith('blob:5'))
     view.unmount()
     expect(mocks.revokeObjectURL).toHaveBeenCalledTimes(2)
+  })
+
+  it('uses a poster in the grid and an accessible looping player in preview', async () => {
+    renderGallery(createRepository([videoRecord()]))
+
+    expect(await screen.findByRole('img', { name: /Pratinjau boomerang/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Putar boomerang/i }))
+
+    const video = screen.getByLabelText('Video boomerang')
+    expect(video).toHaveAttribute('playsinline')
+    expect(video).toHaveAttribute('loop')
   })
 })

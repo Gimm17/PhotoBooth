@@ -13,7 +13,7 @@ export function ResultPage() {
     const filter = filterById(session.selectedFilter)
     if (!frame || !layout || !filter) throw new Error('Metadata foto tidak lengkap untuk disimpan ke galeri.')
 
-    await saveGalleryRecord({
+    const metadata = {
       blob: media.blob,
       frameId: frame.id,
       frameLabel: frame.name,
@@ -21,7 +21,10 @@ export function ResultPage() {
       layoutLabel: layout.name,
       filterId: filter.id,
       filterLabel: filter.name,
-    })
+    }
+    await saveGalleryRecord(media.kind === 'video'
+      ? { ...metadata, kind: 'video', posterBlob: media.posterBlob }
+      : { ...metadata, kind: 'image' })
   }
 
   return <PageShell><ResultPanel saveToGallery={saveCurrentResult} /></PageShell>

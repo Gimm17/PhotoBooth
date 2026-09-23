@@ -1,10 +1,10 @@
 import type { LayoutId } from '../../catalog/types'
 
 export const GALLERY_DATABASE_NAME = 'photobooth-gallery'
-const GALLERY_DATABASE_VERSION = 1
+const GALLERY_DATABASE_VERSION = 2
 const GALLERY_STORE_NAME = 'gallery-records'
 
-export interface GalleryRecord {
+interface GalleryRecordBase {
   id: string
   createdAt: number
   blob: Blob
@@ -18,7 +18,11 @@ export interface GalleryRecord {
   filterLabel: string
 }
 
-export interface SaveGalleryRecordInput {
+export interface ImageGalleryRecord extends GalleryRecordBase { kind: 'image' }
+export interface VideoGalleryRecord extends GalleryRecordBase { kind: 'video'; posterBlob: Blob }
+export type GalleryRecord = ImageGalleryRecord | VideoGalleryRecord
+
+interface SaveGalleryRecordBase {
   id?: string
   createdAt?: number
   blob: Blob
@@ -29,6 +33,15 @@ export interface SaveGalleryRecordInput {
   filterId: string
   filterLabel: string
 }
+
+export type SaveGalleryRecordInput =
+  | (SaveGalleryRecordBase & { kind?: 'image' })
+  | (SaveGalleryRecordBase & { kind: 'video'; posterBlob: Blob })
+
+type LegacyGalleryRecord = Omit<ImageGalleryRecord, 'kind'>
+const normalizeRecord = (record: GalleryRecord | LegacyGalleryRecord): GalleryRecord => (
+  'kind' in record ? record : { ...record, kind: 'image' }
+)
 
 const dbError = (fallback: string, error: unknown) => error instanceof Error && error.message ? error : new Error(fallback)
 
@@ -90,7 +103,7 @@ const requestInTransaction = <T>(mode: IDBTransactionMode, operation: (store: ID
   }))
 
 export async function saveGalleryRecord(input: SaveGalleryRecordInput): Promise<GalleryRecord> {
-  const record: GalleryRecord = {
+  const base: GalleryRecordBase = {
     id: input.id ?? createId(),
     createdAt: input.createdAt ?? Date.now(),
     blob: input.blob,
@@ -103,13 +116,16 @@ export async function saveGalleryRecord(input: SaveGalleryRecordInput): Promise<
     filterId: input.filterId,
     filterLabel: input.filterLabel,
   }
+  const record: GalleryRecord = input.kind === 'video'
+    ? { ...base, kind: 'video', posterBlob: input.posterBlob }
+    : { ...base, kind: 'image' }
   await requestInTransaction('readwrite', (store) => store.put(record))
   return record
 }
 
 export async function listGalleryRecords(): Promise<GalleryRecord[]> {
-  const records = await requestInTransaction('readonly', (store) => store.getAll()) as GalleryRecord[]
-  return [...records].sort((left, right) => right.createdAt - left.createdAt || left.id.localeCompare(right.id))
+  const records = await requestInTransaction('readonly', (store) => store.getAll()) as Array<GalleryRecord | LegacyGalleryRecord>
+  return records.map(normalizeRecord).sort((left, right) => right.createdAt - left.createdAt || left.id.localeCompare(right.id))
 }
 
 export async function deleteGalleryRecord(id: string): Promise<void> {
