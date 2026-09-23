@@ -14,6 +14,14 @@ const importedFrames = [
   'Cowboy Vibes',
   'Negative Film Strip',
   'Mono Memory Collage',
+  'Red Ribbon Memories',
+  'About You 1975',
+  'Cowboy Country Strip',
+  'Polaroid Phone Film',
+  'Midnight Plaid Collage',
+  'Denim Camera Film',
+  'Smiths Playlist Strip',
+  'Starry Night Polaroids',
 ]
 
 test('all imported transparent frames render a composed preview', async ({ page }) => {

@@ -16,6 +16,22 @@ import rubyJazzStrip from '../../assets/frames/imported/ruby-jazz-strip.png?no-i
 import rubyJazzStripThumbnail from '../../assets/frames/imported/ruby-jazz-strip-thumb.webp?no-inline'
 import vintageCameraStrip from '../../assets/frames/imported/vintage-camera-strip.png?no-inline'
 import vintageCameraStripThumbnail from '../../assets/frames/imported/vintage-camera-strip-thumb.webp?no-inline'
+import redRibbonMemories from '../../assets/frames/imported/red-ribbon-memories.png?no-inline'
+import redRibbonMemoriesThumbnail from '../../assets/frames/imported/red-ribbon-memories-thumb.webp?no-inline'
+import aboutYou1975 from '../../assets/frames/imported/about-you-1975.png?no-inline'
+import aboutYou1975Thumbnail from '../../assets/frames/imported/about-you-1975-thumb.webp?no-inline'
+import cowboyCountryStrip from '../../assets/frames/imported/cowboy-country-strip.png?no-inline'
+import cowboyCountryStripThumbnail from '../../assets/frames/imported/cowboy-country-strip-thumb.webp?no-inline'
+import polaroidPhoneFilm from '../../assets/frames/imported/polaroid-phone-film.png?no-inline'
+import polaroidPhoneFilmThumbnail from '../../assets/frames/imported/polaroid-phone-film-thumb.webp?no-inline'
+import midnightPlaidCollage from '../../assets/frames/imported/midnight-plaid-collage.png?no-inline'
+import midnightPlaidCollageThumbnail from '../../assets/frames/imported/midnight-plaid-collage-thumb.webp?no-inline'
+import denimCameraFilm from '../../assets/frames/imported/denim-camera-film.png?no-inline'
+import denimCameraFilmThumbnail from '../../assets/frames/imported/denim-camera-film-thumb.webp?no-inline'
+import smithsPlaylistStrip from '../../assets/frames/imported/smiths-playlist-strip.png?no-inline'
+import smithsPlaylistStripThumbnail from '../../assets/frames/imported/smiths-playlist-strip-thumb.webp?no-inline'
+import starryNightPolaroids from '../../assets/frames/imported/starry-night-polaroids.png?no-inline'
+import starryNightPolaroidsThumbnail from '../../assets/frames/imported/starry-night-polaroids-thumb.webp?no-inline'
 
 const overlay = (src: string): FrameAssetLayer[] => [{
   src,
@@ -116,5 +132,89 @@ export const IMPORTED_FRAMES = [
       { x: .0082, y: .5107, width: .4416, height: .2500, rotation: .933 },
     ], .008),
     background: '#d7d7d7', border, caption: hiddenCaption, thumbnail: monoMemoryCollageThumbnail, assets: overlay(monoMemoryCollage),
+  },
+  {
+    id: 'red-ribbon-memories', name: 'Red Ribbon Memories', category: 'Celebration', layoutId: 'three-postcard', orientation: 'portrait',
+    output: { width: 941, height: 1672 },
+    slots: inset([
+      { x: .2654, y: .1098, width: .5048, height: .2368 },
+      { x: .2623, y: .3725, width: .5058, height: .2195 },
+      { x: .2665, y: .6200, width: .5069, height: .2249 },
+    ]),
+    background: '#6b0715', border, caption: hiddenCaption, thumbnail: redRibbonMemoriesThumbnail, assets: overlay(redRibbonMemories),
+  },
+  {
+    id: 'about-you-1975', name: 'About You 1975', category: 'Classic', layoutId: 'three-postcard', orientation: 'portrait',
+    output: { width: 941, height: 1672 },
+    slots: inset([
+      { x: .4712, y: .3168, width: .3575, height: .1845 },
+      { x: .4664, y: .5119, width: .3454, height: .1806 },
+      { x: .4681, y: .7002, width: .3401, height: .1800 },
+    ]),
+    background: '#eee8d9', border, caption: hiddenCaption, thumbnail: aboutYou1975Thumbnail, assets: overlay(aboutYou1975),
+  },
+  {
+    id: 'cowboy-country-strip', name: 'Cowboy Country Strip', category: 'Classic', layoutId: 'classic-strip', orientation: 'portrait',
+    output: { width: 941, height: 1672 },
+    slots: inset([
+      { x: .2411, y: .1650, width: .5813, height: .1543 },
+      { x: .2441, y: .3460, width: .5863, height: .1587, rotation: .0041 },
+      { x: .3532, y: .5353, width: .4833, height: .1512, rotation: .0050 },
+      { x: .4648, y: .7250, width: .3507, height: .1702, rotation: .9849 },
+    ]),
+    background: '#ded0b5', border, caption: hiddenCaption, thumbnail: cowboyCountryStripThumbnail, assets: overlay(cowboyCountryStrip),
+  },
+  {
+    id: 'polaroid-phone-film', name: 'Polaroid Phone Film', category: 'Classic', layoutId: 'classic-strip', orientation: 'portrait',
+    output: { width: 941, height: 1672 },
+    slots: inset([
+      { x: .3647, y: .3361, width: .2891, height: .1202 },
+      { x: .3668, y: .4781, width: .2869, height: .1184 },
+      { x: .3667, y: .6187, width: .2880, height: .1202 },
+      { x: .3672, y: .7603, width: .2869, height: .1190 },
+    ]),
+    background: '#142746', border, caption: hiddenCaption, thumbnail: polaroidPhoneFilmThumbnail, assets: overlay(polaroidPhoneFilm),
+  },
+  {
+    id: 'midnight-plaid-collage', name: 'Midnight Plaid Collage', category: 'Classic', layoutId: 'classic-strip', orientation: 'portrait',
+    output: { width: 941, height: 1672 },
+    slots: inset([
+      { x: .4790, y: .0831, width: .3702, height: .1814, rotation: .0289 },
+      { x: .1075, y: .2898, width: .3671, height: .2167, rotation: .9670 },
+      { x: .5722, y: .4181, width: .3591, height: .2108, rotation: .0404 },
+      { x: .2145, y: .6660, width: .3614, height: .2268, rotation: .9479 },
+    ]),
+    background: '#d7d7d7', border, caption: hiddenCaption, thumbnail: midnightPlaidCollageThumbnail, assets: overlay(midnightPlaidCollage),
+  },
+  {
+    id: 'denim-camera-film', name: 'Denim Camera Film', category: 'Cute & Pastel', layoutId: 'classic-strip', orientation: 'portrait',
+    output: { width: 736, height: 1308 },
+    slots: inset([
+      { x: .3587, y: .3555, width: .2758, height: .1124 },
+      { x: .3587, y: .4924, width: .2758, height: .1124 },
+      { x: .3587, y: .6292, width: .2758, height: .1116 },
+      { x: .3587, y: .7676, width: .2758, height: .1101 },
+    ]),
+    background: '#142746', border, caption: hiddenCaption, thumbnail: denimCameraFilmThumbnail, assets: overlay(denimCameraFilm),
+  },
+  {
+    id: 'smiths-playlist-strip', name: 'Smiths Playlist Strip', category: 'Classic', layoutId: 'three-postcard', orientation: 'portrait',
+    output: { width: 736, height: 1308 },
+    slots: inset([
+      { x: .2610, y: .1721, width: .4220, height: .2216, rotation: .9920 },
+      { x: .2834, y: .4031, width: .4234, height: .2208, rotation: .9920 },
+      { x: .3065, y: .6299, width: .4281, height: .2178, rotation: .9916 },
+    ]),
+    background: '#3a342f', border, caption: hiddenCaption, thumbnail: smithsPlaylistStripThumbnail, assets: overlay(smithsPlaylistStrip),
+  },
+  {
+    id: 'starry-night-polaroids', name: 'Starry Night Polaroids', category: 'Nature & Dreamy', layoutId: 'three-postcard', orientation: 'portrait',
+    output: { width: 675, height: 1200 },
+    slots: inset([
+      { x: .0888, y: .1584, width: .4163, height: .1942 },
+      { x: .6512, y: .3550, width: .3299, height: .1743, rotation: .0180 },
+      { x: .3548, y: .6413, width: .3098, height: .1865, rotation: .9769 },
+    ]),
+    background: '#050505', border, caption: hiddenCaption, thumbnail: starryNightPolaroidsThumbnail, assets: overlay(starryNightPolaroids),
   },
 ] satisfies FrameTemplate[]
