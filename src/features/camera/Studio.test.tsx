@@ -35,23 +35,23 @@ describe('Studio', () => {
     expect(screen.getAllByRole('button', { name: 'Jepret pose' })).toHaveLength(1)
   })
 
-  it('captures every pose after increasing the layout and cancels a pending incompatible capture', () => {
+  it('captures every pose after increasing the layout and cancels a pending incompatible capture', async () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')
     renderStudio()
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
     act(() => useSessionStore.getState().setLayout('classic-strip'))
-    act(() => vi.advanceTimersByTime(3_165))
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
     expect(useSessionStore.getState().photos).toHaveLength(0)
     for (let index = 0; index < 4; index++) {
       fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
-      act(() => vi.advanceTimersByTime(3_165))
+      await act(async () => vi.advanceTimersByTimeAsync(3_165))
     }
     expect(useSessionStore.getState().photos).toHaveLength(4)
     expect(screen.getByRole('status')).toHaveTextContent('Semua foto siap untuk diedit')
   })
 
-  it('replaces a selected pose after completion without appending an extra photo', () => {
+  it('replaces a selected pose after completion without appending an extra photo', async () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')
     useSessionStore.getState().addPhoto('data:image/jpeg;base64,old')
@@ -59,7 +59,7 @@ describe('Studio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ambil ulang pose 1' }))
     expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
-    act(() => vi.advanceTimersByTime(3_165))
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
     expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,captured'])
     expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
   })
@@ -142,14 +142,14 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Ambil ulang pose 3' })).toBeInTheDocument()
   })
 
-  it('captures successfully after the camera becomes active', () => {
+  it('captures successfully after the camera becomes active', async () => {
     vi.useFakeTimers()
     const view = renderStudio()
 
     mocks.cameraSnapshot = camera('active')
     view.rerender(<MemoryRouter><Studio /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
-    act(() => vi.advanceTimersByTime(3_165))
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
 
     expect(mocks.captureFrame).toHaveBeenCalledTimes(1)
     expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,captured'])

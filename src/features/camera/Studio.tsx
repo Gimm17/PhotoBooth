@@ -34,7 +34,7 @@ export function Studio() {
       timer: () => latest.current.timer,
       requiredShots: () => useSessionStore.getState().requiredShots,
       photoCount: () => useSessionStore.getState().photos.length,
-      capture: (replaceIndex) => {
+      capture: async (replaceIndex) => {
         const video = videoRef.current
         if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
         const image = captureFrame(video, { mirror: latest.current.mirror, filter: 'none' })
@@ -88,7 +88,7 @@ export function Studio() {
     : `Pose ${Math.min(session.photos.length + 1, session.requiredShots)} dari ${session.requiredShots}`
   const statusLabel = captureState.status === 'countdown'
     ? `Hitung mundur: ${captureState.remaining}`
-    : captureState.status === 'flashing' ? 'Mengambil foto'
+    : captureState.status === 'flashing' || captureState.status === 'capturing' ? 'Mengambil foto'
       : captureState.status === 'complete' ? 'Semua foto siap untuk diedit'
         : captureState.status === 'error' ? captureState.error ?? 'Foto belum dapat diambil'
           : 'Siap mengambil foto'
@@ -143,7 +143,7 @@ export function Studio() {
       <div className="studio-actions">
         {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel}>Batalkan hitung mundur</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]}><RotateCcw aria-hidden="true" size={18} />Ulang pose</button>}
         <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={21} /></button>
-        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
+        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing' || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
         <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
       </div>
       {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
