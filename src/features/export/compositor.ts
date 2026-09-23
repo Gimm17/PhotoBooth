@@ -1,6 +1,5 @@
-import type { FilterPreset, FrameAssetFit, FrameAssetLayer, FrameTemplate } from '../../catalog/types'
-import { loadFrameAsset } from './frame-asset-loader'
-import { calculateCoverCrop } from './geometry'
+import type { FilterPreset, FrameTemplate } from '../../catalog/types'
+import { drawFrameComposition, prepareFrameAssets } from './frame-renderer'
 
 export type OutputFormat = 'png' | 'jpeg' | 'webp'
 
@@ -22,135 +21,12 @@ const outputMimeTypes: Record<OutputFormat, string> = {
   webp: 'image/webp',
 }
 
-const shortestHueRotation = (degrees: number) => {
-  const normalized = ((degrees % 360) + 360) % 360
-  return normalized > 180 ? normalized - 360 : normalized
-}
-
-const interpolateFilter = (cssFilter: string, intensity: number) => {
-  const amount = Math.min(100, Math.max(0, intensity)) / 100
-  return cssFilter.replace(/(brightness|contrast|saturate|sepia|grayscale)\((-?\d+(?:\.\d+)?)%\)|hue-rotate\((-?\d+(?:\.\d+)?)deg\)/g, (term, property, percent, degrees) => {
-    if (property) {
-      const neutral = property === 'sepia' || property === 'grayscale' ? 0 : 100
-      return `${property}(${neutral + (Number(percent) - neutral) * amount}%)`
-    }
-
-    return `hue-rotate(${shortestHueRotation(Number(degrees)) * amount}deg)`
-  })
-}
-
 const loadImage = (source: string, position: number): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
   const image = new Image()
   image.onload = () => resolve(image)
   image.onerror = () => reject(new Error(`Unable to decode photo ${position + 1}`))
   image.src = source
 })
-
-const calculateAssetDestination = (
-  image: Pick<HTMLImageElement, 'naturalWidth' | 'naturalHeight'>,
-  box: { x: number; y: number; width: number; height: number },
-  fit: FrameAssetFit,
-): { sx: number; sy: number; sw: number; sh: number; dx: number; dy: number; dw: number; dh: number } => {
-  if (fit === 'stretch') {
-    return {
-      sx: 0,
-      sy: 0,
-      sw: image.naturalWidth,
-      sh: image.naturalHeight,
-      dx: box.x,
-      dy: box.y,
-      dw: box.width,
-      dh: box.height,
-    }
-  }
-
-  if (fit === 'cover') {
-    const crop = calculateCoverCrop(
-      { width: image.naturalWidth, height: image.naturalHeight },
-      { width: box.width, height: box.height },
-    )
-
-    return {
-      ...crop,
-      dx: box.x,
-      dy: box.y,
-      dw: box.width,
-      dh: box.height,
-    }
-  }
-
-  const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight)
-  const width = image.naturalWidth * scale
-  const height = image.naturalHeight * scale
-  return {
-    sx: 0,
-    sy: 0,
-    sw: image.naturalWidth,
-    sh: image.naturalHeight,
-    dx: box.x + (box.width - width) / 2,
-    dy: box.y + (box.height - height) / 2,
-    dw: width,
-    dh: height,
-  }
-}
-
-const drawAssetLayer = (
-  context: CanvasRenderingContext2D,
-  canvas: Pick<HTMLCanvasElement, 'width' | 'height'>,
-  layer: FrameAssetLayer,
-  image: HTMLImageElement,
-): void => {
-  const box = {
-    x: layer.x * canvas.width,
-    y: layer.y * canvas.height,
-    width: layer.width * canvas.width,
-    height: layer.height * canvas.height,
-  }
-  const destination = calculateAssetDestination(image, box, layer.fit ?? 'contain')
-  const centerX = box.x + box.width / 2
-  const centerY = box.y + box.height / 2
-
-  context.save()
-  context.translate(centerX, centerY)
-  context.rotate((layer.rotation ?? 0) * 2 * Math.PI)
-  context.translate(-centerX, -centerY)
-  context.globalAlpha = layer.opacity ?? 1
-  context.drawImage(
-    image,
-    destination.sx,
-    destination.sy,
-    destination.sw,
-    destination.sh,
-    destination.dx,
-    destination.dy,
-    destination.dw,
-    destination.dh,
-  )
-  context.restore()
-}
-
-const roundedPath = (context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) => {
-  const safeRadius = Math.min(Math.max(0, radius), width / 2, height / 2)
-  context.beginPath()
-
-  if (safeRadius === 0) {
-    context.rect(x, y, width, height)
-    return
-  }
-
-  context.moveTo(x + safeRadius, y)
-  context.lineTo(x + width - safeRadius, y)
-  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius)
-  context.lineTo(x + width, y + height - safeRadius)
-  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height)
-  context.lineTo(x + safeRadius, y + height)
-  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius)
-  context.lineTo(x, y + safeRadius)
-  context.quadraticCurveTo(x, y, x + safeRadius, y)
-  context.closePath()
-}
-
-const formatDate = (date: Date) => [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('.')
 
 const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> => new Promise((resolve, reject) => {
   canvas.toBlob((blob) => {
@@ -166,7 +42,7 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
   }
 
   const [assets, images] = await Promise.all([
-    Promise.all((frame.assets ?? []).map(async (layer) => ({ layer, image: await loadFrameAsset(layer.src) }))),
+    prepareFrameAssets(frame),
     Promise.all(frame.slots.map((_, index) => loadImage(photos[index], index))),
   ])
   const canvas = document.createElement('canvas')
@@ -175,56 +51,18 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Canvas 2D context is unavailable')
 
-  context.fillStyle = frame.background
-  context.fillRect(0, 0, canvas.width, canvas.height)
-
-  assets
-    .filter(({ layer }) => layer.placement === 'underlay')
-    .forEach(({ layer, image }) => drawAssetLayer(context, canvas, layer, image))
-
-  frame.slots.forEach((slot, index) => {
-    const width = slot.width * canvas.width
-    const height = slot.height * canvas.height
-    const x = slot.x * canvas.width
-    const y = slot.y * canvas.height
-    const crop = calculateCoverCrop(
-      { width: images[index].naturalWidth, height: images[index].naturalHeight },
-      { width, height },
-    )
-
-    context.save()
-    context.translate(x + width / 2, y + height / 2)
-    context.rotate((slot.rotation ?? 0) * 2 * Math.PI)
-    context.translate(-width / 2, -height / 2)
-    roundedPath(context, 0, 0, width, height, frame.border.radius)
-    context.clip()
-    context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
-    context.drawImage(images[index], crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
-    context.restore()
+  drawFrameComposition({
+    context,
+    canvas,
+    frame,
+    assets,
+    slots: images.map((image) => ({ source: image, width: image.naturalWidth, height: image.naturalHeight })),
+    filter: input.filter,
+    intensity: input.intensity,
+    caption: input.caption,
+    showDate: input.showDate,
+    date: input.date ?? new Date(),
   })
-
-  if (frame.border.width > 0) {
-    context.strokeStyle = frame.border.color
-    context.lineWidth = frame.border.width
-    roundedPath(context, frame.border.width / 2, frame.border.width / 2, canvas.width - frame.border.width, canvas.height - frame.border.width, frame.border.radius)
-    context.stroke()
-  }
-
-  assets
-    .filter(({ layer }) => layer.placement === 'overlay')
-    .forEach(({ layer, image }) => drawAssetLayer(context, canvas, layer, image))
-
-  context.fillStyle = frame.caption.color
-  context.font = `${frame.caption.fontSize}px ${frame.caption.fontFamily}`
-  context.textAlign = frame.caption.align
-  const textX = frame.caption.x * canvas.width
-  const textY = frame.caption.y * canvas.height
-  if (frame.caption.enabled && input.caption.trim()) {
-    context.fillText(input.caption.trim(), textX, textY)
-  }
-  if (input.showDate) {
-    context.fillText(formatDate(input.date ?? new Date()), textX, textY + frame.caption.fontSize * 1.25)
-  }
 
   return canvasToBlob(canvas, outputMimeTypes[input.format], input.quality ?? 0.92)
 }
