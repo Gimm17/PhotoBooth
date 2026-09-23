@@ -6,6 +6,7 @@ import { Studio } from './Studio'
 
 const mocks = vi.hoisted(() => ({
   captureFrame: vi.fn(() => 'data:image/jpeg;base64,captured'),
+  captureLivePose: vi.fn(),
   cameraSnapshot: null as ReturnType<typeof camera> | null,
 }))
 
@@ -14,6 +15,13 @@ function camera(status: 'idle' | 'active') {
 }
 
 vi.mock('./camera-service', () => ({ captureFrame: mocks.captureFrame }))
+vi.mock('./live-capture-service', () => ({ captureLivePose: mocks.captureLivePose }))
+vi.mock('./LiveFramePreview', async () => {
+  const { forwardRef } = await import('react')
+  return { LiveFramePreview: forwardRef<HTMLVideoElement>(function Preview(_, ref) {
+    return <div><canvas aria-label="Pratinjau kamera di dalam frame" /><video ref={ref} /></div>
+  }) }
+})
 vi.mock('./useCamera', () => ({ useCamera: () => mocks.cameraSnapshot }))
 
 function renderStudio() {
@@ -25,6 +33,8 @@ describe('Studio', () => {
     useSessionStore.getState().resetSession()
     mocks.cameraSnapshot = camera('idle')
     mocks.captureFrame.mockClear()
+    mocks.captureLivePose.mockReset()
+    mocks.captureLivePose.mockResolvedValue({ photo: 'data:image/jpeg;base64,live', sequence: { frames: [{ blob: new Blob(['frame']) }], width: 640, height: 480, fps: 10 } })
     vi.useRealTimers()
   })
   afterEach(() => useSessionStore.getState().resetSession())
@@ -60,18 +70,18 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
     await act(async () => vi.advanceTimersByTimeAsync(3_165))
-    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,captured'])
+    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,live'])
     expect(screen.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
   })
 
-  it('keeps quick filters on the preview while capturing unfiltered source pixels', () => {
+  it('keeps quick filters on the preview while capturing unfiltered source pixels', async () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')
     renderStudio()
     fireEvent.change(screen.getByLabelText('Pilih filter cepat'), { target: { value: 'inkwell' } })
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
-    act(() => vi.advanceTimersByTime(3_165))
-    expect(mocks.captureFrame).toHaveBeenCalledWith(expect.any(HTMLVideoElement), { mirror: true, filter: 'none' })
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
+    expect(mocks.captureLivePose).toHaveBeenCalledWith(expect.any(HTMLVideoElement), expect.objectContaining({ mirror: true, filter: 'none', signal: expect.any(AbortSignal) }))
   })
 
   it('uses Space for the shutter but ignores it while a button has focus', () => {
@@ -151,8 +161,8 @@ describe('Studio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
     await act(async () => vi.advanceTimersByTimeAsync(3_165))
 
-    expect(mocks.captureFrame).toHaveBeenCalledTimes(1)
-    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,captured'])
+    expect(mocks.captureLivePose).toHaveBeenCalledTimes(1)
+    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,live'])
     expect(screen.getByRole('status')).toHaveTextContent('Semua foto siap untuk diedit')
   })
 
@@ -172,5 +182,34 @@ describe('Studio', () => {
     act(() => fireEvent.click(screen.getByLabelText('Tutup setelan tangkapan', { selector: 'button' })))
     expect(button).toHaveAttribute('aria-expanded', 'false')
     expect(sheet).not.toHaveClass('is-mobile-open')
+  })
+
+  it('captures the active pose as Live media and advances the framed preview slot', async () => {
+    vi.useFakeTimers()
+    mocks.cameraSnapshot = camera('active')
+    useSessionStore.getState().setLayout('three-postcard')
+    renderStudio()
+
+    expect(screen.getByText('Three-photo Postcard · Pose 1 dari 3')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
+
+    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,live'])
+    expect(useSessionStore.getState().liveSequences[0]).toEqual(expect.objectContaining({ fps: 10 }))
+    expect(screen.getByText('Three-photo Postcard · Pose 2 dari 3')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pratinjau kamera di dalam frame')).toBeInTheDocument()
+  })
+
+  it('keeps the static pose and reports when Live sampling falls back', async () => {
+    vi.useFakeTimers()
+    mocks.cameraSnapshot = camera('active')
+    mocks.captureLivePose.mockResolvedValue({ photo: 'data:image/jpeg;base64,fallback', sequence: null, liveError: 'Live tidak tersedia.' })
+    renderStudio()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
+    await act(async () => vi.advanceTimersByTimeAsync(3_165))
+
+    expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,fallback'])
+    expect(screen.getByRole('status')).toHaveTextContent('Live tidak tersedia.')
   })
 })

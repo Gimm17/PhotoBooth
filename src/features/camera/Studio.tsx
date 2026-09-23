@@ -2,11 +2,13 @@ import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHoriz
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
-import { FRAME_TEMPLATES, LAYOUTS, layoutById } from '../../catalog/frames'
+import { FRAME_TEMPLATES, LAYOUTS, frameById, layoutById } from '../../catalog/frames'
 import type { LayoutId } from '../../catalog/types'
 import { useSessionStore } from '../../store/session-store'
 import { captureFrame } from './camera-service'
 import { createCaptureMachine, type CaptureState } from './capture-machine'
+import { captureLivePose } from './live-capture-service'
+import { LiveFramePreview } from './LiveFramePreview'
 import { useCamera } from './useCamera'
 import './studio.css'
 
@@ -27,6 +29,7 @@ export function Studio() {
   currentCamera.current = camera
   const [captureState, setCaptureState] = useState<CaptureState>(initialCaptureState)
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const machineRef = useRef<ReturnType<typeof createCaptureMachine> | null>(null)
 
   if (!machineRef.current) {
@@ -34,12 +37,16 @@ export function Studio() {
       timer: () => latest.current.timer,
       requiredShots: () => useSessionStore.getState().requiredShots,
       photoCount: () => useSessionStore.getState().photos.length,
-      capture: async (replaceIndex) => {
+      capture: async (replaceIndex, signal) => {
         const video = videoRef.current
         if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
-        const image = captureFrame(video, { mirror: latest.current.mirror, filter: 'none' })
-        if (replaceIndex === null) latest.current.addPhoto(image)
-        else latest.current.replacePhoto(replaceIndex, image)
+        const current = latest.current
+        const index = replaceIndex ?? useSessionStore.getState().photos.length
+        const pose = current.liveEnabled
+          ? await captureLivePose(video, { mirror: current.mirror, filter: 'none', signal })
+          : { photo: captureFrame(video, { mirror: current.mirror, filter: 'none' }), sequence: null }
+        if (signal.aborted) throw new DOMException('Capture dibatalkan.', 'AbortError')
+        useSessionStore.getState().commitCapturedPose(index, pose)
       },
       onStateChange: setCaptureState,
     })
@@ -48,6 +55,9 @@ export function Studio() {
   const machine = machineRef.current
   const activeSlot = captureState.retakeIndex ?? Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0))
   const complete = session.photos.length >= session.requiredShots
+  const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
+  const activeFilter = filterById(session.selectedFilter) ?? FILTER_PRESETS[0]
+  const captureBusy = captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing'
   const uploadContinuation = camera.status !== 'active' && session.photos.length > 0
   const canEdit = complete || uploadContinuation
 
@@ -86,10 +96,12 @@ export function Studio() {
   const progressLabel = complete
     ? `${session.requiredShots} pose selesai`
     : `Pose ${Math.min(session.photos.length + 1, session.requiredShots)} dari ${session.requiredShots}`
+  const liveNotice = session.liveErrors[Math.min(session.photos.length, session.requiredShots) - 1] ?? previewError
   const statusLabel = captureState.status === 'countdown'
     ? `Hitung mundur: ${captureState.remaining}`
     : captureState.status === 'flashing' || captureState.status === 'capturing' ? 'Mengambil foto'
-      : captureState.status === 'complete' ? 'Semua foto siap untuk diedit'
+      : liveNotice ? liveNotice
+        : captureState.status === 'complete' ? 'Semua foto siap untuk diedit'
         : captureState.status === 'error' ? captureState.error ?? 'Foto belum dapat diambil'
           : 'Siap mengambil foto'
 
@@ -106,8 +118,8 @@ export function Studio() {
 
     <div className="studio-workspace">
       <div className="studio-main">
-        <div className={`viewfinder ${session.showGrid ? 'show-grid' : ''} ${captureState.status === 'flashing' ? 'is-flashing' : ''}`}>
-          <video ref={videoRef} autoPlay muted playsInline style={{ filter: filterById(session.selectedFilter)?.cssFilter, transform: session.mirror ? 'scaleX(-1)' : undefined }} />
+        <div className={`viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`}>
+          <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} showGrid={session.showGrid} onError={setPreviewError} />
           {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
           <div className="viewfinder-corners" aria-hidden="true" />
           {captureState.status === 'countdown' && <div className="countdown" aria-hidden="true">{captureState.remaining}</div>}
@@ -120,14 +132,15 @@ export function Studio() {
       <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan">
         <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2></div>
         <button className="settings-close" type="button" onClick={() => setMobileSettingsOpen(false)} aria-label="Tutup setelan tangkapan">Tutup</button>
-        <fieldset><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
+        <fieldset disabled={captureBusy}><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
         <label className="studio-select-label" htmlFor="frame-select">Frame yang kompatibel</label>
-        <select id="frame-select" value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
-        <fieldset><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
-        <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
-        <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
+        <select id="frame-select" disabled={captureBusy} value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
+        <fieldset disabled={captureBusy}><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
+        <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
+        <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
+        <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live boomerang</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
         <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
-        <select id="quick-filter" aria-label="Pilih filter cepat" value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
+        <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>
     </div>
 
@@ -143,7 +156,7 @@ export function Studio() {
       <div className="studio-actions">
         {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel}>Batalkan hitung mundur</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]}><RotateCcw aria-hidden="true" size={18} />Ulang pose</button>}
         <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={21} /></button>
-        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing' || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
+        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
         <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
       </div>
       {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
