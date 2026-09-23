@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearFrameAssetCacheForTests, loadFrameAsset } from './frame-asset-loader'
+import { clearFrameAssetCacheForTests, decodeFrameBlob, loadFrameAsset } from './frame-asset-loader'
 
 class DecodedImage {
   naturalWidth = 100
@@ -53,5 +53,16 @@ describe('loadFrameAsset', () => {
     await expect(loadFrameAsset('/broken.png')).rejects.toThrow('Unable to decode frame asset /broken.png')
 
     expect(images).toHaveLength(2)
+  })
+
+  it('revokes the fallback object URL after decoding a Live frame', async () => {
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('createImageBitmap', undefined)
+    vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:frame'), revokeObjectURL })
+
+    const decoded = await decodeFrameBlob(new Blob(['frame']))
+
+    expect(decoded).toMatchObject({ width: 100, height: 100 })
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:frame')
   })
 })
