@@ -6,6 +6,7 @@ export interface RenderSource {
   source: CanvasImageSource
   width: number
   height: number
+  mirror?: boolean
 }
 
 export interface PreparedFrameAsset {
@@ -129,6 +130,10 @@ export function drawFrameComposition(input: DrawFrameCompositionInput): void {
     if (source) {
       const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height })
       context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
+      if (source.mirror) {
+        context.translate(width, 0)
+        context.scale(-1, 1)
+      }
       context.drawImage(source.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
     } else {
       input.placeholder?.(context, index, { x: 0, y: 0, width, height })

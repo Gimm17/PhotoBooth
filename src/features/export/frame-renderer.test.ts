@@ -21,7 +21,7 @@ const makeContext = () => {
     get globalAlpha() { return alpha }, set globalAlpha(value: number) { alpha = value },
     fillRect: vi.fn(() => order.push('background')),
     save: vi.fn(() => alphaStack.push(alpha)), restore: vi.fn(() => { alpha = alphaStack.pop() ?? 1 }),
-    translate: vi.fn(), rotate: vi.fn(), beginPath: vi.fn(), rect: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), quadraticCurveTo: vi.fn(), closePath: vi.fn(),
+    translate: vi.fn(), scale: vi.fn(), rotate: vi.fn(), beginPath: vi.fn(), rect: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), quadraticCurveTo: vi.fn(), closePath: vi.fn(),
     clip: vi.fn(), stroke: vi.fn(() => order.push('border')),
     drawImage: vi.fn((source: { id: string }) => order.push(source.id)),
     fillText: vi.fn((text: string) => order.push(`text:${text}`)),
@@ -65,6 +65,24 @@ describe('frame renderer', () => {
     drawFrameComposition({ context, canvas: { width: 400, height: 400 } as HTMLCanvasElement, frame, assets: [], slots: [null], filter, intensity: 100, caption: '', showDate: false, date: new Date(), placeholder })
     expect(placeholder).toHaveBeenCalledWith(context, 0, { x: 0, y: 0, width: 100, height: 200 })
     expect(context.drawImage).not.toHaveBeenCalled()
+  })
+
+  it('mirrors a live source within its clipped slot', () => {
+    const { context } = makeContext()
+    drawFrameComposition({
+      context,
+      canvas: { width: 400, height: 400 } as HTMLCanvasElement,
+      frame: { ...frame, slots: [{ ...frame.slots[0], rotation: 0 }] },
+      assets: [],
+      slots: [{ source: { id: 'camera' } as unknown as CanvasImageSource, width: 640, height: 480, mirror: true }],
+      filter,
+      intensity: 100,
+      caption: '',
+      showDate: false,
+      date: new Date(),
+    })
+    expect(context.translate).toHaveBeenCalledWith(100, 0)
+    expect(context.scale).toHaveBeenCalledWith(-1, 1)
   })
 
   it('interpolates hue through the shortest signed turn', () => {
