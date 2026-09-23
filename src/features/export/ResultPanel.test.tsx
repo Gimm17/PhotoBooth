@@ -2,10 +2,11 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore } from '../../store/session-store'
-import { ResultPanel } from './ResultPanel'
+import { ResultPanel, type GallerySaveRequest } from './ResultPanel'
 
 const mocks = vi.hoisted(() => ({
   composePhotoStrip: vi.fn(),
+  composeBoomerang: vi.fn(),
   createObjectURL: vi.fn(),
   downloadBlob: vi.fn(),
   printBlob: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 const NativeURL = URL
 
 vi.mock('./compositor', () => ({ composePhotoStrip: mocks.composePhotoStrip }))
+vi.mock('./boomerang-compositor', () => ({ composeBoomerang: mocks.composeBoomerang }))
 vi.mock('./export-service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./export-service')>()),
   downloadBlob: mocks.downloadBlob,
@@ -26,7 +28,7 @@ function Location() {
   return <output data-testid="location">{location.pathname}</output>
 }
 
-function renderPanel(saveToGallery?: (blob: Blob, filename: string) => Promise<void> | void) {
+function renderPanel(saveToGallery?: (media: GallerySaveRequest) => Promise<void> | void) {
   return render(
     <MemoryRouter initialEntries={['/result']}>
       <Routes>
@@ -50,6 +52,7 @@ function readySession() {
     showDate: true,
     composedResultUrl: 'blob:result',
     composedResultBlob: new Blob(['png'], { type: 'image/png' }),
+    liveSequences: [{ frames: [{ blob: new Blob(['frame'], { type: 'image/webp' }) }], width: 640, height: 480, fps: 10 }],
   })
 }
 
@@ -58,6 +61,7 @@ describe('ResultPanel', () => {
     useSessionStore.getState().resetSession()
     readySession()
     mocks.composePhotoStrip.mockReset()
+    mocks.composeBoomerang.mockReset().mockResolvedValue({ blob: new Blob(['video'], { type: 'video/webm' }), mimeType: 'video/webm' })
     mocks.createObjectURL.mockReset().mockReturnValue('blob:jpeg-result')
     mocks.downloadBlob.mockReset().mockReturnValue({ status: 'success' })
     mocks.printBlob.mockReset().mockReturnValue({ status: 'success' })
@@ -169,7 +173,7 @@ describe('ResultPanel', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Berbagi file belum didukung di perangkat ini.'))
 
     fireEvent.click(screen.getByRole('button', { name: /Simpan ke galeri/i }))
-    await waitFor(() => expect(saveToGallery).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/\.png$/)))
+    await waitFor(() => expect(saveToGallery).toHaveBeenCalledWith(expect.objectContaining({ kind: 'image', blob: expect.any(Blob), filename: expect.stringMatching(/\.png$/) })))
     expect(screen.getByRole('status')).toHaveTextContent('Foto disimpan ke galeri lokal.')
   })
 
@@ -210,5 +214,30 @@ describe('ResultPanel', () => {
 
     await waitFor(() => expect(useSessionStore.getState().photos).toEqual([]))
     expect(await screen.findByTestId('location')).toHaveTextContent('/setup')
+  })
+
+  it('generates Live only after its tab opens and shows the actual output format', async () => {
+    renderPanel()
+    expect(mocks.composeBoomerang).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('tab', { name: /Live boomerang/i }))
+
+    await waitFor(() => expect(mocks.composeBoomerang).toHaveBeenCalledOnce())
+    expect(await screen.findByText(/WEBM/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Unduh boomerang/i })).toBeEnabled()
+  })
+
+  it('keeps a successful photo save when the video save fails', async () => {
+    const saveToGallery = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('Video gagal'))
+    renderPanel(saveToGallery)
+    fireEvent.click(screen.getByRole('tab', { name: /Live boomerang/i }))
+    await screen.findByText(/WEBM/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /Simpan semua/i }))
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Foto tersimpan.*Video gagal/i))
+    expect(saveToGallery).toHaveBeenCalledTimes(2)
   })
 })

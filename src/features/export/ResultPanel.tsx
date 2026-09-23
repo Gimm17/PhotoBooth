@@ -1,4 +1,4 @@
-import { ArrowRight, Bookmark, Download, Printer, Share2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Bookmark, Download, Film, Printer, Share2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { filterById } from '../../catalog/filters'
@@ -6,15 +6,25 @@ import { frameById } from '../../catalog/frames'
 import { useSessionStore } from '../../store/session-store'
 import { composePhotoStrip } from './compositor'
 import type { OutputFormat } from './compositor'
-import { createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
+import { composeBoomerang } from './boomerang-compositor'
+import { createBoomerangFilename, createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
 import './result.css'
 
+export type GallerySaveRequest =
+  | { kind: 'image'; blob: Blob; filename: string }
+  | { kind: 'video'; blob: Blob; filename: string; posterBlob: Blob }
+
 interface ResultPanelProps {
-  saveToGallery?: (blob: Blob, filename: string) => Promise<void> | void
+  saveToGallery?: (media: GallerySaveRequest) => Promise<void> | void
 }
 
 type Status = { kind: 'success' | 'error' | 'info'; message: string } | null
 type ResultIdentity = { blob: Blob; url: string | null }
+type LiveStatus =
+  | { kind: 'idle' }
+  | { kind: 'generating' }
+  | { kind: 'ready'; blob: Blob; url: string; mimeType: string }
+  | { kind: 'unsupported' | 'error'; message: string }
 
 const formatDetails: Record<OutputFormat, { label: string; description: string }> = {
   png: { label: 'PNG', description: 'Kualitas terbaik' },
@@ -42,8 +52,13 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const [isRecomposing, setIsRecomposing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savedResult, setSavedResult] = useState<ResultIdentity | null>(null)
+  const [activeView, setActiveView] = useState<'photo' | 'live'>('photo')
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>(() => session.boomerangResult
+    ? { kind: 'ready', ...session.boomerangResult }
+    : { kind: 'idle' })
   const recompositionRequest = useRef(0)
   const saveInFlight = useRef(false)
+  const liveController = useRef<AbortController | null>(null)
 
   useEffect(() => {
     recompositionRequest.current += 1
@@ -52,6 +67,15 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     setSavedResult(null)
     return () => { recompositionRequest.current += 1 }
   }, [blob, session.composedResultUrl])
+
+  useEffect(() => () => liveController.current?.abort(), [])
+
+  useEffect(() => {
+    liveController.current?.abort()
+    liveController.current = null
+    setActiveView('photo')
+    setLiveStatus(session.boomerangResult ? { kind: 'ready', ...session.boomerangResult } : { kind: 'idle' })
+  }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
   if (!hasResult || !blob || !frame || !filter) {
@@ -157,7 +181,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     saveInFlight.current = true
     setIsSaving(true)
     try {
-      await saveToGallery(blob, filename())
+      await saveToGallery({ kind: 'image', blob, filename: filename() })
       const current = useSessionStore.getState()
       if (current.composedResultBlob === source.blob && current.composedResultUrl === source.url) {
         setSavedResult(source)
@@ -165,6 +189,75 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       }
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Foto tidak dapat disimpan ke galeri lokal.' })
+    } finally {
+      saveInFlight.current = false
+      setIsSaving(false)
+    }
+  }
+
+  const openLive = async () => {
+    setActiveView('live')
+    if (liveStatus.kind === 'ready' || liveStatus.kind === 'generating') return
+    const controller = new AbortController()
+    liveController.current?.abort()
+    liveController.current = controller
+    setLiveStatus({ kind: 'generating' })
+    try {
+      const recorded = await composeBoomerang({
+        frame,
+        filter,
+        intensity: session.filterIntensity,
+        caption: session.caption,
+        showDate: session.showDate,
+        sequences: session.liveSequences,
+        signal: controller.signal,
+        capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
+      })
+      if (controller.signal.aborted) return
+      const url = URL.createObjectURL(recorded.blob)
+      const result = { ...recorded, url }
+      useSessionStore.getState().setBoomerangResult(result)
+      setLiveStatus({ kind: 'ready', ...result })
+    } catch (error) {
+      if (controller.signal.aborted) return
+      const message = error instanceof Error ? error.message : 'Boomerang tidak dapat dibuat.'
+      setLiveStatus({ kind: error instanceof Error && error.name === 'UnsupportedLiveVideoError' ? 'unsupported' : 'error', message })
+    } finally {
+      if (liveController.current === controller) liveController.current = null
+    }
+  }
+
+  const handleLiveDownload = () => {
+    if (liveStatus.kind !== 'ready') return
+    const result = downloadBlob(liveStatus.blob, createBoomerangFilename(liveStatus.mimeType))
+    setStatus(result.status === 'success' ? { kind: 'success', message: 'Boomerang sedang diunduh.' } : { kind: 'error', message: result.status === 'error' ? result.message : 'Unduhan video tidak didukung.' })
+  }
+
+  const handleLiveShare = async () => {
+    if (liveStatus.kind !== 'ready') return
+    const result = await shareBlob(liveStatus.blob, createBoomerangFilename(liveStatus.mimeType))
+    setStatus(result.status === 'success' ? { kind: 'success', message: 'Boomerang siap dibagikan.' } : result.status === 'unsupported' ? { kind: 'info', message: 'Berbagi video belum didukung di perangkat ini.' } : { kind: 'error', message: result.message })
+  }
+
+  const handleSaveAll = async () => {
+    if (!saveToGallery || liveStatus.kind !== 'ready' || saveInFlight.current) return
+    saveInFlight.current = true
+    setIsSaving(true)
+    const messages: string[] = []
+    try {
+      try {
+        await saveToGallery({ kind: 'image', blob, filename: filename() })
+        messages.push('Foto tersimpan.')
+      } catch (error) {
+        messages.push(`Foto gagal: ${error instanceof Error ? error.message : 'tidak dapat disimpan'}.`)
+      }
+      try {
+        await saveToGallery({ kind: 'video', blob: liveStatus.blob, filename: createBoomerangFilename(liveStatus.mimeType), posterBlob: blob })
+        messages.push('Video tersimpan.')
+      } catch (error) {
+        messages.push(`Video gagal: ${error instanceof Error ? error.message : 'tidak dapat disimpan'}.`)
+      }
+      setStatus({ kind: messages.some((message) => message.includes('gagal')) ? 'error' : 'success', message: messages.join(' ') })
     } finally {
       saveInFlight.current = false
       setIsSaving(false)
@@ -183,14 +276,28 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       <p className="result-session">Sesi aktif · {session.photos.length} foto</p>
     </header>
 
+    <div className="result-tabs" role="tablist" aria-label="Jenis hasil">
+      <button type="button" role="tab" aria-selected={activeView === 'photo'} onClick={() => setActiveView('photo')}>Foto</button>
+      <button type="button" role="tab" aria-selected={activeView === 'live'} onClick={() => void openLive()}><Film aria-hidden="true" size={16} />Live boomerang</button>
+    </div>
+
     <div className="result-layout">
       <figure className="result-print">
         <span className="result-tape" aria-hidden="true">MEMENTO ARCHIVE</span>
-        <img src={session.composedResultUrl!} alt="Hasil PhotoBooth siap disimpan" />
-        <figcaption>{frame.output.width} × {frame.output.height} px · {fileSize(blob.size)} · {session.photos.length} foto</figcaption>
+        {activeView === 'photo' && <img src={session.composedResultUrl!} alt="Hasil PhotoBooth siap disimpan" />}
+        {activeView === 'live' && liveStatus.kind === 'generating' && <div className="result-live-state"><Sparkles aria-hidden="true" />Membuat boomerang…</div>}
+        {activeView === 'live' && (liveStatus.kind === 'error' || liveStatus.kind === 'unsupported') && <div className="result-live-state"><strong>Live belum tersedia</strong><span>{liveStatus.message}</span><button type="button" onClick={() => { setLiveStatus({ kind: 'idle' }); void openLive() }}>Coba lagi</button></div>}
+        {activeView === 'live' && liveStatus.kind === 'ready' && <video src={liveStatus.url} aria-label="Hasil Live boomerang" muted loop playsInline controls autoPlay={typeof matchMedia !== 'function' || !matchMedia('(prefers-reduced-motion: reduce)').matches} />}
+        <figcaption>{activeView === 'live' && liveStatus.kind === 'ready' ? `${liveStatus.mimeType.includes('mp4') ? 'MP4' : 'WEBM'} · ${fileSize(liveStatus.blob.size)}` : `${frame.output.width} × ${frame.output.height} px · ${fileSize(blob.size)} · ${session.photos.length} foto`}</figcaption>
       </figure>
 
       <div className="result-controls">
+        {activeView === 'live' && <div className="live-result-actions">
+          <button className="button primary-button result-download" type="button" disabled={liveStatus.kind !== 'ready'} onClick={handleLiveDownload}><Download aria-hidden="true" size={20} /> Unduh boomerang</button>
+          <button className="button secondary-button" type="button" disabled={liveStatus.kind !== 'ready'} onClick={() => void handleLiveShare()}><Share2 aria-hidden="true" size={18} /> Bagikan boomerang</button>
+          <button className="button secondary-button" type="button" disabled={!saveToGallery || liveStatus.kind !== 'ready' || isSaving} onClick={() => void handleSaveAll()}><Bookmark aria-hidden="true" size={18} /> Simpan semua</button>
+        </div>}
+        {activeView === 'photo' && <>
         <fieldset className="format-selector" disabled={isRecomposing}>
           <legend>Pilihan format ekspor</legend>
           {(Object.keys(formatDetails) as OutputFormat[]).map((option) => (
@@ -213,6 +320,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
           <button type="button" disabled={isRecomposing} onClick={() => void handleShare()}><Share2 aria-hidden="true" size={19} /><span><strong>Bagikan foto</strong><small>Gunakan opsi berbagi perangkat</small></span></button>
           <Link to="/setup" onClick={createNew}><Sparkles aria-hidden="true" size={19} /><span><strong>Buat foto baru</strong><small>Mulai sesi ulang</small></span></Link>
         </div>
+        </>}
 
         {status && <p className={`result-status is-${status.kind}`} role="status" aria-live="polite">{status.message}</p>}
         <aside className="result-privacy"><ShieldCheck aria-hidden="true" size={20} /><div><strong>Aman dan 100% privat</strong><p>Foto diproses langsung di memori browser ini tanpa diunggah ke cloud atau server pihak ketiga.</p></div></aside>
