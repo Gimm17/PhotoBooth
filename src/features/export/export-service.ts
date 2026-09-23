@@ -1,4 +1,5 @@
 import type { OutputFormat } from './compositor'
+import { extensionForVideoMime } from './media-recorder-service'
 
 export type ExportActionResult =
   | { status: 'success' }
@@ -16,6 +17,11 @@ export const createExportFilename = (format: OutputFormat, date = new Date()) =>
   const time = [date.getHours(), date.getMinutes(), date.getSeconds()].map((part) => String(part).padStart(2, '0')).join('-')
 
   return `photobooth-${timestamp}_${time}.${format}`
+}
+
+export const createBoomerangFilename = (mimeType: string, date = new Date()) => {
+  const stillName = createExportFilename('png', date).replace(/\.png$/, '')
+  return `${stillName}-boomerang.${extensionForVideoMime(mimeType)}`
 }
 
 export const downloadBlob = (blob: Blob, filename: string): ExportActionResult => {

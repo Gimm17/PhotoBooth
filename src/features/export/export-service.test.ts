@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
+import { createBoomerangFilename, createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
 
 const NativeURL = URL
 
 describe('createExportFilename', () => {
   it('creates a local timestamp filename with only filesystem-safe separators', () => {
     expect(createExportFilename('webp', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05.webp')
+  })
+
+  it('creates a truthful boomerang filename from its MIME type', () => {
+    expect(createBoomerangFilename('video/webm', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05-boomerang.webm')
   })
 })
 
