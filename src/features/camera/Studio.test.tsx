@@ -45,6 +45,17 @@ describe('Studio', () => {
     expect(screen.getAllByRole('button', { name: 'Jepret pose' })).toHaveLength(1)
   })
 
+  it('uses a compact kiosk structure with the shutter centered in the capture dock', () => {
+    renderStudio()
+
+    expect(screen.getByRole('banner', { name: 'Kontrol studio' })).toHaveClass('studio-topbar')
+    expect(screen.getByLabelText('Area pratinjau foto')).toHaveClass('studio-stage')
+    expect(screen.getByRole('region', { name: 'Progres pose' })).toHaveClass('studio-filmstrip')
+    const dock = screen.getByRole('toolbar', { name: 'Kontrol pengambilan foto' })
+    expect(dock).toHaveClass('studio-control-dock')
+    expect(screen.getByRole('button', { name: 'Jepret pose' }).parentElement).toBe(dock)
+  })
+
   it('captures every pose after increasing the layout and cancels a pending incompatible capture', async () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')

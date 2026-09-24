@@ -1,6 +1,6 @@
 import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
 import { FRAME_TEMPLATES, LAYOUTS, frameById, layoutById } from '../../catalog/frames'
 import type { LayoutId } from '../../catalog/types'
@@ -106,20 +106,22 @@ export function Studio() {
         : captureState.status === 'error' ? captureState.error ?? 'Foto belum dapat diambil'
           : 'Siap mengambil foto'
 
-  return <section className="studio page-width" aria-labelledby="studio-heading">
-    <header className="studio-heading">
-      <div>
-        <button className="studio-back" type="button" onClick={() => navigate('/setup')} aria-label="Kembali ke pengaturan kamera"><ChevronLeft aria-hidden="true" size={20} /></button>
-        <p className="section-kicker">Ambil foto</p>
+  return <section className="studio" aria-labelledby="studio-heading">
+    <header className="studio-topbar" aria-label="Kontrol studio">
+      <button className="studio-back" type="button" onClick={() => navigate('/setup')} aria-label="Kembali ke pengaturan kamera"><ChevronLeft aria-hidden="true" size={22} /></button>
+      <div className="studio-title-group">
         <h1 id="studio-heading">Studio pengambilan foto</h1>
         <p className="studio-subtitle">{layoutById(session.selectedLayout)?.name} · {progressLabel}</p>
       </div>
-      <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
+      <div className="studio-topbar-actions">
+        <Link className="studio-gallery-link" to="/gallery">Galeri lokal</Link>
+        <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
+      </div>
     </header>
 
     <div className="studio-workspace">
       <div className="studio-main">
-        <div className={`viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`}>
+        <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} aria-label="Area pratinjau foto">
           <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} showGrid={session.showGrid} onError={setPreviewError} />
           {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
           <div className="viewfinder-corners" aria-hidden="true" />
@@ -127,7 +129,27 @@ export function Studio() {
           {captureState.status === 'flashing' && <div className="capture-flash" aria-hidden="true" />}
           <p className="studio-live-status" role="status" aria-live="assertive">{statusLabel}</p>
         </div>
-        <p className="studio-tip">Posisikan wajah pada area tengah untuk hasil cetak yang seimbang. Tekan Space untuk menjepret.</p>
+
+        <section className="studio-filmstrip" aria-label="Progres pose">
+          <div className="film-slots">{Array.from({ length: session.requiredShots }, (_, index) => {
+            const photo = session.photos[index]
+            return <button key={index} className={`film-slot ${index === activeSlot && !complete ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>
+              {photo ? <img src={photo} alt={`Pose ${index + 1}`} /> : <Camera aria-hidden="true" size={20} />}
+              <span>{index + 1}</span>{photo && <Check aria-hidden="true" size={14} />}
+            </button>
+          })}</div>
+          <span className="film-progress" aria-hidden="true">{Math.min(session.photos.length, session.requiredShots)}/{session.requiredShots} pose</span>
+          <span className="visually-hidden">{Math.min(session.photos.length, session.requiredShots)} selesai · {Math.max(session.requiredShots - session.photos.length, 0)} tersisa</span>
+        </section>
+
+        <div className="studio-control-dock" role="toolbar" aria-label="Kontrol pengambilan foto">
+          {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan hitung mundur">Batal</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]} aria-label="Ulang pose"><RotateCcw aria-hidden="true" size={20} /><span>Ulang</span></button>}
+          <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={30} /></button>
+          <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={22} /><span>Atur</span></button>
+          <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
+        </div>
+        <p className="studio-tip">Posisikan wajah di slot frame aktif. Tekan Space untuk menjepret.</p>
+        {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
       </div>
 
       <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan">
@@ -144,23 +166,5 @@ export function Studio() {
         <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>
     </div>
-
-    <section className="studio-film" aria-label="Progres pose">
-      <div className="film-heading"><h2>Lembar klise</h2><span>{Math.min(session.photos.length, session.requiredShots)} selesai · {Math.max(session.requiredShots - session.photos.length, 0)} tersisa</span></div>
-      <div className="film-slots">{Array.from({ length: session.requiredShots }, (_, index) => {
-        const photo = session.photos[index]
-        return <button key={index} className={`film-slot ${index === activeSlot && !complete ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>
-          {photo ? <img src={photo} alt={`Pose ${index + 1}`} /> : <Camera aria-hidden="true" size={22} />}
-          <span>Pose {index + 1}</span>{photo && <Check aria-hidden="true" size={15} />}
-        </button>
-      })}</div>
-      <div className="studio-actions">
-        {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel}>Batalkan hitung mundur</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]}><RotateCcw aria-hidden="true" size={18} />Ulang pose</button>}
-        <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={21} /></button>
-        <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={29} /></button>
-        <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
-      </div>
-      {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
-    </section>
   </section>
 }

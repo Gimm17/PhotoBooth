@@ -20,6 +20,7 @@ const routeTitles: Record<string, string> = {
 export function PageShell({ children }: PageShellProps) {
   const { pathname } = useLocation()
   const mainRef = useRef<HTMLElement>(null)
+  const isStudioMode = pathname === '/studio'
 
   useEffect(() => {
     document.title = `${routeTitles[pathname] ?? 'PhotoBooth'} | PhotoBooth`
@@ -27,11 +28,11 @@ export function PageShell({ children }: PageShellProps) {
   }, [pathname])
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isStudioMode ? ' is-studio-mode' : ''}`}>
       <a className="skip-link" href="#main-content">Lewati ke konten utama</a>
-      <AppHeader />
+      {!isStudioMode && <AppHeader />}
       <main ref={mainRef} id="main-content" tabIndex={-1}>{children}</main>
-      <AppFooter />
+      {!isStudioMode && <AppFooter />}
     </div>
   )
 }

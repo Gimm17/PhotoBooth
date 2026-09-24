@@ -8,6 +8,9 @@ a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
 .page-width { width: min(100% - (var(--page-padding) * 2), var(--page-max)); margin-inline: auto; }
 .app-shell { min-height: 100dvh; display: flex; flex-direction: column; overflow: clip; }
+.app-shell.is-studio-mode { background: #1f1f1e; height: 100dvh; }
+.app-shell.is-studio-mode main { min-height: 0; }
+.app-shell.is-studio-mode main:focus::before { display: none; }
 main { flex: 1; min-width: 0; position: relative; }
 main:focus { outline: none; }
 main:focus::before { background: #32647B; border-radius: 99px; content: ''; height: 4px; left: var(--page-padding); pointer-events: none; position: absolute; top: .5rem; width: 3.25rem; z-index: 1; }
