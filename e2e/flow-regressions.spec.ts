@@ -101,6 +101,9 @@ test('frame-locked shot requirements, camera selection, completed retake, and ra
   await expect(page.getByText('Kamera aktif dan siap', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Masuk Studio', exact: true }).click()
   await expect(page.getByText('Kamera aktif', { exact: true })).toBeVisible()
+  const stageBox = await page.getByLabel('Area pratinjau foto').boundingBox()
+  expect(stageBox?.width).toBeGreaterThan(450)
+  expect(stageBox?.width).toBeLessThan(510)
   expect((await evidence()).requests).toEqual([
     { audio: false, video: true },
     { audio: false, video: { deviceId: { exact: 'rear' } } },

@@ -56,6 +56,13 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Jepret pose' }).parentElement).toBe(dock)
   })
 
+  it('sizes a portrait frame from its intrinsic ratio and viewport height', () => {
+    act(() => useSessionStore.getState().setLayout('classic-strip'))
+    renderStudio()
+
+    expect(screen.getByLabelText('Area pratinjau foto')).toHaveStyle({ '--frame-stage-width': '60dvh' })
+  })
+
   it('captures every pose after increasing the layout and cancels a pending incompatible capture', async () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')

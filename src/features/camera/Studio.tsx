@@ -1,5 +1,5 @@
 import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../../catalog/frames'
@@ -58,6 +58,9 @@ export function Studio() {
   const activeSlot = captureState.retakeIndex ?? Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0))
   const complete = session.photos.length >= session.requiredShots
   const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
+  const stageStyle = {
+    '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120).toFixed(3))}dvh`,
+  } as CSSProperties
   const activeFilter = filterById(session.selectedFilter) ?? FILTER_PRESETS[0]
   const captureBusy = captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing'
   const settingsLocked = captureState.status === 'flashing' || captureState.status === 'capturing'
@@ -150,7 +153,7 @@ export function Studio() {
 
     <div className="studio-workspace">
       <div className="studio-main">
-        <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} aria-label="Area pratinjau foto">
+        <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} style={stageStyle} aria-label="Area pratinjau foto">
           <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} showGrid={session.showGrid} onError={setPreviewError} />
           {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
           <div className="viewfinder-corners" aria-hidden="true" />
