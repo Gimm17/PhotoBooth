@@ -88,10 +88,12 @@ async function installCameraFixture(page: import('@playwright/test').Page) {
   })
 }
 
-test('camera selection, changing shot requirements, completed retake, and raw capture work together', async ({ page }) => {
+test('frame-locked shot requirements, camera selection, completed retake, and raw capture work together', async ({ page }) => {
   test.setTimeout(90_000)
   await installCameraFixture(page)
-  await page.goto('/setup')
+  await page.goto('/frames')
+  await page.getByRole('button', { name: /Negative Film Strip.*4 pose/i }).click()
+  await page.getByRole('button', { name: /Lanjut ke kamera.*4 pose/i }).click()
   const evidence = () => page.evaluate(() => (window as unknown as { cameraEvidence: { requests: MediaStreamConstraints[]; stopped: string[]; captureFilters: string[] } }).cameraEvidence)
   expect((await evidence()).requests).toHaveLength(0)
   await page.getByRole('button', { name: 'Aktifkan Kamera', exact: true }).click()
@@ -104,10 +106,9 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
     { audio: false, video: { deviceId: { exact: 'rear' } } },
     { audio: false, video: { deviceId: { exact: 'rear' } } },
   ])
+  await page.getByRole('button', { name: 'Buka setelan tangkapan' }).click()
   await page.getByLabel('Pilih filter cepat').selectOption('inkwell')
-  await page.getByRole('button', { name: 'Jepret pose' }).click()
-  await page.getByRole('radio', { name: 'Classic Strip', exact: true }).check()
-  await expect(page.getByRole('status')).toHaveText('Siap mengambil foto')
+  await page.getByRole('button', { name: 'Tutup setelan tangkapan' }).click()
   for (let index = 0; index < 4; index++) {
     await page.getByRole('button', { name: 'Jepret pose' }).click()
     await expect(page.locator('.film-slot img')).toHaveCount(index + 1, { timeout: 20_000 })
@@ -124,12 +125,13 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
     return [...context.getImageData(0, 0, 1, 1).data]
   })
   expect(pixel[0] - pixel[1]).toBeGreaterThan(100)
-  await page.getByRole('radio', { name: 'Single Polaroid', exact: true }).check()
-  await expect(page.locator('.film-slot img')).toHaveCount(1)
+  await expect(page.getByRole('radio', { name: 'Single Polaroid' })).toHaveCount(0)
+  await expect(page.locator('.film-slot img')).toHaveCount(4)
   await expect(page.getByRole('button', { name: 'Jepret pose' })).toBeDisabled()
   await page.screenshot({ path: '.superpowers/verification-artifacts/final-fixes/studio-completed.png', fullPage: true })
   await page.getByRole('button', { name: 'Lanjut ke editor' }).click()
   await expect.poll(async () => (await evidence()).stopped).toEqual(['front', 'rear', 'rear'])
+  await page.getByRole('button', { name: /Classic Polaroid.*1 pose/i }).click()
   const preview = page.locator('.print-stage img')
   await expect(preview).toBeVisible()
   const previewColorDifference = () => preview.evaluate((element) => {
@@ -144,7 +146,6 @@ test('camera selection, changing shot requirements, completed retake, and raw ca
   await page.getByRole('slider', { name: 'Intensitas filter' }).focus()
   await page.keyboard.press('Home')
   await expect.poll(previewColorDifference).toBeGreaterThan(100)
-  await page.screenshot({ path: '.superpowers/verification-artifacts/final-fixes/editor-zero-intensity.png', fullPage: true })
 })
 
 test('recovers from a disconnected saved rear camera after returning from Studio', async ({ page }, testInfo) => {

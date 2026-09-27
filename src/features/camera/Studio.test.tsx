@@ -89,7 +89,9 @@ describe('Studio', () => {
     vi.useFakeTimers()
     mocks.cameraSnapshot = camera('active')
     renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Buka setelan tangkapan' }))
     fireEvent.change(screen.getByLabelText('Pilih filter cepat'), { target: { value: 'inkwell' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Tutup setelan tangkapan' }))
     fireEvent.click(screen.getByRole('button', { name: 'Jepret pose' }))
     await act(async () => vi.advanceTimersByTimeAsync(3_165))
     expect(mocks.captureLivePose).toHaveBeenCalledWith(expect.any(HTMLVideoElement), expect.objectContaining({ mirror: true, filter: 'none', signal: expect.any(AbortSignal) }))
@@ -109,9 +111,12 @@ describe('Studio', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Siap mengambil foto')
   })
 
-  it('offers timer and preview settings at every viewport size', () => {
+  it('keeps shot count locked to the selected frame while retaining capture settings', () => {
     renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Buka setelan tangkapan' }))
 
+    expect(screen.queryByRole('radio', { name: 'Single Polaroid' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Classic Strip' })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '5 detik' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Cermin pratinjau' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Tampilkan garis bantu' })).toBeInTheDocument()
@@ -145,7 +150,7 @@ describe('Studio', () => {
     expect(screen.getByRole('button', { name: 'Lanjut ke editor' })).toBeEnabled()
   })
 
-  it('keeps all captured sources available when layout controls switch three to two to three', () => {
+  it('keeps captured sources and shot count while changing compatible frame decoration', () => {
     const photos = [
       'data:image/jpeg;base64,first',
       'data:image/jpeg;base64,second',
@@ -154,12 +159,14 @@ describe('Studio', () => {
     useSessionStore.getState().setLayout('three-postcard')
     useSessionStore.getState().setImportedPhotos(photos)
     renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Buka setelan tangkapan' }))
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Wide Duo' }))
+    const frameSelect = screen.getByLabelText('Frame yang kompatibel') as HTMLSelectElement
+    const replacement = Array.from(frameSelect.options).find((option) => option.value !== frameSelect.value)
+    expect(replacement).toBeDefined()
+    fireEvent.change(frameSelect, { target: { value: replacement!.value } })
     expect(useSessionStore.getState().photos).toEqual(photos)
-
-    fireEvent.click(screen.getByRole('radio', { name: 'Three-photo Postcard' }))
-    expect(useSessionStore.getState().photos).toEqual(photos)
+    expect(useSessionStore.getState().requiredShots).toBe(3)
     expect(screen.getByRole('button', { name: 'Ambil ulang pose 3' })).toBeInTheDocument()
   })
 
@@ -177,22 +184,31 @@ describe('Studio', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Semua foto siap untuk diedit')
   })
 
-  it('opens and closes the mobile settings sheet as a non-modal disclosure', () => {
+  it('opens the settings drawer and closes it with Escape while restoring trigger focus', () => {
     renderStudio()
 
     const button = screen.getByLabelText('Buka setelan tangkapan', { selector: 'button' })
-    const sheet = screen.getByRole('complementary', { name: 'Setelan tangkapan' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(sheet).not.toHaveAttribute('aria-modal')
+    expect(screen.queryByRole('dialog', { name: 'Setelan tangkapan' })).not.toBeInTheDocument()
 
     act(() => fireEvent.click(button))
     expect(button).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('complementary', { name: 'Setelan tangkapan' })).toHaveClass('is-mobile-open')
-    expect(screen.queryByRole('dialog', { name: 'Setelan tangkapan' })).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Setelan tangkapan' })).toHaveAttribute('aria-modal', 'true')
 
-    act(() => fireEvent.click(screen.getByLabelText('Tutup setelan tangkapan', { selector: 'button' })))
+    act(() => fireEvent.keyDown(document, { key: 'Escape' }))
     expect(button).toHaveAttribute('aria-expanded', 'false')
-    expect(sheet).not.toHaveClass('is-mobile-open')
+    expect(screen.queryByRole('dialog', { name: 'Setelan tangkapan' })).not.toBeInTheDocument()
+    expect(button).toHaveFocus()
+  })
+
+  it('keeps keyboard focus inside the settings drawer', () => {
+    renderStudio()
+    fireEvent.click(screen.getByRole('button', { name: 'Buka setelan tangkapan' }))
+
+    const close = screen.getByRole('button', { name: 'Tutup setelan tangkapan' })
+    expect(close).toHaveFocus()
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+    expect(screen.getByLabelText('Pilih filter cepat')).toHaveFocus()
   })
 
   it('captures the active pose as Live media and advances the framed preview slot', async () => {

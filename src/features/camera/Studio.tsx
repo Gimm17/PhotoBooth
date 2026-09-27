@@ -1,9 +1,8 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
-import { FRAME_TEMPLATES, LAYOUTS, frameById, layoutById } from '../../catalog/frames'
-import type { LayoutId } from '../../catalog/types'
+import { FRAME_TEMPLATES, frameById, layoutById } from '../../catalog/frames'
 import { useSessionStore } from '../../store/session-store'
 import { captureFrame } from './camera-service'
 import { createCaptureMachine, type CaptureState } from './capture-machine'
@@ -29,6 +28,9 @@ export function Studio() {
   currentCamera.current = camera
   const [captureState, setCaptureState] = useState<CaptureState>(initialCaptureState)
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
+  const settingsTriggerRef = useRef<HTMLButtonElement>(null)
+  const settingsCloseRef = useRef<HTMLButtonElement>(null)
+  const settingsDialogRef = useRef<HTMLElement>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const machineRef = useRef<ReturnType<typeof createCaptureMachine> | null>(null)
 
@@ -90,8 +92,34 @@ export function Studio() {
 
   useEffect(() => () => machine.dispose(), [machine])
 
-  const updateLayout = (layoutId: LayoutId) => {
-    session.setLayout(layoutId)
+  useEffect(() => {
+    if (!mobileSettingsOpen) return
+    settingsCloseRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileSettingsOpen(false)
+        settingsTriggerRef.current?.focus()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(settingsDialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])') ?? [])
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [mobileSettingsOpen])
+
+  const closeSettings = () => {
+    setMobileSettingsOpen(false)
+    settingsTriggerRef.current?.focus()
   }
 
   const progressLabel = complete
@@ -116,6 +144,7 @@ export function Studio() {
       <div className="studio-topbar-actions">
         <Link className="studio-gallery-link" to="/gallery">Galeri lokal</Link>
         <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
+        <button ref={settingsTriggerRef} className="studio-settings-trigger" type="button" aria-label="Buka setelan tangkapan" aria-controls="studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={19} /><span>Setelan</span></button>
       </div>
     </header>
 
@@ -145,17 +174,15 @@ export function Studio() {
         <div className="studio-control-dock" role="toolbar" aria-label="Kontrol pengambilan foto">
           {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan hitung mundur">Batal</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]} aria-label="Ulang pose"><RotateCcw aria-hidden="true" size={20} /><span>Ulang</span></button>}
           <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={30} /></button>
-          <button className="mobile-settings-button" type="button" aria-label="Buka setelan tangkapan" aria-controls="mobile-studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={22} /><span>Atur</span></button>
           <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
         </div>
         <p className="studio-tip">Posisikan wajah di slot frame aktif. Tekan Space untuk menjepret.</p>
         {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
       </div>
 
-      <aside id="mobile-studio-settings" className={`studio-settings ${mobileSettingsOpen ? 'is-mobile-open' : ''}`} aria-label="Setelan tangkapan">
-        <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2></div>
-        <button className="settings-close" type="button" onClick={() => setMobileSettingsOpen(false)} aria-label="Tutup setelan tangkapan">Tutup</button>
-        <fieldset disabled={settingsLocked}><legend>Format cetak</legend><div className="layout-options">{LAYOUTS.map((layout) => <label key={layout.id}><input type="radio" name="layout" checked={session.selectedLayout === layout.id} onChange={() => updateLayout(layout.id)} /><span>{layout.name}</span></label>)}</div></fieldset>
+      {mobileSettingsOpen && <div className="studio-settings-layer" onMouseDown={(event) => event.target === event.currentTarget && closeSettings()}>
+      <aside ref={settingsDialogRef} id="studio-settings" className="studio-settings" role="dialog" aria-modal="true" aria-label="Setelan tangkapan">
+        <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2><button ref={settingsCloseRef} className="settings-close" type="button" onClick={closeSettings} aria-label="Tutup setelan tangkapan"><X aria-hidden="true" size={20} /></button></div>
         <label className="studio-select-label" htmlFor="frame-select">Frame yang kompatibel</label>
         <select id="frame-select" disabled={settingsLocked} value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
         <fieldset disabled={captureBusy}><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
@@ -165,6 +192,7 @@ export function Studio() {
         <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
         <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>
+      </div>}
     </div>
   </section>
 }
