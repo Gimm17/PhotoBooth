@@ -62,10 +62,10 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
       const draw = () => {
         if (disposed) return
         const slots = props.frame.slots.map((_, index): RenderSource | null => {
-          if (completed[index]) return completed[index]
           if (index === props.activeSlot && props.cameraStatus === 'active') {
             return { source: video, width: video.videoWidth || 1280, height: video.videoHeight || 720, mirror: props.mirror }
           }
+          if (completed[index]) return completed[index]
           return null
         })
         drawFrameComposition({

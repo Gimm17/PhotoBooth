@@ -39,4 +39,27 @@ describe('FrameSelection', () => {
     expect(screen.getByRole('button', { name: /Sakura Diary.*3 pose/i })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByRole('button', { name: /Candy Scrapbook/i })).not.toBeInTheDocument()
   })
+
+  it('clears captures from the completed session when a frame starts a new session', () => {
+    useSessionStore.setState({
+      photos: ['data:image/png;base64,old-photo'],
+      liveSequences: [{ frames: [{ blob: new Blob(['frame']) }], width: 640, height: 480, fps: 10 }],
+      liveErrors: [null],
+      composedResultUrl: 'blob:old-result',
+      composedResultBlob: new Blob(['result']),
+    })
+    render(<MemoryRouter><FrameSelection /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: /Sakura Diary.*3 pose/i }))
+
+    expect(useSessionStore.getState()).toMatchObject({
+      selectedFrame: 'sakura-diary',
+      requiredShots: 3,
+      photos: [],
+      liveSequences: [],
+      liveErrors: [],
+      composedResultUrl: null,
+      composedResultBlob: null,
+    })
+  })
 })

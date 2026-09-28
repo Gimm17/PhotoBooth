@@ -55,8 +55,8 @@ export function Studio() {
   }
 
   const machine = machineRef.current
-  const activeSlot = captureState.retakeIndex ?? Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0))
   const complete = session.photos.length >= session.requiredShots
+  const activeSlot = captureState.retakeIndex ?? (complete ? -1 : Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0)))
   const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
   const stageStyle = {
     '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120).toFixed(3))}dvh`,

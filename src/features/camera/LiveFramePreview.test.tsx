@@ -49,6 +49,13 @@ describe('LiveFramePreview', () => {
     expect(input.frame.slots[1].rotation).toBe(.01)
   })
 
+  it('replaces the completed photo with live video while its slot is being retaken', async () => {
+    render(<LiveFramePreview frame={frame} filter={filter} photos={['data:image/png;base64,old-photo']} activeSlot={0} cameraStatus="active" intensity={100} mirror />)
+
+    await waitFor(() => expect(drawFrameComposition).toHaveBeenCalled())
+    expect(vi.mocked(drawFrameComposition).mock.lastCall![0].slots[0]?.source).toBeInstanceOf(HTMLVideoElement)
+  })
+
   it('keeps the video out of future slots while the camera is inactive', async () => {
     render(<LiveFramePreview frame={frame} filter={filter} photos={[]} activeSlot={0} cameraStatus="idle" intensity={100} mirror={false} />)
     await waitFor(() => expect(drawFrameComposition).toHaveBeenCalled())

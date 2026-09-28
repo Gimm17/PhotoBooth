@@ -11,7 +11,7 @@ import './frame-selection.css'
 export function FrameSelection() {
   const navigate = useNavigate()
   const selectedFrame = useSessionStore((state) => state.selectedFrame)
-  const setFrame = useSessionStore((state) => state.setFrame)
+  const startSessionWithFrame = useSessionStore((state) => state.startSessionWithFrame)
   const [category, setCategory] = useState<FrameCategory | 'Semua'>('Semua')
   const [orientation, setOrientation] = useState<FrameOrientation | 'all'>('all')
   const [query, setQuery] = useState('')
@@ -37,7 +37,7 @@ export function FrameSelection() {
         onCategoryChange={setCategory}
         onOrientationChange={setOrientation}
         onQueryChange={setQuery}
-        onSelect={setFrame}
+        onSelect={startSessionWithFrame}
       />
     </div>
 

@@ -15,6 +15,7 @@ interface SessionActions {
   removePhoto: (index: number) => void
   setFilter: (filterId: string) => void
   setFrame: (frameId: string) => void
+  startSessionWithFrame: (frameId: string) => void
   setFilterIntensity: (intensity: number) => void
   setTimer: (timer: 3 | 5 | 10) => void
   setMirror: (mirror: boolean) => void
@@ -150,6 +151,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         photos: state.photos,
       }
     })
+  },
+  startSessionWithFrame: (frameId) => {
+    const frame = frameById(frameId)
+    if (!frame) return
+    const layout = layoutById(frame.layoutId)!
+
+    set((state) => ({
+      ...invalidateGeneratedOutputs(state),
+      selectedFrame: frame.id,
+      selectedLayout: layout.id,
+      requiredShots: layout.requiredShots,
+      photos: [],
+      liveSequences: [],
+      liveErrors: [],
+    }))
   },
   setFilterIntensity: (intensity) => set((state) => ({ ...invalidateGeneratedOutputs(state), filterIntensity: Math.min(100, Math.max(0, intensity)) })),
   setTimer: (timer) => set({ timer }),
