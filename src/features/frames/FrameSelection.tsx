@@ -18,6 +18,14 @@ export function FrameSelection() {
   const selected = frameById(selectedFrame)
   const layout = selected ? layoutById(selected.layoutId) : undefined
 
+  const handleContinue = () => {
+    if (!selected || !layout) return
+    if (useSessionStore.getState().photos.length > 0) {
+      startSessionWithFrame(selected.id)
+    }
+    navigate('/setup')
+  }
+
   return <section className="frame-selection page-width" aria-labelledby="frame-selection-title">
     <header className="frame-selection-heading">
       <div>
@@ -47,7 +55,7 @@ export function FrameSelection() {
         <strong>{selected?.name ?? 'Belum ada frame'}</strong>
         <span>{layout ? `${layout.requiredShots} pose · ${layout.name}` : 'Pilih frame untuk melanjutkan'}</span>
       </div>
-      <button className="button primary-button" type="button" disabled={!selected || !layout} onClick={() => navigate('/setup')}>
+      <button className="button primary-button" type="button" disabled={!selected || !layout} onClick={handleContinue}>
         Lanjut ke kamera · {layout?.requiredShots ?? 0} pose <ArrowRight aria-hidden="true" size={18} />
       </button>
     </footer>

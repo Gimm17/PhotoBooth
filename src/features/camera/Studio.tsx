@@ -125,14 +125,17 @@ export function Studio() {
     settingsTriggerRef.current?.focus()
   }
 
-  const progressLabel = complete
-    ? `${session.requiredShots} pose selesai`
-    : `Pose ${Math.min(session.photos.length + 1, session.requiredShots)} dari ${session.requiredShots}`
+  const progressLabel = captureState.retakeIndex !== null
+    ? `Mengambil ulang pose ${captureState.retakeIndex + 1} dari ${session.requiredShots}`
+    : complete
+      ? `${session.requiredShots} pose selesai`
+      : `Pose ${Math.min(session.photos.length + 1, session.requiredShots)} dari ${session.requiredShots}`
   const liveNotice = session.liveErrors[Math.min(session.photos.length, session.requiredShots) - 1] ?? previewError
   const statusLabel = captureState.status === 'countdown'
     ? `Hitung mundur: ${captureState.remaining}`
     : captureState.status === 'flashing' || captureState.status === 'capturing' ? 'Mengambil foto'
       : liveNotice ? liveNotice
+      : captureState.retakeIndex !== null ? `Siap mengambil ulang pose ${captureState.retakeIndex + 1}`
         : captureState.status === 'complete' ? 'Semua foto siap untuk diedit'
         : captureState.status === 'error' ? captureState.error ?? 'Foto belum dapat diambil'
           : 'Siap mengambil foto'
@@ -165,7 +168,7 @@ export function Studio() {
         <section className="studio-filmstrip" aria-label="Progres pose">
           <div className="film-slots">{Array.from({ length: session.requiredShots }, (_, index) => {
             const photo = session.photos[index]
-            return <button key={index} className={`film-slot ${index === activeSlot && !complete ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>
+            return <button key={index} className={`film-slot ${index === activeSlot ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>
               {photo ? <img src={photo} alt={`Pose ${index + 1}`} /> : <Camera aria-hidden="true" size={20} />}
               <span>{index + 1}</span>{photo && <Check aria-hidden="true" size={14} />}
             </button>
@@ -175,7 +178,16 @@ export function Studio() {
         </section>
 
         <div className="studio-control-dock" role="toolbar" aria-label="Kontrol pengambilan foto">
-          {captureState.status === 'countdown' ? <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan hitung mundur">Batal</button> : <button className="secondary-action" type="button" onClick={() => session.photos[activeSlot] && machine.retake(activeSlot)} disabled={!session.photos[activeSlot]} aria-label="Ulang pose"><RotateCcw aria-hidden="true" size={20} /><span>Ulang</span></button>}
+          {captureState.status === 'countdown' ? (
+            <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan hitung mundur">Batal</button>
+          ) : captureState.retakeIndex !== null ? (
+            <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan ambil ulang">Batal</button>
+          ) : (
+            <button className="secondary-action" type="button" onClick={() => {
+              const targetSlot = activeSlot >= 0 ? activeSlot : session.photos.length - 1
+              if (session.photos[targetSlot]) machine.retake(targetSlot)
+            }} disabled={session.photos.length === 0} aria-label="Ulang pose"><RotateCcw aria-hidden="true" size={20} /><span>Ulang</span></button>
+          )}
           <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={30} /></button>
           <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
         </div>

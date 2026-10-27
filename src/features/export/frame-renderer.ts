@@ -1,4 +1,4 @@
-import type { FilterPreset, FrameAssetFit, FrameAssetLayer, FrameTemplate } from '../../catalog/types'
+import type { FilterPreset, FrameAssetFit, FrameAssetLayer, FrameTemplate, PhotoAdjustment } from '../../catalog/types'
 import { loadFrameAsset } from './frame-asset-loader'
 import { calculateCoverCrop } from './geometry'
 
@@ -7,6 +7,7 @@ export interface RenderSource {
   width: number
   height: number
   mirror?: boolean
+  adjustment?: PhotoAdjustment
 }
 
 export interface PreparedFrameAsset {
@@ -31,6 +32,7 @@ export interface DrawFrameCompositionInput {
   caption: string
   showDate: boolean
   date: Date
+  adjustments?: Record<number, PhotoAdjustment>
   placeholder?: (context: CanvasRenderingContext2D, slotIndex: number, box: RenderBox) => void
 }
 
@@ -128,7 +130,8 @@ export function drawFrameComposition(input: DrawFrameCompositionInput): void {
     roundedPath(context, 0, 0, width, height, frame.border.radius)
     context.clip()
     if (source) {
-      const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height })
+      const adjustment = source.adjustment ?? input.adjustments?.[index]
+      const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height }, adjustment)
       context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
       if (source.mirror) {
         context.translate(width, 0)

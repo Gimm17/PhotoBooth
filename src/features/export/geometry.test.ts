@@ -29,6 +29,28 @@ describe('calculateCoverCrop', () => {
     })
   })
 
+  it('applies zoom to crop a centered sub-rectangle', () => {
+    // Square source to square target with 2x zoom:
+    expect(calculateCoverCrop({ width: 400, height: 400 }, { width: 200, height: 200 }, { zoom: 2 })).toEqual({
+      sx: 100,
+      sy: 100,
+      sw: 200,
+      sh: 200,
+    })
+  })
+
+  it('applies horizontal and vertical pan offsets safely within bounds', () => {
+    // 2x zoom allows panning up to +/- 100px:
+    // panX: 100 -> sx = 100 + 100 = 200
+    // panY: -100 -> sy = 100 - 100 = 0
+    expect(calculateCoverCrop({ width: 400, height: 400 }, { width: 200, height: 200 }, { zoom: 2, panX: 100, panY: -100 })).toEqual({
+      sx: 200,
+      sy: 0,
+      sw: 200,
+      sh: 200,
+    })
+  })
+
   it.each([
     [{ width: 0, height: 200 }, { width: 100, height: 200 }],
     [{ width: 400, height: 200 }, { width: 0, height: 200 }],

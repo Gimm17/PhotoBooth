@@ -96,6 +96,12 @@ export interface BoomerangResult {
   mimeType: string
 }
 
+export interface PhotoAdjustment {
+  zoom: number
+  panX: number
+  panY: number
+}
+
 export interface PhotoSession {
   selectedLayout: LayoutId
   selectedFrame: string
@@ -114,4 +120,5 @@ export interface PhotoSession {
   liveSequences: Array<LiveSequence | null>
   liveErrors: Array<string | null>
   boomerangResult: BoomerangResult | null
+  photoAdjustments: Record<number, PhotoAdjustment>
 }

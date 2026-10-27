@@ -1,4 +1,4 @@
-import type { FilterPreset, FrameTemplate, LiveSequence } from '../../catalog/types'
+import type { FilterPreset, FrameTemplate, LiveSequence, PhotoAdjustment } from '../../catalog/types'
 import { decodeFrameBlob, type DecodedFrameSource } from './frame-asset-loader'
 import { drawFrameComposition, prepareFrameAssets, type DrawFrameCompositionInput, type PreparedFrameAssets } from './frame-renderer'
 import { recordCanvas, type RecordedVideo, type RecordCanvasOptions } from './media-recorder-service'
@@ -27,6 +27,7 @@ export interface ComposeBoomerangInput {
   date?: Date
   fps?: number
   dependencies?: BoomerangDependencies
+  adjustments?: Record<number, PhotoAdjustment>
 }
 
 export const boomerangOrder = (frameCount: number): number[] => {
@@ -100,6 +101,7 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
           caption: input.caption,
           showDate: input.showDate,
           date: input.date ?? new Date(),
+          adjustments: input.adjustments,
         })
         await dependencies.wait(1_000 / fps, signal)
       }

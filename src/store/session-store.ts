@@ -1,9 +1,12 @@
 import { create } from 'zustand'
 import { filterById } from '../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../catalog/frames'
-import type { BoomerangResult, CapturedPose, LayoutId, PhotoSession } from '../catalog/types'
+import type { BoomerangResult, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession } from '../catalog/types'
 
-export type EditorHistorySnapshot = Pick<PhotoSession, 'selectedLayout' | 'selectedFrame' | 'selectedFilter' | 'requiredShots' | 'photos' | 'filterIntensity' | 'caption' | 'showDate'>
+export type EditorHistorySnapshot = Pick<
+  PhotoSession,
+  'selectedLayout' | 'selectedFrame' | 'selectedFilter' | 'requiredShots' | 'photos' | 'filterIntensity' | 'caption' | 'showDate' | 'photoAdjustments'
+>
 
 interface SessionActions {
   cameraDeviceId: string | null
@@ -13,10 +16,14 @@ interface SessionActions {
   setImportedPhotos: (dataUrls: string[]) => void
   replacePhoto: (index: number, dataUrl: string) => void
   removePhoto: (index: number) => void
+  reorderPhotos: (fromIndex: number, toIndex: number) => void
+  movePhoto: (index: number, direction: 'up' | 'down') => void
   setFilter: (filterId: string) => void
   setFrame: (frameId: string) => void
   startSessionWithFrame: (frameId: string) => void
   setFilterIntensity: (intensity: number) => void
+  setPhotoAdjustment: (index: number, adjustment: Partial<PhotoAdjustment>) => void
+  resetPhotoAdjustments: () => void
   setTimer: (timer: 3 | 5 | 10) => void
   setMirror: (mirror: boolean) => void
   setShowGrid: (showGrid: boolean) => void
@@ -55,6 +62,7 @@ const createInitialSession = (): PhotoSession => ({
   liveSequences: [],
   liveErrors: [],
   boomerangResult: null,
+  photoAdjustments: {},
 })
 
 const revokeObjectUrl = (url: string | null) => {
@@ -109,6 +117,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     photos: dataUrls,
     liveSequences: [],
     liveErrors: [],
+    photoAdjustments: {},
   })),
   replacePhoto: (index, dataUrl) => set((state) => {
     if (index < 0 || index >= state.photos.length) return state
@@ -120,16 +129,59 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     liveErrors[index] = null
     return { ...invalidateGeneratedOutputs(state), photos, liveSequences, liveErrors }
   }),
-  removePhoto: (index) => set((state) => (
-    index < 0 || index >= state.photos.length
-      ? state
-      : {
-          ...invalidateGeneratedOutputs(state),
-          photos: state.photos.filter((_, photoIndex) => photoIndex !== index),
-          liveSequences: state.liveSequences.filter((_, photoIndex) => photoIndex !== index),
-          liveErrors: state.liveErrors.filter((_, photoIndex) => photoIndex !== index),
-        }
-  )),
+  removePhoto: (index) => set((state) => {
+    if (index < 0 || index >= state.photos.length) return state
+    const photoAdjustments = { ...state.photoAdjustments }
+    delete photoAdjustments[index]
+    return {
+      ...invalidateGeneratedOutputs(state),
+      photos: state.photos.filter((_, photoIndex) => photoIndex !== index),
+      liveSequences: state.liveSequences.filter((_, photoIndex) => photoIndex !== index),
+      liveErrors: state.liveErrors.filter((_, photoIndex) => photoIndex !== index),
+      photoAdjustments,
+    }
+  }),
+  reorderPhotos: (fromIndex, toIndex) => set((state) => {
+    if (
+      fromIndex < 0 || fromIndex >= state.photos.length ||
+      toIndex < 0 || toIndex >= state.photos.length ||
+      fromIndex === toIndex
+    ) return state
+
+    const photos = [...state.photos]
+    const liveSequences = [...state.liveSequences]
+    const liveErrors = [...state.liveErrors]
+    const photoAdjustments = { ...state.photoAdjustments }
+
+    const [movedPhoto] = photos.splice(fromIndex, 1)
+    photos.splice(toIndex, 0, movedPhoto)
+
+    const [movedSeq] = liveSequences.splice(fromIndex, 1)
+    liveSequences.splice(toIndex, 0, movedSeq)
+
+    const [movedErr] = liveErrors.splice(fromIndex, 1)
+    liveErrors.splice(toIndex, 0, movedErr)
+
+    const adjArray: (PhotoAdjustment | null)[] = photos.map((_, i) => state.photoAdjustments[i] ?? null)
+    const [movedAdj] = adjArray.splice(fromIndex, 1)
+    adjArray.splice(toIndex, 0, movedAdj)
+    const nextAdjustments: Record<number, PhotoAdjustment> = {}
+    adjArray.forEach((adj, i) => {
+      if (adj) nextAdjustments[i] = adj
+    })
+
+    return {
+      ...invalidateGeneratedOutputs(state),
+      photos,
+      liveSequences,
+      liveErrors,
+      photoAdjustments: nextAdjustments,
+    }
+  }),
+  movePhoto: (index, direction) => {
+    const toIndex = direction === 'up' ? index - 1 : index + 1
+    get().reorderPhotos(index, toIndex)
+  },
   setFilter: (filterId) => {
     if (filterById(filterId)) set((state) => ({ ...invalidateGeneratedOutputs(state), selectedFilter: filterId }))
   },
@@ -165,9 +217,29 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       photos: [],
       liveSequences: [],
       liveErrors: [],
+      photoAdjustments: {},
     }))
   },
   setFilterIntensity: (intensity) => set((state) => ({ ...invalidateGeneratedOutputs(state), filterIntensity: Math.min(100, Math.max(0, intensity)) })),
+  setPhotoAdjustment: (index, adjustment) => set((state) => {
+    const current = state.photoAdjustments[index] ?? { zoom: 1, panX: 0, panY: 0 }
+    const updated: PhotoAdjustment = {
+      zoom: Math.max(1, Math.min(3, adjustment.zoom ?? current.zoom)),
+      panX: Math.max(-100, Math.min(100, adjustment.panX ?? current.panX)),
+      panY: Math.max(-100, Math.min(100, adjustment.panY ?? current.panY)),
+    }
+    return {
+      ...invalidateGeneratedOutputs(state),
+      photoAdjustments: {
+        ...state.photoAdjustments,
+        [index]: updated,
+      },
+    }
+  }),
+  resetPhotoAdjustments: () => set((state) => ({
+    ...invalidateGeneratedOutputs(state),
+    photoAdjustments: {},
+  })),
   setTimer: (timer) => set({ timer }),
   setMirror: (mirror) => set({ mirror }),
   setShowGrid: (showGrid) => set({ showGrid }),
@@ -216,6 +288,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         filterIntensity: Math.min(100, Math.max(0, snapshot.filterIntensity)),
         caption: snapshot.caption,
         showDate: snapshot.showDate,
+        photoAdjustments: snapshot.photoAdjustments ? { ...snapshot.photoAdjustments } : {},
       }
     })
   },

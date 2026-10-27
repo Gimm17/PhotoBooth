@@ -75,7 +75,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     liveController.current = null
     setActiveView('photo')
     setLiveStatus(session.boomerangResult ? { kind: 'ready', ...session.boomerangResult } : { kind: 'idle' })
-  }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences])
+  }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences, session.photoAdjustments])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
   if (!hasResult || !blob || !frame || !filter) {
@@ -105,6 +105,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       caption: session.caption,
       showDate: session.showDate,
       photos: session.photos.join('|'),
+      adjustments: JSON.stringify(session.photoAdjustments),
     }
     const isCurrent = () => {
       const current = useSessionStore.getState()
@@ -117,6 +118,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         && current.caption === source.caption
         && current.showDate === source.showDate
         && current.photos.join('|') === source.photos
+        && JSON.stringify(current.photoAdjustments) === source.adjustments
     }
     setFormat(nextFormat)
     setIsRecomposing(true)
@@ -132,6 +134,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         caption: session.caption,
         showDate: session.showDate,
         format: nextFormat,
+        adjustments: session.photoAdjustments,
       })
       if (!isCurrent()) return
       const nextUrl = URL.createObjectURL(nextBlob)
@@ -212,6 +215,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         sequences: session.liveSequences,
         signal: controller.signal,
         capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
+        adjustments: session.photoAdjustments,
       })
       if (controller.signal.aborted) return
       const url = URL.createObjectURL(recorded.blob)

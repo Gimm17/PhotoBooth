@@ -40,6 +40,9 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
     assignRef(forwardedRef, node)
   }, [forwardedRef])
 
+  const propsRef = useRef(props)
+  propsRef.current = props
+
   useEffect(() => {
     let disposed = false
     let animationId = 0
@@ -59,11 +62,16 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
       prepareFrameAssets(props.frame),
       Promise.all(props.photos.map(loadPhoto)),
     ]).then(([assets, completed]) => {
+      if (disposed) return
       const draw = () => {
         if (disposed) return
-        const slots = props.frame.slots.map((_, index): RenderSource | null => {
-          if (index === props.activeSlot && props.cameraStatus === 'active') {
-            return { source: video, width: video.videoWidth || 1280, height: video.videoHeight || 720, mirror: props.mirror }
+        const current = propsRef.current
+        const slots = current.frame.slots.map((_, index): RenderSource | null => {
+          if (index === current.activeSlot && current.cameraStatus === 'active') {
+            return { source: video, width: video.videoWidth || 1280, height: video.videoHeight || 720, mirror: current.mirror }
+          }
+          if (index === current.activeSlot && current.cameraStatus !== 'active') {
+            return null
           }
           if (completed[index]) return completed[index]
           return null
@@ -71,16 +79,16 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
         drawFrameComposition({
           context,
           canvas,
-          frame: props.frame,
+          frame: current.frame,
           assets,
           slots,
-          filter: props.filter,
-          intensity: props.intensity,
+          filter: current.filter,
+          intensity: current.intensity,
           caption: '',
           showDate: false,
           date: new Date(),
           placeholder: (slotContext, slotIndex, box) => {
-            slotContext.fillStyle = slotIndex === props.activeSlot ? 'rgba(165,214,241,.45)' : 'rgba(44,43,41,.13)'
+            slotContext.fillStyle = slotIndex === current.activeSlot ? 'rgba(165,214,241,.45)' : 'rgba(44,43,41,.13)'
             slotContext.fillRect(box.x, box.y, box.width, box.height)
           },
         })
@@ -95,7 +103,7 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
       disposed = true
       cancelAnimationFrame(animationId)
     }
-  }, [props.activeSlot, props.cameraStatus, props.filter, props.frame, props.intensity, props.mirror, props.onError, props.photos])
+  }, [props.frame, props.onError, props.photos])
 
   return <div className={`live-frame-preview${props.showGrid ? ' show-grid' : ''}`} style={{ aspectRatio: `${props.frame.output.width} / ${props.frame.output.height}` }}>
     <canvas ref={canvasRef} aria-label="Pratinjau kamera di dalam frame" />

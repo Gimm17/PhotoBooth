@@ -1,4 +1,4 @@
-import type { FilterPreset, FrameTemplate } from '../../catalog/types'
+import type { FilterPreset, FrameTemplate, PhotoAdjustment } from '../../catalog/types'
 import { drawFrameComposition, prepareFrameAssets } from './frame-renderer'
 
 export type OutputFormat = 'png' | 'jpeg' | 'webp'
@@ -13,6 +13,7 @@ export interface ComposePhotoStripInput {
   date?: Date
   format: OutputFormat
   quality?: number
+  adjustments?: Record<number, PhotoAdjustment>
 }
 
 const outputMimeTypes: Record<OutputFormat, string> = {
@@ -62,6 +63,7 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
     caption: input.caption,
     showDate: input.showDate,
     date: input.date ?? new Date(),
+    adjustments: input.adjustments,
   })
 
   return canvasToBlob(canvas, outputMimeTypes[input.format], input.quality ?? 0.92)
