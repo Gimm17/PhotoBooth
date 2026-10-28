@@ -4,7 +4,7 @@
 > **Aplikasi:** PhotoBooth Web Application (Client-Side PWA)  
 > **Repository:** `https://github.com/Gimm17/PhotoBooth.git`  
 > **Live URL:** `https://photobooth-neon-alpha.vercel.app` / `https://photobooth-gimm17s-projects.vercel.app`  
-> **Terakhir Diperbarui:** 27 Oktober 2026
+> **Terakhir Diperbarui:** 28 Oktober 2026
 
 ---
 
@@ -50,7 +50,8 @@ PhotoBooth/
 ├── AI_AGENT_CONTEXT/             # 🧠 Konteks & Instruksi resmi untuk AI Agent
 │   ├── PROMPT.MD                 # Prompt instruksi ketat untuk AI baru
 │   ├── MEMORY.MD                 # Dokumentasi arsitektur mendalam (file ini)
-│   └── CHANGELOG.MD              # Catatan rilis dan riwayat perbaikan terstruktur
+│   ├── CHANGELOG.MD              # Catatan rilis dan riwayat perbaikan terstruktur
+│   └── GOOGLE_DRIVE_EXPO_SETUP.MD# Panduan & script Google Apps Script untuk Expo QR Share
 ├── Photobooth_Template/          # 📦 Direktori file referensi template mentah (lokal)
 ├── design_ui_ux/                 # 🎨 File desain UI/UX mockup & blueprint (lokal)
 ├── public/                       # 🌐 Aset statis publik
@@ -63,7 +64,7 @@ PhotoBooth/
 │   └── check-release-harness.mjs # Harness pengujian checker rilis
 ├── src/                          # 💻 Source code utama aplikasi
 │   ├── app/                      # Entry point routing & layout aplikasi
-│   │   ├── App.tsx               # Definisi rute: /, /frames, /setup, /studio, /editor, /result, /gallery
+│   │   ├── App.tsx               # Definisi rute: /, /frames, /setup, /studio, /editor, /result, /gallery, /share
 │   │   └── App.test.tsx          # Pengujian integrasi seluruh rute
 │   ├── catalog/                  # 📚 Katalog deklaratif frame, filter, dan tipe
 │   │   ├── frames.ts             # Definisi 41 FrameTemplate & 8 Layout Archetypes
@@ -88,13 +89,18 @@ PhotoBooth/
 │   │   │   ├── Inspector.tsx     # Kontrol intensitas filter, caption teks, tanggal
 │   │   │   ├── PrintPreview.tsx  # Pratinjau cetak strip beresolusi tinggi
 │   │   │   └── FrameThumbnail.tsx# Render thumbnail miniatur frame interaktif
-│   │   ├── export/               # Pipeline Rendering & Ekspor
+│   │   ├── export/               # Pipeline Rendering, Ekspor & QR Share Expo
 │   │   │   ├── geometry.ts       # Matematika crop cover, zoom scale, dan pan clamp
-│   │   │   ├── frame-renderer.ts # Mesin komposisi canvas multi-layer
+│   │   │   ├── frame-renderer.ts # Mesin komposisi canvas multi-layer & cap tanggal estetik
 │   │   │   ├── compositor.ts     # Composer gambar cetak (Blob PNG/JPEG)
-│   │   │   ├── boomerang-compositor.ts # Composer animasi video strip (WebM)
+│   │   │   ├── boomerang-compositor.ts # Composer animasi video Live Photo 60fps (3 detik penuh)
 │   │   │   ├── frame-asset-loader.ts # Async image loader untuk aset dekorasi frame
-│   │   │   └── ResultPanel.tsx   # Panel unduh foto, cetak, simpan galeri, buat baru
+│   │   │   ├── qr-code.ts        # Generator matriks QR Code ISO/IEC 18004 mandiri (zero-dependency)
+│   │   │   ├── gdrive-share-service.ts # Klien unggah paralel Foto (JPEG terkompresi) + Live Photo ke Google Drive
+│   │   │   ├── QrShareModal.tsx  # Modal interaktif QR Code Expo di halaman hasil
+│   │   │   └── ResultPanel.tsx   # Panel unduh foto, Live Photo, QR Code, cetak, simpan galeri
+│   │   ├── share/                # Fitur Halaman Unduh Pengunjung Expo (/share)
+│   │   │   └── ShareLandingPage.tsx # Halaman mobile pengunjung saat scan QR Code (unduh Foto & Live Photo)
 │   │   ├── frames/               # Fitur Pemilihan Frame Pertama Kali
 │   │   │   └── FrameSelection.tsx# Katalog pemilihan frame awal sebelum masuk kamera
 │   │   └── gallery/              # Fitur Galeri Lokal
@@ -226,21 +232,36 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
    - `context.restore()`.
 4. **Overlay Assets**: Gambar aset dekorasi `layer: 'overlay'` (stiker transparan, frame polaroid, pita, efek film di atas foto).
 5. **Frame Border**: Gambar garis tepi bingkai jika dikonfigurasi.
-6. **Caption & Date**: Gambar teks caption dan tanggal jika diaktifkan.
+6. **Caption & Aesthetic Date Stamp (`showDate` default `false`)**:
+   - Secara default `showDate` bernilai `false` (tidak tercentang).
+   - Ketika dicentang, tanggal dirender dengan tipografi studio analog (`500 "JetBrains Mono", "SFMono-Regular", Consolas, monospace`), ukuran proporsional halus (~`17px–19px`), *letter-spacing* `0.2em`, dan opasitas lembut `0.72`.
+   - Posisi vertikal dihitung secara optik dari batas bawah slot foto terakhir (`maxSlotBottom`) dan batas dalam border bawah (`innerBottom`), serta otomatis menggunakan warna terang (`#F4F0E4`) pada bingkai berlatar belakang gelap.
 
 ---
 
-### 4.5. Arsitektur Live Photo 60fps (`live-capture-service.ts` & `boomerang-compositor.ts`)
+### 4.5. Arsitektur Live Photo 60fps Berdurasi 3 Detik (`live-capture-service.ts` & `boomerang-compositor.ts`)
 
-1. **Instant Key Still Capture pada `t=0` (Zero Blur & Zero Delay)**:
-   - Saat hitung mundur mencapai `0`, `captureLivePose` langsung mengambil foto statis beresolusi penuh (`JPEG 0.92` ukuran intrinsik kamera via `captureStatic`) tepat pada milidetik `t=0` sebelum merekam post-roll.
-   - Hal ini memastikan foto utama selalu tajam dan tidak blur meskipun pengguna bergerak sesaat setelah lampu kilat menyala.
-2. **Pre-Roll Ring Buffer + Post-Roll Capture (`createLiveRingBuffer`)**:
-   - Selama kamera aktif di Studio dan fitur **Live Photo** menyala, `createLiveRingBuffer` secara kontinu menyimpan hingga **1,5 detik** frame terakhir sebelum tombol shutter ditekan.
-   - Saat shutter ditekan, frame *pre-roll* digabungkan dengan frame *post-roll* pasca-shutter sehingga menghasilkan klip gerakan alami seperti **Live Photo iPhone**.
-3. **60fps Linear Video Export & Adaptive Webcam Pacing**:
-   - `useCamera.ts` meminta stream kamera hingga `frameRate: { ideal: 60 }` dengan fallback otomatis jika perangkat kamera hanya mendukung 30fps.
-   - `livePhotoOrder` di `boomerang-compositor.ts` memetakan urutan frame secara **linear maju sekali jalan** (*forward once*, bukan bolak-balik boomerang) dan melakukan *upsampling/frame-pacing* adaptif dari FPS asli webcam ke timeline video **60fps** (`LIVE_PHOTO_FPS = 60`, bitrate 4–8 Mbps, prioritas `video/mp4` lalu `video/webm`).
+1. **Rekaman Selama 3 Detik Terakhir Countdown (`3 -> 2 -> 1 -> Jepret`)**:
+   - Ketika pengguna menekan tombol Shutter di Studio:
+     - Jika timer **3 detik**: `createLiveRingBuffer` langsung mulai merekam begitu angka `3` muncul hingga tepat saat foto dijepret (`0`).
+     - Jika timer **5 atau 10 detik**: `createLiveRingBuffer` menunggu hingga hitungan mundur menyentuh angka **`3`**, lalu merekam tepat selama **3 detik terakhir** (`3 -> 2 -> 1 -> Jepret`).
+   - Frame buffer menggunakan encoding `image/jpeg` (`0.82`) yang dipercepat hardware sehingga tangkapan frame selama countdown 3 detik berjalan mulus tanpa drop.
+2. **Instant Key Still Capture pada `t=0` & Zero Delay Pasca-Jepret**:
+   - Begitu countdown mencapai `0`, `captureLivePose` langsung mengambil foto statis beresolusi penuh (`JPEG 0.92` via `captureStatic`) + 1 frame penutup pada `t=0` dengan `durationMs: 0` (tanpa perlu menahan gaya setelah lampu kilat menyala).
+3. **Ekspor Video Linear 60fps Berdurasi Pas 3.0 Detik (`180 Frame @ 60fps`)**:
+   - `captureLivePose` menetapkan `sequence.fps = frames.length / 3` sehingga durasi efektif rekaman selalu terkunci di **3.0 detik**.
+   - `livePhotoOrder` dan `composeBoomerang` memetakan setiap slot foto secara proporsional ke **180 frame @ 60fps** (`LIVE_PHOTO_DURATION_SEC = 3`, bitrate `2.5 Mbps`, prioritas `video/mp4` lalu `video/webm`) dengan sinkronisasi *wall-clock* `performance.now()`.
+
+---
+
+### 4.6. Arsitektur Expo QR Code & Google Drive Share (`gdrive-share-service.ts`, `qr-code.ts`, `ShareLandingPage.tsx`)
+
+1. **Alur Berbagi Mandiri untuk Pengunjung Expo**:
+   - Saat halaman `/result` terbuka, `ResultPanel.tsx` otomatis menjalankan **Background Pre-Upload** setelah `300ms`: merender video Live Photo 60fps dan mengunggah bundel **Foto Strip + Live Photo 60fps** ke Google Apps Script Web App (`DEFAULT_GDRIVE_WEBAPP_URL`).
+   - Untuk mempercepat unggahan hingga ~90%, `compressPhotoForUpload` mengonversi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.88`, maks `1600px`, ~250 KB) khusus untuk payload cloud, sementara unduhan lokal di tablet tetap PNG asli.
+2. **QR Code Mandiri & Halaman Unduh Mobile (`/share`)**:
+   - `qr-code.ts` menghasilkan matriks QR Code standar ISO/IEC 18004 (Byte mode, Reed-Solomon EC Level L, Version 1–10) secara murni di sisi klien tanpa library eksternal, dirender sebagai single `<path>` SVG tajam di `QrShareModal.tsx`.
+   - Ketika pengunjung memindai QR Code dengan kamera HP, mereka diarahkan ke `/share?p=<photoId>&v=<videoId>&d=<folderId>` (`ShareLandingPage.tsx`) yang menampilkan pratinjau foto, pemutar Live Photo 60fps, serta tombol **Unduh Foto** dan **Unduh Live Photo 60fps** langsung ke HP pengunjung.
 
 ---
 

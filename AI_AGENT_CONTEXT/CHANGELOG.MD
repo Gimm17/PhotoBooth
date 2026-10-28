@@ -5,11 +5,40 @@
 
 ---
 
-## [Unreleased / Current Production] - 2026-10-28
+## [Current Production - Commit cdd8876] - 2026-10-28
 
 ### 🚀 Fitur Baru & Upgrade Besar (Added & Changed)
 
-#### 0. Upgrade "Live Boomerang" Menjadi "Live Photo 60fps" ala iPhone (Zero Shutter Delay & Anti-Blur)
+#### 0A. Fitur Expo QR Code Share + Google Drive Auto-Bundle & Halaman Unduh Pengunjung (`/share`)
+- **Lokasi Kode**:
+  - [`src/features/export/qr-code.ts`](../src/features/export/qr-code.ts)
+  - [`src/features/export/gdrive-share-service.ts`](../src/features/export/gdrive-share-service.ts)
+  - [`src/features/export/QrShareModal.tsx`](../src/features/export/QrShareModal.tsx)
+  - [`src/features/share/ShareLandingPage.tsx`](../src/features/share/ShareLandingPage.tsx) & [`src/features/share/share.css`](../src/features/share/share.css)
+  - [`src/features/export/ResultPanel.tsx`](../src/features/export/ResultPanel.tsx)
+  - [`vercel.json`](../vercel.json) & [`public/sw.js`](../public/sw.js)
+  - [`AI_AGENT_CONTEXT/GOOGLE_DRIVE_EXPO_SETUP.MD`](./GOOGLE_DRIVE_EXPO_SETUP.MD)
+- **Perubahan & Perbaikan Utama**:
+  1. **Generator QR Code Mandiri (Zero-Dependency ISO/IEC 18004)**:
+     - Mengimplementasikan encoder QR Code murni di `qr-code.ts` (Byte mode, Reed-Solomon EC Level L, Version 1–10) dengan perbaikan orientasi koordinat format bits (`modules[row][col]`) dan rendering SVG single `<path>` yang tajam untuk kamera HP iOS/Android.
+  2. **Integrasi Google Apps Script Web App & Background Pre-Upload**:
+     - Menyimpan URL Web App Google Drive default (`DEFAULT_GDRIVE_WEBAPP_URL`) di kode sumber sehingga siap pakai di setiap perangkat tanpa konfigurasi ulang.
+     - Menjalankan *background pre-upload* otomatis `300ms` setelah halaman `/result` terbuka agar saat pengunjung menekan tombol **"Scan QR Code (Foto + Live Photo)"**, QR Code sudah langsung siap.
+     - Mengompresi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.88`, maks `1600px`) secara otomatis khusus untuk payload unggahan cloud (~90% lebih ringan & cepat), sementara unduhan lokal di tablet tetap PNG asli.
+  3. **Halaman Unduh Mobile Pengunjung (`/share`)**:
+     - Menyediakan halaman `/share` khusus pengunjung yang memindai QR Code untuk melihat pratinjau Foto Strip, memutar Live Photo 60fps, dan mengunduh keduanya langsung ke HP mereka.
+     - Memperbarui CSP di `vercel.json` (`connect-src`, `img-src`, `media-src`) serta SPA rewrites untuk `/share` dan `/frames`.
+
+#### 0B. Tipografi, Ukuran Font, & Posisi Cap Tanggal Lebih Estetik + Default Uncheck
+- **Lokasi Kode**:
+  - [`src/store/session-store.ts`](../src/store/session-store.ts)
+  - [`src/features/export/frame-renderer.ts`](../src/features/export/frame-renderer.ts)
+  - [`src/features/editor/Inspector.tsx`](../src/features/editor/Inspector.tsx)
+- **Perubahan Utama**:
+  - Mengubah nilai awal `showDate` menjadi `false` (tidak tercentang secara default).
+  - Mengganti font cap tanggal ke tipografi studio analog (`500 "JetBrains Mono", "SFMono-Regular", Consolas, monospace`) dengan ukuran proporsional (~`17px–19px`), *letter-spacing* renggang (`0.2em`), opasitas lembut (`0.72`), penempatan optik di tengah ruang footer bawah, serta kontras warna otomatis (`#F4F0E4` pada bingkai gelap).
+
+#### 0C. Upgrade "Live Boomerang" Menjadi "Live Photo 60fps" Berdurasi Pas 3 Detik (Mulai Saat Countdown `3 -> 2 -> 1 -> Jepret`)
 - **Lokasi Kode**:
   - [`src/features/camera/useCamera.ts`](../src/features/camera/useCamera.ts)
   - [`src/features/camera/live-capture-service.ts`](../src/features/camera/live-capture-service.ts)
@@ -20,17 +49,15 @@
   - [`src/features/export/ResultPanel.tsx`](../src/features/export/ResultPanel.tsx) & [`src/features/export/result.css`](../src/features/export/result.css)
   - [`src/features/gallery/Gallery.tsx`](../src/features/gallery/Gallery.tsx)
 - **Perubahan & Perbaikan Utama**:
-  1. **Eliminasi Delay Jepret & Foto Blur**:
-     - Sebelumnya, saat mode Live aktif, foto utama diambil dari frame tengah (`frame ke-6`, ~0,7 detik setelah shutter) dengan resolusi rendah 640px WebP, sehingga jika subjek bergerak setelah flash maka foto menjadi blur.
-     - Sekarang, foto utama diambil **instan tepat pada `t=0`** menggunakan resolusi penuh kamera (`JPEG 0.92` via `captureStatic`) sebelum proses pengumpulan frame selesai.
-  2. **Pre-Roll Ring Buffer + Post-Roll (Gaya Live Photo iPhone)**:
-     - Menambahkan `createLiveRingBuffer` yang merekam *pre-roll* (hingga 1,5 detik sebelum jepretan) di latar belakang selama kamera Studio aktif, lalu menggabungkannya dengan *post-roll* pasca-shutter.
-  3. **Playback Linear Maju Sekali Jalan & Ekspor Video 60fps**:
-     - Mengganti urutan bolak-balik (*boomerang*) menjadi urutan **linear maju sekali jalan** (`livePhotoOrder`) dengan output stream **60 FPS** (`LIVE_PHOTO_FPS = 60`, bitrate 4–8 Mbps).
-     - Menyesuaikan kecepatan frame secara otomatis dari FPS webcam pengguna ke timeline 60fps tanpa menampilkan peringatan yang mengganggu pengguna.
-     - Memprioritaskan format ekspor `video/mp4` (`-live.mp4`) dengan fallback otomatis ke `video/webm` (`-live.webm`).
+  1. **Rekaman 3 Detik Selama Countdown Menuju Jepret (`3 -> 2 -> 1 -> Shoot`)**:
+     - Rekaman Live Photo berjalan tepat selama **3 detik terakhir hitung mundur** (`remaining === 3` sampai `0`). Jika pengguna memilih timer 5 atau 10 detik, rekaman tetap dikunci pada 3 detik terakhir (`3 -> 2 -> 1 -> Jepret`).
+     - Menggunakan encoding `image/jpeg` (`0.82`) yang ~10x lebih cepat di ring buffer sehingga frame rate selama countdown 3 detik tetap tinggi dan mulus.
+  2. **Zero Delay Setelah Jepret & Anti-Blur (`t=0`)**:
+     - Begitu countdown mencapai `0`, foto statis resolusi penuh (`captureStatic`) diambil detik itu juga bersama 1 frame penutup dengan `durationMs: 0` (tidak perlu lagi menahan pose setelah lampu flash menyala).
+  3. **Playback Linear Maju Sekali Jalan Berdurasi Pas 3.0 Detik @ 60fps (`180 Frame`)**:
+     - Mengunci durasi playback efektif setiap sequence ke `LIVE_PHOTO_DURATION_SEC = 3` detik (`180 frame @ 60fps`, bitrate `2.5 Mbps`, prioritas `video/mp4` lalu `video/webm`).
   4. **Pembaruan UI & Badge LIVE**:
-     - Mengganti seluruh label "Live boomerang" menjadi **"Live Photo"**, lengkap dengan badge indikator **LIVE** ala iPhone di viewfinder Studio dan **LIVE · 60 FPS** di halaman hasil.
+     - Mengganti seluruh label "Live boomerang" menjadi **"Live Photo"**, lengkap dengan badge indikator **LIVE** di viewfinder Studio dan **LIVE · 60 FPS** di halaman hasil.
 
 #### 1. Sistem Drag-and-Drop Reordering Urutan Foto di Editor
 - **Lokasi Kode**: [`src/features/editor/PhotoManager.tsx`](../src/features/editor/PhotoManager.tsx), [`src/features/editor/Editor.tsx`](../src/features/editor/Editor.tsx), [`src/features/editor/editor.css`](../src/features/editor/editor.css).
