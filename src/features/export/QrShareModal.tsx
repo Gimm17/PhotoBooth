@@ -33,8 +33,16 @@ function QrSvg({ value }: { value: string }) {
   }, [value])
 
   if (!matrix) return null
-  const quietZone = 3
+  const quietZone = 4
   const size = matrix.length + quietZone * 2
+  const paths: string[] = []
+  for (let r = 0; r < matrix.length; r += 1) {
+    for (let c = 0; c < matrix[r].length; c += 1) {
+      if (matrix[r][c]) {
+        paths.push(`M${c + quietZone},${r + quietZone}h1v1h-1z`)
+      }
+    }
+  }
 
   return (
     <svg
@@ -44,21 +52,8 @@ function QrSvg({ value }: { value: string }) {
       aria-label="QR Code unduhan Foto dan Live Photo"
       shapeRendering="crispEdges"
     >
-      <rect width={size} height={size} fill="#FFFFFF" rx={1.5} />
-      {matrix.map((row, r) =>
-        row.map((dark, c) =>
-          dark ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c + quietZone}
-              y={r + quietZone}
-              width={1}
-              height={1}
-              fill="#1E1D1B"
-            />
-          ) : null,
-        ),
-      )}
+      <rect width={size} height={size} fill="#FFFFFF" />
+      <path d={paths.join('')} fill="#000000" />
     </svg>
   )
 }

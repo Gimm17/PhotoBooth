@@ -1,5 +1,5 @@
 // Pure TypeScript ISO/IEC 18004 QR Code Generator (Byte Mode, Error Correction Level L, Versions 1-14)
-// Zero external dependencies, 100% client-side and offline-ready.
+// Matches Nayuki reference specification bit-for-bit.
 
 interface VersionSpec {
   totalCodewords: number
@@ -11,7 +11,6 @@ interface VersionSpec {
   alignmentCenters: number[]
 }
 
-// Standard ISO/IEC 18004 Table 9 & Annex E for Error Correction Level L (Versions 1 to 14)
 const VERSION_SPECS_L: Record<number, VersionSpec> = {
   1: { totalCodewords: 26, ecCodewordsPerBlock: 7, blocksGroup1: 1, dataCodewordsGroup1: 19, blocksGroup2: 0, dataCodewordsGroup2: 0, alignmentCenters: [] },
   2: { totalCodewords: 44, ecCodewordsPerBlock: 10, blocksGroup1: 1, dataCodewordsGroup1: 34, blocksGroup2: 0, dataCodewordsGroup2: 0, alignmentCenters: [6, 18] },
@@ -29,51 +28,40 @@ const VERSION_SPECS_L: Record<number, VersionSpec> = {
   14: { totalCodewords: 581, ecCodewordsPerBlock: 30, blocksGroup1: 3, dataCodewordsGroup1: 115, blocksGroup2: 1, dataCodewordsGroup2: 116, alignmentCenters: [6, 26, 46, 66] },
 }
 
-const GF_EXP = new Uint8Array(512)
-const GF_LOG = new Uint8Array(256)
-;(() => {
-  let value = 1
-  for (let index = 0; index < 255; index += 1) {
-    GF_EXP[index] = value
-    GF_LOG[value] = index
-    value <<= 1
-    if (value & 0x100) value ^= 0x11d
+const gfMul = (x: number, y: number): number => {
+  let z = 0
+  for (let i = 7; i >= 0; i -= 1) {
+    z = (z << 1) ^ ((z >>> 7) * 0x11d)
+    z ^= ((y >>> i) & 1) * x
   }
-  for (let index = 255; index < 512; index += 1) {
-    GF_EXP[index] = GF_EXP[index - 255]
-  }
-})()
-
-const gfMul = (a: number, b: number): number => (a === 0 || b === 0 ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]])
-
-const rsGeneratorPoly = (degree: number): Uint8Array => {
-  let poly = new Uint8Array([1])
-  for (let index = 0; index < degree; index += 1) {
-    const next = new Uint8Array(poly.length + 1)
-    const root = GF_EXP[index]
-    for (let j = 0; j < poly.length; j += 1) {
-      next[j] ^= poly[j]
-      next[j + 1] ^= gfMul(poly[j], root)
-    }
-    poly = next
-  }
-  return poly
+  return z
 }
 
-const rsRemainder = (data: Uint8Array, degree: number): Uint8Array => {
-  const gen = rsGeneratorPoly(degree)
-  const remainder = new Uint8Array(degree)
-  for (const byte of data) {
-    const factor = byte ^ remainder[0]
-    remainder.copyWithin(0, 1)
-    remainder[degree - 1] = 0
-    if (factor !== 0) {
-      for (let j = 0; j < degree; j += 1) {
-        remainder[j] ^= gfMul(gen[j + 1], factor)
-      }
+const reedSolomonComputeDivisor = (degree: number): Uint8Array => {
+  const result = new Uint8Array(degree)
+  result[degree - 1] = 1
+  let root = 1
+  for (let i = 0; i < degree; i += 1) {
+    for (let j = 0; j < degree; j += 1) {
+      result[j] = gfMul(result[j], root)
+      if (j + 1 < degree) result[j] ^= result[j + 1]
+    }
+    root = gfMul(root, 0x02)
+  }
+  return result
+}
+
+const reedSolomonComputeRemainder = (data: Uint8Array, divisor: Uint8Array): Uint8Array => {
+  const result = new Uint8Array(divisor.length)
+  for (const b of data) {
+    const factor = b ^ result[0]
+    result.copyWithin(0, 1)
+    result[divisor.length - 1] = 0
+    for (let i = 0; i < divisor.length; i += 1) {
+      result[i] ^= gfMul(divisor[i], factor)
     }
   }
-  return remainder
+  return result
 }
 
 const dataCapacityBytes = (version: number): number => {
@@ -120,6 +108,7 @@ const encodeCodewords = (bytes: Uint8Array, version: number): Uint8Array => {
     dataBytes[i] = pads[(i - currentBytes) % 2]
   }
 
+  const divisor = reedSolomonComputeDivisor(spec.ecCodewordsPerBlock)
   const dataBlocks: Uint8Array[] = []
   const ecBlocks: Uint8Array[] = []
   let offset = 0
@@ -127,13 +116,13 @@ const encodeCodewords = (bytes: Uint8Array, version: number): Uint8Array => {
     const block = dataBytes.subarray(offset, offset + spec.dataCodewordsGroup1)
     offset += spec.dataCodewordsGroup1
     dataBlocks.push(block)
-    ecBlocks.push(rsRemainder(block, spec.ecCodewordsPerBlock))
+    ecBlocks.push(reedSolomonComputeRemainder(block, divisor))
   }
   for (let i = 0; i < spec.blocksGroup2; i += 1) {
     const block = dataBytes.subarray(offset, offset + spec.dataCodewordsGroup2)
     offset += spec.dataCodewordsGroup2
     dataBlocks.push(block)
-    ecBlocks.push(rsRemainder(block, spec.ecCodewordsPerBlock))
+    ecBlocks.push(reedSolomonComputeRemainder(block, divisor))
   }
 
   const result = new Uint8Array(spec.totalCodewords)
@@ -155,20 +144,22 @@ const encodeCodewords = (bytes: Uint8Array, version: number): Uint8Array => {
 const computeFormatBits = (mask: number): number => {
   // Error Correction Level L = 01
   const data = (0b01 << 3) | mask
-  let rem = data << 10
-  for (let i = 14; i >= 10; i -= 1) {
-    if ((rem >>> i) & 1) rem ^= 0x537 << (i - 10)
+  let rem = data
+  for (let i = 0; i < 10; i += 1) {
+    rem = (rem << 1) ^ ((rem >>> 9) * 0x537)
   }
   return ((data << 10) | rem) ^ 0x5412
 }
 
 const computeVersionBits = (version: number): number => {
-  let rem = version << 12
-  for (let i = 17; i >= 12; i -= 1) {
-    if ((rem >>> i) & 1) rem ^= 0x1f25 << (i - 12)
+  let rem = version
+  for (let i = 0; i < 12; i += 1) {
+    rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25)
   }
   return (version << 12) | rem
 }
+
+const getBit = (val: number, i: number): boolean => ((val >>> i) & 1) !== 0
 
 const applyMaskBit = (mask: number, row: number, col: number): boolean => {
   switch (mask) {
@@ -183,33 +174,24 @@ const applyMaskBit = (mask: number, row: number, col: number): boolean => {
   }
 }
 
+// Note: modules is indexed as modules[row][col] (i.e. modules[y][x])
 const drawFormatModules = (modules: boolean[][], isFunction: boolean[][], mask: number) => {
   const size = modules.length
   const bits = computeFormatBits(mask)
-  for (let i = 0; i <= 5; i += 1) {
-    modules[8][i] = ((bits >>> i) & 1) === 1
-    isFunction[8][i] = true
+  const setFn = (col: number, row: number, dark: boolean) => {
+    modules[row][col] = dark
+    isFunction[row][col] = true
   }
-  modules[8][7] = ((bits >>> 6) & 1) === 1
-  isFunction[8][7] = true
-  modules[8][8] = ((bits >>> 7) & 1) === 1
-  isFunction[8][8] = true
-  modules[7][8] = ((bits >>> 8) & 1) === 1
-  isFunction[7][8] = true
-  for (let i = 9; i < 15; i += 1) {
-    modules[14 - i][8] = ((bits >>> i) & 1) === 1
-    isFunction[14 - i][8] = true
-  }
-  for (let i = 0; i < 8; i += 1) {
-    modules[size - 1 - i][8] = ((bits >>> i) & 1) === 1
-    isFunction[size - 1 - i][8] = true
-  }
-  for (let i = 8; i < 15; i += 1) {
-    modules[8][size - 15 + i] = ((bits >>> i) & 1) === 1
-    isFunction[8][size - 15 + i] = true
-  }
-  modules[size - 8][8] = true
-  isFunction[size - 8][8] = true
+
+  for (let i = 0; i <= 5; i += 1) setFn(8, i, getBit(bits, i))
+  setFn(8, 7, getBit(bits, 6))
+  setFn(8, 8, getBit(bits, 7))
+  setFn(7, 8, getBit(bits, 8))
+  for (let i = 9; i < 15; i += 1) setFn(14 - i, 8, getBit(bits, i))
+
+  for (let i = 0; i < 8; i += 1) setFn(size - 1 - i, 8, getBit(bits, i))
+  for (let i = 8; i < 15; i += 1) setFn(8, size - 15 + i, getBit(bits, i))
+  setFn(8, size - 8, true)
 }
 
 const penaltyScore = (modules: boolean[][]): number => {
@@ -297,7 +279,7 @@ export function generateQrMatrix(text: string): boolean[][] {
   if (version >= 7) {
     const vBits = computeVersionBits(version)
     for (let i = 0; i < 18; i += 1) {
-      const bit = ((vBits >>> i) & 1) === 1
+      const bit = getBit(vBits, i)
       const a = size - 11 + (i % 3)
       const b = Math.floor(i / 3)
       baseModules[b][a] = bit
@@ -312,25 +294,24 @@ export function generateQrMatrix(text: string): boolean[][] {
   const codewords = encodeCodewords(bytes, version)
   let bitIdx = 0
   const totalBits = codewords.length * 8
-  let upward = true
 
   for (let right = size - 1; right >= 1; right -= 2) {
     if (right === 6) right = 5
     for (let vert = 0; vert < size; vert += 1) {
-      const row = upward ? size - 1 - vert : vert
       for (let j = 0; j < 2; j += 1) {
         const col = right - j
+        const upward = ((right + 1) & 2) === 0
+        const row = upward ? size - 1 - vert : vert
         if (!isFunction[row][col]) {
           let dark = false
           if (bitIdx < totalBits) {
-            dark = ((codewords[bitIdx >>> 3] >>> (7 - (bitIdx & 7))) & 1) === 1
+            dark = getBit(codewords[bitIdx >>> 3], 7 - (bitIdx & 7))
             bitIdx += 1
           }
           baseModules[row][col] = dark
         }
       }
     }
-    upward = !upward
   }
 
   let bestMatrix = baseModules
