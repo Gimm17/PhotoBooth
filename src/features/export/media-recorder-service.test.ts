@@ -38,12 +38,12 @@ describe('adaptive media recorder', () => {
     Object.defineProperty(canvas, 'captureStream', { value: vi.fn(() => ({ getTracks: () => [{ stop }] })) })
     const signal = new AbortController().signal
 
-    const result = await recordCanvas(canvas, async () => undefined, { fps: 10, signal, MediaRecorderClass: FakeRecorder })
+    const result = await recordCanvas(canvas, async () => undefined, { fps: 60, signal, MediaRecorderClass: FakeRecorder })
 
     expect(result.mimeType).toBe('video/webm')
     expect(result.blob.type).toBe('video/webm')
     expect(stop).toHaveBeenCalledOnce()
-    expect(createBoomerangFilename(result.mimeType, new Date(2026, 8, 23, 12, 34, 56))).toBe('photobooth-2026-09-23_12-34-56-boomerang.webm')
+    expect(createBoomerangFilename(result.mimeType, new Date(2026, 8, 23, 12, 34, 56))).toBe('photobooth-2026-09-23_12-34-56-live.webm')
   })
 
   it('maps truthful video extensions', () => {

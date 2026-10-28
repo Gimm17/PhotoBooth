@@ -15,7 +15,7 @@ function camera(status: 'idle' | 'active') {
 }
 
 vi.mock('./camera-service', () => ({ captureFrame: mocks.captureFrame }))
-vi.mock('./live-capture-service', () => ({ captureLivePose: mocks.captureLivePose }))
+vi.mock('./live-capture-service', () => ({ captureLivePose: mocks.captureLivePose, createLiveRingBuffer: () => ({ start: vi.fn(), stop: vi.fn(), clear: vi.fn(), flush: () => [] }) }))
 vi.mock('./LiveFramePreview', async () => {
   const { forwardRef } = await import('react')
   return { LiveFramePreview: forwardRef<HTMLVideoElement>(function Preview(_, ref) {
@@ -34,7 +34,7 @@ describe('Studio', () => {
     mocks.cameraSnapshot = camera('idle')
     mocks.captureFrame.mockClear()
     mocks.captureLivePose.mockReset()
-    mocks.captureLivePose.mockResolvedValue({ photo: 'data:image/jpeg;base64,live', sequence: { frames: [{ blob: new Blob(['frame']) }], width: 640, height: 480, fps: 10 } })
+    mocks.captureLivePose.mockResolvedValue({ photo: 'data:image/jpeg;base64,live', sequence: { frames: [{ blob: new Blob(['frame']) }], width: 640, height: 480, fps: 60 } })
     vi.useRealTimers()
   })
   afterEach(() => useSessionStore.getState().resetSession())
@@ -229,7 +229,7 @@ describe('Studio', () => {
     await act(async () => vi.advanceTimersByTimeAsync(3_165))
 
     expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,live'])
-    expect(useSessionStore.getState().liveSequences[0]).toEqual(expect.objectContaining({ fps: 10 }))
+    expect(useSessionStore.getState().liveSequences[0]).toEqual(expect.objectContaining({ fps: 60 }))
     expect(screen.getByText('Three-photo Postcard · Pose 2 dari 3')).toBeInTheDocument()
     expect(screen.getByLabelText('Pratinjau kamera di dalam frame')).toBeInTheDocument()
   })

@@ -220,11 +220,11 @@ describe('ResultPanel', () => {
     renderPanel()
     expect(mocks.composeBoomerang).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('tab', { name: /Live boomerang/i }))
+    fireEvent.click(screen.getByRole('tab', { name: /Live Photo/i }))
 
     await waitFor(() => expect(mocks.composeBoomerang).toHaveBeenCalledOnce())
-    expect(await screen.findByText(/WEBM/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Unduh boomerang/i })).toBeEnabled()
+    expect(await screen.findByText(/WEBM · 60 FPS/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Unduh Live Photo/i })).toBeEnabled()
   })
 
   it('keeps a successful photo save when the video save fails', async () => {
@@ -232,8 +232,8 @@ describe('ResultPanel', () => {
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('Video gagal'))
     renderPanel(saveToGallery)
-    fireEvent.click(screen.getByRole('tab', { name: /Live boomerang/i }))
-    await screen.findByText(/WEBM/i)
+    fireEvent.click(screen.getByRole('tab', { name: /Live Photo/i }))
+    await screen.findByText(/WEBM · 60 FPS/i)
 
     fireEvent.click(screen.getByRole('button', { name: /Simpan semua/i }))
 

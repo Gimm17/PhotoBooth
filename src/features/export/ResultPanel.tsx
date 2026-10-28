@@ -224,7 +224,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       setLiveStatus({ kind: 'ready', ...result })
     } catch (error) {
       if (controller.signal.aborted) return
-      const message = error instanceof Error ? error.message : 'Boomerang tidak dapat dibuat.'
+      const message = error instanceof Error ? error.message : 'Live Photo tidak dapat dibuat.'
       setLiveStatus({ kind: error instanceof Error && error.name === 'UnsupportedLiveVideoError' ? 'unsupported' : 'error', message })
     } finally {
       if (liveController.current === controller) liveController.current = null
@@ -234,13 +234,13 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const handleLiveDownload = () => {
     if (liveStatus.kind !== 'ready') return
     const result = downloadBlob(liveStatus.blob, createBoomerangFilename(liveStatus.mimeType))
-    setStatus(result.status === 'success' ? { kind: 'success', message: 'Boomerang sedang diunduh.' } : { kind: 'error', message: result.status === 'error' ? result.message : 'Unduhan video tidak didukung.' })
+    setStatus(result.status === 'success' ? { kind: 'success', message: 'Live Photo sedang diunduh.' } : { kind: 'error', message: result.status === 'error' ? result.message : 'Unduhan video tidak didukung.' })
   }
 
   const handleLiveShare = async () => {
     if (liveStatus.kind !== 'ready') return
     const result = await shareBlob(liveStatus.blob, createBoomerangFilename(liveStatus.mimeType))
-    setStatus(result.status === 'success' ? { kind: 'success', message: 'Boomerang siap dibagikan.' } : result.status === 'unsupported' ? { kind: 'info', message: 'Berbagi video belum didukung di perangkat ini.' } : { kind: 'error', message: result.message })
+    setStatus(result.status === 'success' ? { kind: 'success', message: 'Live Photo siap dibagikan.' } : result.status === 'unsupported' ? { kind: 'info', message: 'Berbagi video belum didukung di perangkat ini.' } : { kind: 'error', message: result.message })
   }
 
   const handleSaveAll = async () => {
@@ -282,23 +282,23 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
 
     <div className="result-tabs" role="tablist" aria-label="Jenis hasil">
       <button type="button" role="tab" aria-selected={activeView === 'photo'} onClick={() => setActiveView('photo')}>Foto</button>
-      <button type="button" role="tab" aria-selected={activeView === 'live'} onClick={() => void openLive()}><Film aria-hidden="true" size={16} />Live boomerang</button>
+      <button type="button" role="tab" aria-selected={activeView === 'live'} onClick={() => void openLive()}><Film aria-hidden="true" size={16} />Live Photo</button>
     </div>
 
     <div className="result-layout">
       <figure className="result-print">
         <span className="result-tape" aria-hidden="true">MEMENTO ARCHIVE</span>
         {activeView === 'photo' && <img src={session.composedResultUrl!} alt="Hasil PhotoBooth siap disimpan" />}
-        {activeView === 'live' && liveStatus.kind === 'generating' && <div className="result-live-state"><Sparkles aria-hidden="true" />Membuat boomerang…</div>}
-        {activeView === 'live' && (liveStatus.kind === 'error' || liveStatus.kind === 'unsupported') && <div className="result-live-state"><strong>Live belum tersedia</strong><span>{liveStatus.message}</span><button type="button" onClick={() => { setLiveStatus({ kind: 'idle' }); void openLive() }}>Coba lagi</button></div>}
-        {activeView === 'live' && liveStatus.kind === 'ready' && <video src={liveStatus.url} aria-label="Hasil Live boomerang" muted loop playsInline controls autoPlay={typeof matchMedia !== 'function' || !matchMedia('(prefers-reduced-motion: reduce)').matches} />}
-        <figcaption>{activeView === 'live' && liveStatus.kind === 'ready' ? `${liveStatus.mimeType.includes('mp4') ? 'MP4' : 'WEBM'} · ${fileSize(liveStatus.blob.size)}` : `${frame.output.width} × ${frame.output.height} px · ${fileSize(blob.size)} · ${session.photos.length} foto`}</figcaption>
+        {activeView === 'live' && liveStatus.kind === 'generating' && <div className="result-live-state"><Sparkles aria-hidden="true" />Membuat Live Photo 60fps…</div>}
+        {activeView === 'live' && (liveStatus.kind === 'error' || liveStatus.kind === 'unsupported') && <div className="result-live-state"><strong>Live Photo belum tersedia</strong><span>{liveStatus.message}</span><button type="button" onClick={() => { setLiveStatus({ kind: 'idle' }); void openLive() }}>Coba lagi</button></div>}
+        {activeView === 'live' && liveStatus.kind === 'ready' && <div className="result-live-player"><span className="result-live-badge" aria-hidden="true"><span className="result-live-dot" />LIVE · 60 FPS</span><video src={liveStatus.url} aria-label="Hasil Live Photo" muted loop playsInline controls autoPlay={typeof matchMedia !== 'function' || !matchMedia('(prefers-reduced-motion: reduce)').matches} /></div>}
+        <figcaption>{activeView === 'live' && liveStatus.kind === 'ready' ? `${liveStatus.mimeType.includes('mp4') ? 'MP4' : 'WEBM'} · 60 FPS · ${fileSize(liveStatus.blob.size)}` : `${frame.output.width} × ${frame.output.height} px · ${fileSize(blob.size)} · ${session.photos.length} foto`}</figcaption>
       </figure>
 
       <div className="result-controls">
         {activeView === 'live' && <div className="live-result-actions">
-          <button className="button primary-button result-download" type="button" disabled={liveStatus.kind !== 'ready'} onClick={handleLiveDownload}><Download aria-hidden="true" size={20} /> Unduh boomerang</button>
-          <button className="button secondary-button" type="button" disabled={liveStatus.kind !== 'ready'} onClick={() => void handleLiveShare()}><Share2 aria-hidden="true" size={18} /> Bagikan boomerang</button>
+          <button className="button primary-button result-download" type="button" disabled={liveStatus.kind !== 'ready'} onClick={handleLiveDownload}><Download aria-hidden="true" size={20} /> Unduh Live Photo</button>
+          <button className="button secondary-button" type="button" disabled={liveStatus.kind !== 'ready'} onClick={() => void handleLiveShare()}><Share2 aria-hidden="true" size={18} /> Bagikan Live Photo</button>
           <button className="button secondary-button" type="button" disabled={!saveToGallery || liveStatus.kind !== 'ready' || isSaving} onClick={() => void handleSaveAll()}><Bookmark aria-hidden="true" size={18} /> Simpan semua</button>
         </div>}
         {activeView === 'photo' && <>

@@ -6,6 +6,8 @@ import { recordCanvas, type RecordedVideo, type RecordCanvasOptions } from './me
 export interface Dimensions { width: number; height: number }
 export type VideoCapability = 'low' | 'standard'
 
+export const LIVE_PHOTO_FPS = 60
+
 interface BoomerangDependencies {
   decodeFrame: (blob: Blob) => Promise<DecodedFrameSource>
   prepareAssets: (frame: FrameTemplate) => Promise<PreparedFrameAssets>
@@ -30,11 +32,21 @@ export interface ComposeBoomerangInput {
   adjustments?: Record<number, PhotoAdjustment>
 }
 
-export const boomerangOrder = (frameCount: number): number[] => {
+export const livePhotoOrder = (
+  frameCount: number,
+  sourceFps = LIVE_PHOTO_FPS,
+  targetFps = LIVE_PHOTO_FPS,
+): number[] => {
   if (frameCount < 2) return [0]
-  const forward = Array.from({ length: frameCount }, (_, index) => index)
-  return [...forward, ...forward.slice(0, -1).reverse(), ...forward.slice(1)]
+  const safeSourceFps = Math.max(1, sourceFps)
+  const safeTargetFps = Math.max(1, targetFps)
+  const outputLength = Math.max(frameCount, Math.round((frameCount / safeSourceFps) * safeTargetFps))
+  return Array.from({ length: outputLength }, (_, tick) => (
+    Math.min(frameCount - 1, Math.floor((tick * frameCount) / outputLength))
+  ))
 }
+
+export const boomerangOrder = livePhotoOrder
 
 export const chooseBoomerangDimensions = (frame: FrameTemplate, capability: VideoCapability): Dimensions => {
   const maxLongEdge = capability === 'low' ? 720 : 960
@@ -42,7 +54,7 @@ export const chooseBoomerangDimensions = (frame: FrameTemplate, capability: Vide
   return { width: Math.max(1, Math.round(frame.output.width * scale)), height: Math.max(1, Math.round(frame.output.height * scale)) }
 }
 
-const abortError = () => new DOMException('Pembuatan boomerang dibatalkan.', 'AbortError')
+const abortError = () => new DOMException('Pembuatan Live Photo dibatalkan.', 'AbortError')
 const throwIfAborted = (signal: AbortSignal) => { if (signal.aborted) throw abortError() }
 
 const wait = (milliseconds: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
@@ -83,10 +95,12 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
     const dimensions = chooseBoomerangDimensions(input.frame, input.capability ?? 'standard')
     const canvas = dependencies.createCanvas(dimensions)
     const context = canvas.getContext('2d')
-    if (!context) throw new Error('Canvas boomerang tidak tersedia.')
+    if (!context) throw new Error('Canvas Live Photo tidak tersedia.')
     const assets = await dependencies.prepareAssets(input.frame)
-    const fps = input.fps ?? Math.max(1, Math.min(12, ...requiredSequences.map((sequence) => sequence.fps)))
-    const order = boomerangOrder(Math.max(...decoded.map((frames) => frames.length)))
+    const fps = input.fps ?? LIVE_PHOTO_FPS
+    const sourceFps = Math.max(1, Math.min(...requiredSequences.map((sequence) => sequence.fps || fps)))
+    const maxFrames = Math.max(...decoded.map((frames) => frames.length))
+    const order = livePhotoOrder(maxFrames, sourceFps, fps)
     return await dependencies.record(canvas, async (signal) => {
       for (const frameIndex of order) {
         throwIfAborted(signal)
@@ -105,8 +119,10 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
         })
         await dependencies.wait(1_000 / fps, signal)
       }
-    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 2_000_000 : 4_000_000 })
+    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 4_000_000 : 8_000_000 })
   } finally {
     decoded.flat().forEach((frame) => frame.close?.())
   }
 }
+
+export const composeLivePhoto = composeBoomerang

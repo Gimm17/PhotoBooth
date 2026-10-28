@@ -8,8 +8,9 @@ describe('createExportFilename', () => {
     expect(createExportFilename('webp', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05.webp')
   })
 
-  it('creates a truthful boomerang filename from its MIME type', () => {
-    expect(createBoomerangFilename('video/webm', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05-boomerang.webm')
+  it('creates a truthful Live Photo filename from its MIME type', () => {
+    expect(createBoomerangFilename('video/webm', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05-live.webm')
+    expect(createBoomerangFilename('video/mp4', new Date(2026, 8, 22, 16, 4, 5))).toBe('photobooth-2026-09-22_16-04-05-live.mp4')
   })
 })
 

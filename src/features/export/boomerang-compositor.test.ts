@@ -2,18 +2,19 @@ import { describe, expect, it, vi } from 'vitest'
 import { FILTER_PRESETS } from '../../catalog/filters'
 import { FRAME_TEMPLATES } from '../../catalog/frames'
 import type { LiveSequence } from '../../catalog/types'
-import { boomerangOrder, chooseBoomerangDimensions, composeBoomerang } from './boomerang-compositor'
+import { boomerangOrder, chooseBoomerangDimensions, composeBoomerang, livePhotoOrder } from './boomerang-compositor'
 
-const sequence = (length: number): LiveSequence => ({
+const sequence = (length: number, fps = 60): LiveSequence => ({
   frames: Array.from({ length }, (_, index) => ({ blob: Object.assign(new Blob([String(index)]), { frameIndex: index }) })),
   width: 640,
   height: 480,
-  fps: 10,
+  fps,
 })
 
-describe('boomerang compositor', () => {
-  it('creates forward reverse forward order without duplicate turnarounds', () => {
-    expect(boomerangOrder(4)).toEqual([0, 1, 2, 3, 2, 1, 0, 1, 2, 3])
+describe('Live Photo 60fps compositor', () => {
+  it('creates linear forward-once Live Photo order and upsamples lower webcam FPS to 60fps', () => {
+    expect(boomerangOrder(4)).toEqual([0, 1, 2, 3])
+    expect(livePhotoOrder(4, 30, 60)).toEqual([0, 0, 1, 1, 2, 2, 3, 3])
   })
 
   it('caps output dimensions based on device capability', () => {
@@ -22,29 +23,35 @@ describe('boomerang compositor', () => {
     expect(chooseBoomerangDimensions(frame, 'standard')).toEqual({ width: 960, height: 480 })
   })
 
-  it('clamps shorter sequences while every slot advances on the same timeline', async () => {
+  it('clamps shorter sequences while every slot advances forward on the 60fps timeline', async () => {
     const frame = { ...FRAME_TEMPLATES.find((item) => item.layoutId === 'wide-duo')!, assets: [] }
     const rendered: number[][] = []
     const close = vi.fn()
+    let recordedFps = 0
     await composeBoomerang({
       frame,
       filter: FILTER_PRESETS[0],
       intensity: 100,
       caption: '',
       showDate: false,
-      sequences: [sequence(4), sequence(2)],
+      sequences: [sequence(4, 60), sequence(2, 60)],
       signal: new AbortController().signal,
       dependencies: {
         decodeFrame: async (blob) => ({ source: blob as unknown as CanvasImageSource, width: 640, height: 480, close }),
         prepareAssets: async () => [],
         draw: (input) => rendered.push(input.slots.map((slot) => Number((slot!.source as unknown as Blob & { frameIndex: number }).frameIndex))),
         createCanvas: (dimensions) => ({ ...dimensions, getContext: () => ({}) }) as unknown as HTMLCanvasElement,
-        record: async (_canvas, render, options) => { await render(options.signal); return { blob: new Blob(['video'], { type: 'video/webm' }), mimeType: 'video/webm' } },
+        record: async (_canvas, render, options) => {
+          recordedFps = options.fps
+          await render(options.signal)
+          return { blob: new Blob(['video'], { type: 'video/mp4' }), mimeType: 'video/mp4' }
+        },
         wait: async () => undefined,
       },
     })
 
-    expect(rendered).toEqual([[0, 0], [1, 1], [2, 1], [3, 1], [2, 1], [1, 1], [0, 0], [1, 1], [2, 1], [3, 1]])
+    expect(recordedFps).toBe(60)
+    expect(rendered).toEqual([[0, 0], [1, 1], [2, 1], [3, 1]])
     expect(close).toHaveBeenCalledTimes(6)
   })
 

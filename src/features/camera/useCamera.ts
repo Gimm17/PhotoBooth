@@ -63,6 +63,10 @@ export function useCamera(videoRef: RefObject<HTMLVideoElement | null>): UseCame
         video: deviceId ? { deviceId: { exact: deviceId } } : true,
       }
       const nextStream = await requestCamera(constraints)
+      const primaryTrack = nextStream.getVideoTracks?.()[0] as (MediaStreamTrack & { applyConstraints?: (c: MediaTrackConstraints) => Promise<void> }) | undefined
+      if (primaryTrack && typeof primaryTrack.applyConstraints === 'function') {
+        void primaryTrack.applyConstraints({ frameRate: { ideal: 60 } }).catch(() => undefined)
+      }
       if (!isMounted.current || generation !== requestGeneration.current) {
         stopCamera(nextStream)
         return false

@@ -189,10 +189,10 @@ describe('Gallery', () => {
   it('uses a poster in the grid and an accessible looping player in preview', async () => {
     renderGallery(createRepository([videoRecord()]))
 
-    expect(await screen.findByRole('img', { name: /Pratinjau boomerang/i })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Putar boomerang/i }))
+    expect(await screen.findByRole('img', { name: /Pratinjau Live Photo/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Putar Live Photo/i }))
 
-    const video = screen.getByLabelText('Video boomerang')
+    const video = screen.getByLabelText('Video Live Photo')
     expect(video).toHaveAttribute('playsinline')
     expect(video).toHaveAttribute('loop')
   })

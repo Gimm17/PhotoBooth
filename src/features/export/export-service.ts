@@ -19,10 +19,12 @@ export const createExportFilename = (format: OutputFormat, date = new Date()) =>
   return `photobooth-${timestamp}_${time}.${format}`
 }
 
-export const createBoomerangFilename = (mimeType: string, date = new Date()) => {
+export const createLivePhotoFilename = (mimeType: string, date = new Date()) => {
   const stillName = createExportFilename('png', date).replace(/\.png$/, '')
-  return `${stillName}-boomerang.${extensionForVideoMime(mimeType)}`
+  return `${stillName}-live.${extensionForVideoMime(mimeType)}`
 }
+
+export const createBoomerangFilename = createLivePhotoFilename
 
 export const downloadBlob = (blob: Blob, filename: string): ExportActionResult => {
   let url: string | null = null

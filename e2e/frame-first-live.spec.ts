@@ -32,7 +32,7 @@ async function installLiveCamera(page: import('@playwright/test').Page) {
   })
 }
 
-test('frame-first camera previews its template and exports a truthful Live boomerang', async ({ page }) => {
+test('frame-first camera previews its template and exports a truthful Live Photo', async ({ page }) => {
   test.setTimeout(75_000)
   await installLiveCamera(page)
   await page.setViewportSize({ width: 390, height: 844 })
@@ -48,8 +48,8 @@ test('frame-first camera previews its template and exports a truthful Live boome
   await expect(page.locator('.film-slot img')).toHaveCount(1, { timeout: 20_000 })
   await page.getByRole('button', { name: 'Lanjut ke editor' }).click()
   await page.getByRole('button', { name: 'Lanjut ke unduh dan cetak' }).click()
-  await page.getByRole('tab', { name: /Live boomerang/i }).click()
+  await page.getByRole('tab', { name: /Live Photo/i }).click()
 
   await expect(page.getByText(/WEBM/i)).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByRole('button', { name: /Unduh boomerang/i })).toBeEnabled()
+  await expect(page.getByRole('button', { name: /Unduh Live Photo/i })).toBeEnabled()
 })

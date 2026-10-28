@@ -6,7 +6,7 @@ import { FRAME_TEMPLATES, frameById, layoutById } from '../../catalog/frames'
 import { useSessionStore } from '../../store/session-store'
 import { captureFrame } from './camera-service'
 import { createCaptureMachine, type CaptureState } from './capture-machine'
-import { captureLivePose } from './live-capture-service'
+import { captureLivePose, createLiveRingBuffer, type LiveRingBuffer } from './live-capture-service'
 import { LiveFramePreview } from './LiveFramePreview'
 import { useCamera } from './useCamera'
 import './studio.css'
@@ -33,6 +33,19 @@ export function Studio() {
   const settingsDialogRef = useRef<HTMLElement>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const machineRef = useRef<ReturnType<typeof createCaptureMachine> | null>(null)
+  const ringBufferRef = useRef<LiveRingBuffer | null>(null)
+
+  if (!ringBufferRef.current && typeof createLiveRingBuffer === 'function') {
+    ringBufferRef.current = createLiveRingBuffer(() => videoRef.current, {
+      getOptions: () => ({
+        mirror: latest.current.mirror,
+        filter: 'none',
+        enabled: latest.current.liveEnabled && currentCamera.current.status === 'active',
+      }),
+      fps: 30,
+      maxDurationMs: 1_500,
+    })
+  }
 
   if (!machineRef.current) {
     machineRef.current = createCaptureMachine({
@@ -44,8 +57,14 @@ export function Studio() {
         if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
         const current = latest.current
         const index = replaceIndex ?? useSessionStore.getState().photos.length
+        const preRollFrames = current.liveEnabled ? (ringBufferRef.current?.flush() ?? []) : []
         const pose = current.liveEnabled
-          ? await captureLivePose(video, { mirror: current.mirror, filter: 'none', signal })
+          ? await captureLivePose(video, {
+              mirror: current.mirror,
+              filter: 'none',
+              signal,
+              ...(preRollFrames.length > 0 ? { preRollFrames } : {}),
+            })
           : { photo: captureFrame(video, { mirror: current.mirror, filter: 'none' }), sequence: null }
         if (signal.aborted) throw new DOMException('Capture dibatalkan.', 'AbortError')
         useSessionStore.getState().commitCapturedPose(index, pose)
@@ -93,7 +112,27 @@ export function Studio() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [machine])
 
-  useEffect(() => () => machine.dispose(), [machine])
+  useEffect(() => {
+    const buffer = ringBufferRef.current
+    if (!buffer) return
+    if (camera.status === 'active' && session.liveEnabled) {
+      buffer.start()
+    } else {
+      buffer.stop()
+      buffer.clear()
+    }
+    return () => buffer.stop()
+  }, [camera.status, session.liveEnabled])
+
+  useEffect(() => {
+    ringBufferRef.current?.clear()
+  }, [session.mirror])
+
+  useEffect(() => () => {
+    ringBufferRef.current?.stop()
+    ringBufferRef.current?.clear()
+    machine.dispose()
+  }, [machine])
 
   useEffect(() => {
     if (!mobileSettingsOpen) return
@@ -159,6 +198,7 @@ export function Studio() {
         <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} style={stageStyle} aria-label="Area pratinjau foto">
           <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} showGrid={session.showGrid} onError={setPreviewError} />
           {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
+          {session.liveEnabled && <span className="studio-live-badge" aria-hidden="true"><span className="studio-live-dot" />LIVE</span>}
           <div className="viewfinder-corners" aria-hidden="true" />
           {captureState.status === 'countdown' && <div className="countdown" aria-hidden="true">{captureState.remaining}</div>}
           {captureState.status === 'flashing' && <div className="capture-flash" aria-hidden="true" />}
@@ -203,7 +243,7 @@ export function Studio() {
         <fieldset disabled={captureBusy}><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
         <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
         <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
-        <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live boomerang</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
+        <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
         <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
         <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>
