@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessionStore } from '../../store/session-store'
 import { useCamera } from './useCamera'
+import { frameById } from '../../catalog/frames'
+import { prepareFrameAssets } from '../export/frame-renderer'
 
 const supportedExtensions = /\.(jpe?g|png|webp|heic)$/i
 const maxFiles = 12
@@ -39,6 +41,12 @@ export function CameraSetup() {
   useEffect(() => {
     if (camera.status === 'unavailable') setCameraDeviceId(null)
   }, [camera.status, setCameraDeviceId])
+
+  useEffect(() => {
+    const selected = useSessionStore.getState().selectedFrame
+    const frame = frameById(selected)
+    if (frame) void prepareFrameAssets(frame)
+  }, [])
 
   const loadFiles = async (files: File[]) => {
     setUploadError(null)

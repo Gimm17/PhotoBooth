@@ -7,6 +7,27 @@
 
 ## [Unreleased / Production Candidate] - 2026-10-29
 
+### 🎛️ Posisi Tombol Shutter Fleksibel (Bawah / Kanan / Kiri) & Zero-Delay Viewfinder Studio (Added & Fixed)
+- **Lokasi Kode**:
+  - [`src/catalog/types.ts`](../src/catalog/types.ts)
+  - [`src/store/session-store.ts`](../src/store/session-store.ts)
+  - [`src/features/camera/LiveFramePreview.tsx`](../src/features/camera/LiveFramePreview.tsx)
+  - [`src/features/camera/CameraSetup.tsx`](../src/features/camera/CameraSetup.tsx)
+  - [`src/features/camera/Studio.tsx`](../src/features/camera/Studio.tsx)
+  - [`src/features/camera/studio.css`](../src/features/camera/studio.css)
+  - [`src/features/camera/Studio.test.tsx`](../src/features/camera/Studio.test.tsx)
+  - [`src/store/session-store.test.ts`](../src/store/session-store.test.ts)
+- **Perubahan & Manfaat Utama**:
+  1. **Pemindahan Posisi Tombol Shutter (`Bawah` ⇄ `Kanan` ⇄ `Kiri`)**:
+     - Mengatasi masalah tombol shutter yang menutupi bagian bawah frame/logo pada mode potret tablet iPad.
+     - Menyediakan tombol pemindahan posisi instan pada dock (`.dock-reposition-btn`), tombol topbar (`.studio-dock-trigger`), dan radio button di drawer setelan.
+     - Mode Kanan (`dock-right`) dan Kiri (`dock-left`) memposisikan tombol Shutter secara vertikal di tepi samping layar yang ergonomis untuk tangan pemegang tablet, sekaligus menurunkan filmstrip ke tepi bawah sehingga seluruh bagian bawah frame 100% terlihat jelas.
+     - Preferensi posisi shutter tersimpan persisten di `localStorage` (`photobooth.shutterDockPosition`).
+  2. **Eliminasi Delay Layar Kosong (Blank Screen) Saat Masuk Studio**:
+     - Mengubah siklus render `LiveFramePreview` agar memanggil `draw()` secara instan (0ms) tanpa menunggu unduhan aset template resolusi tinggi (~975 KB).
+     - Kamera langsung aktif dan terlihat di viewfinder seketika, sementara dekorasi template overlay di-hydrate secara mulus di latar belakang begitu selesai diunduh.
+     - Menambahkan pra-muat (`preload`) template aktif di halaman Camera Setup (`/setup`) sehingga gambar sudah berada di cache memori sebelum pengguna menekan tombol "Masuk Studio".
+
 ### 📱 Fitur Studio iPad & Kiosk: Zoom Stage Frame & Koreksi Rotasi Kamera (Added)
 - **Lokasi Kode**:
   - [`src/catalog/types.ts`](../src/catalog/types.ts)

@@ -306,6 +306,30 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
 
 ---
 
+### 4.8. Posisi Tombol Shutter Dinamis (Bawah / Kanan / Kiri) & Eliminasi Blank Screen Studio (`Studio.tsx`, `LiveFramePreview.tsx`, `CameraSetup.tsx`, `session-store.ts`, `studio.css`)
+
+1. **Posisi Tombol Shutter Fleksibel (`shutterDockPosition: 'bottom' | 'right' | 'left'`)**:
+   - **Latar Belakang Masalah**: Pada mode tablet/iPad portrait (seperti iPad Pro 13), dock kontrol shutter di bagian bawah (`bottom: 0`) dan filmstrip (`bottom: 5.45rem`) kerap menutupi bagian bawah bingkai foto (logo instansi BPS / Untad, teks stiker, atau slot foto terbawah).
+   - **Mekanisme Solusi**:
+     - State `shutterDockPosition` ditambahkan ke session store (default `'bottom'`), disimpan persisten di `localStorage` (`photobooth.shutterDockPosition`).
+     - Pengguna dapat memindahkan dock kapan saja dengan 1-klik:
+       - **Tombol di Topbar**: `.studio-dock-trigger` (menampilkan ikon `PanelBottom` / `PanelRight` / `PanelLeft` dan label posisi).
+       - **Tombol Langsung di Dock**: `.dock-reposition-btn` (posisi bawah: "Pindah ke Samping", posisi kanan: "Pindah ke Kiri", posisi kiri: "Pindah ke Bawah").
+       - **Drawer Setelan Studio**: Radio button pilihan Bawah (Default), Kanan (iPad), Kiri.
+     - **Tata Letak Kanan / Kiri (`dock-right` / `dock-left`)**:
+       - Dock beralih ke orientasi vertikal ramping di sisi kanan atau kiri layar (`top: 50%; transform: translateY(-50%)`), menempatkan tombol Shutter di tengah yang pas untuk ibu jari pengguna saat memegang tablet.
+       - Filmstrip pose secara otomatis turun ke bagian paling bawah layar (`bottom: max(.75rem, env(safe-area-inset-bottom))`).
+       - Area tengah layar menjadi 100% bebas hambatan dari atas hingga bawah, sehingga logo, teks, dan seluruh foto strip tampak utuh tanpa tertutupi dock.
+
+2. **Eliminasi Delay Blank Screen / Load Template Studio**:
+   - **Latar Belakang Masalah**: Sebelumnya, loop render canvas `LiveFramePreview` diblokir di dalam `Promise.all([prepareFrameAssets, ...]).then()`. Template besar (seperti `expo-statistik-retro.png` berukuran ~975 KB) membutuhkan beberapa detik untuk diunduh dari jaringan cloud (tercatat 5.64s di Network DevTools pada koneksi lambat/samaran). Akibatnya canvas pratinjau menjadi layar hitam/blank screen selama beberapa detik saat pertama kali masuk ke Studio.
+   - **Mekanisme Solusi**:
+     - **Immediate Render Loop (`draw()`)**: Loop render `draw()` langsung dipanggil seketika (`t=0`, ~16ms). Slot aktif langsung menampilkan video stream kamera real-time dengan latar belakang warna frame tanpa menunggu aset overlay selesai diunduh.
+     - **Async Non-Blocking Overlay Hydration**: Unduhan `prepareFrameAssets(frame)` berjalan di latar belakang. Saat aset PNG selesai di-decode, `loadedAssets` langsung terisi dan seketika di-render di atas layer video pada frame berikutnya tanpa kedipan.
+     - **Preload Awal di Camera Setup (`CameraSetup.tsx`)**: Template yang dipilih mulai di-preload ke memori browser (`frameAssetCache`) sejak pengguna masih berada di halaman konfigurasi kamera (`/setup`), sehingga saat tombol "Masuk Studio" ditekan, template sudah siap pakai (0ms delay).
+
+---
+
 ## 5. PANDUAN LENGKAP MENAMBAHKAN FRAME TEMPLATE BARU
 
 Jika user ingin membuat template baru dari gambar:

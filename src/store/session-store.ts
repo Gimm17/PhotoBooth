@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { filterById } from '../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../catalog/frames'
-import type { BoomerangResult, CameraRotation, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession } from '../catalog/types'
+import type { BoomerangResult, CameraRotation, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession, ShutterDockPosition } from '../catalog/types'
 
 export type EditorHistorySnapshot = Pick<
   PhotoSession,
@@ -16,6 +16,9 @@ interface SessionActions {
   rotateCamera: () => void
   stageZoom: number
   setStageZoom: (zoom: number) => void
+  shutterDockPosition: ShutterDockPosition
+  setShutterDockPosition: (position: ShutterDockPosition) => void
+  cycleShutterDockPosition: () => void
   setLayout: (layoutId: LayoutId) => void
   addPhoto: (dataUrl: string) => void
   setImportedPhotos: (dataUrls: string[]) => void
@@ -94,6 +97,18 @@ const invalidateBoomerang = (state: PhotoSession) => {
 const CAMERA_ROTATION_KEY = 'photobooth.cameraRotation'
 const STAGE_ZOOM_KEY = 'photobooth.studioStageZoom'
 const ROTATION_STEPS: CameraRotation[] = [0, 90, 180, 270]
+const SHUTTER_DOCK_POSITION_KEY = 'photobooth.shutterDockPosition'
+const DOCK_POSITIONS: ShutterDockPosition[] = ['bottom', 'right', 'left']
+
+const readSavedShutterDockPosition = (): ShutterDockPosition => {
+  if (isTestEnv() || typeof window === 'undefined') return 'bottom'
+  try {
+    const raw = window.localStorage.getItem(SHUTTER_DOCK_POSITION_KEY) as ShutterDockPosition
+    return (raw === 'right' || raw === 'left' || raw === 'bottom') ? raw : 'bottom'
+  } catch {
+    return 'bottom'
+  }
+}
 
 const isTestEnv = () => typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
 
@@ -146,6 +161,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     set({ stageZoom: clamped })
   },
+  shutterDockPosition: readSavedShutterDockPosition(),
+  setShutterDockPosition: (position) => {
+    const valid: ShutterDockPosition = (position === 'right' || position === 'left') ? position : 'bottom'
+    if (!isTestEnv() && typeof window !== 'undefined') {
+      try { window.localStorage.setItem(SHUTTER_DOCK_POSITION_KEY, valid) } catch { /* ignore */ }
+    }
+    set({ shutterDockPosition: valid })
+  },
+  cycleShutterDockPosition: () => {
+    const current = get().shutterDockPosition
+    const nextIndex = (DOCK_POSITIONS.indexOf(current) + 1) % DOCK_POSITIONS.length
+    const next = DOCK_POSITIONS[nextIndex]
+    if (!isTestEnv() && typeof window !== 'undefined') {
+      try { window.localStorage.setItem(SHUTTER_DOCK_POSITION_KEY, next) } catch { /* ignore */ }
+    }
+    set({ shutterDockPosition: next })
+  },
+
   setLayout: (layoutId) => {
     const layout = layoutById(layoutId)
     if (!layout) return
@@ -357,7 +390,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     revokeObjectUrl(get().boomerangResult?.url ?? null)
     set({
       ...createInitialSession(),
-      ...(isTestEnv() ? { cameraRotation: 0, stageZoom: 1 } : {}),
+      ...(isTestEnv() ? { cameraRotation: 0, stageZoom: 1, shutterDockPosition: 'bottom' } : {}),
     })
   },
 }))

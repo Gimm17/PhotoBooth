@@ -123,3 +123,5 @@ export interface PhotoSession {
   boomerangResult: BoomerangResult | null
   photoAdjustments: Record<number, PhotoAdjustment>
 }
+
+export type ShutterDockPosition = 'bottom' | 'right' | 'left'

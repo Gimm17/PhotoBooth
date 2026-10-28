@@ -1,4 +1,4 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
@@ -113,6 +113,7 @@ export function Studio() {
   const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
   const stageZoom = session.stageZoom ?? 1
   const stageZoomPercent = Math.round(stageZoom * 100)
+  const dockPos = session.shutterDockPosition ?? 'bottom'
   const stageStyle = {
     '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
   } as CSSProperties
@@ -267,6 +268,10 @@ export function Studio() {
           <button className="studio-zoom-btn" type="button" onClick={() => session.setStageZoom(stageZoom + 0.1)} disabled={stageZoom >= 1.5} aria-label="Perbesar ukuran frame" title="Perbesar ukuran frame"><ZoomIn aria-hidden="true" size={16} /></button>
         </div>
         <button className={`studio-rotate-trigger ${session.cameraRotation ? 'is-rotated' : ''}`} type="button" disabled={captureBusy} onClick={() => session.rotateCamera()} aria-label="Putar orientasi kamera" title="Putar orientasi kamera (0° / 90° / 180° / 270°)"><RotateCw aria-hidden="true" size={17} /><span>{session.cameraRotation}°</span></button>
+        <button className={`studio-dock-trigger is-dock-${dockPos}`} type="button" disabled={captureBusy} onClick={() => session.cycleShutterDockPosition()} aria-label={`Ubah posisi tombol shutter (saat ini: ${dockPos === 'bottom' ? 'Bawah' : dockPos === 'right' ? 'Kanan' : 'Kiri'})`} title="Pindah posisi tombol shutter: Bawah / Kanan (iPad) / Kiri">
+          {dockPos === 'bottom' ? <PanelBottom aria-hidden="true" size={17} /> : dockPos === 'right' ? <PanelRight aria-hidden="true" size={17} /> : <PanelLeft aria-hidden="true" size={17} />}
+          <span>{dockPos === 'bottom' ? 'Tombol: Bawah' : dockPos === 'right' ? 'Tombol: Kanan' : 'Tombol: Kiri'}</span>
+        </button>
         <Link className="studio-gallery-link" to="/gallery">Galeri lokal</Link>
         <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
         <button ref={settingsTriggerRef} className="studio-settings-trigger" type="button" aria-label="Buka setelan tangkapan" aria-controls="studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={19} /><span>Setelan</span></button>
@@ -285,7 +290,7 @@ export function Studio() {
           <p className="studio-live-status" role="status" aria-live="assertive">{statusLabel}</p>
         </div>
 
-        <section className="studio-filmstrip" aria-label="Progres pose">
+        <section className={`studio-filmstrip${dockPos !== 'bottom' ? ' dock-side' : ''}`} aria-label="Progres pose">
           <div className="film-slots">{Array.from({ length: session.requiredShots }, (_, index) => {
             const photo = session.photos[index]
             return <button key={index} className={`film-slot ${index === activeSlot ? 'is-active' : ''}`} type="button" onClick={() => photo && machine.retake(index)} aria-label={photo ? `Ambil ulang pose ${index + 1}` : `Pose ${index + 1} belum diambil`}>
@@ -297,7 +302,7 @@ export function Studio() {
           <span className="visually-hidden">{Math.min(session.photos.length, session.requiredShots)} selesai · {Math.max(session.requiredShots - session.photos.length, 0)} tersisa</span>
         </section>
 
-        <div className="studio-control-dock" role="toolbar" aria-label="Kontrol pengambilan foto">
+        <div className={`studio-control-dock dock-${dockPos}`} role="toolbar" aria-label="Kontrol pengambilan foto">
           {captureState.status === 'countdown' ? (
             <button className="secondary-action" type="button" onClick={machine.cancel} aria-label="Batalkan hitung mundur">Batal</button>
           ) : captureState.retakeIndex !== null ? (
@@ -310,6 +315,10 @@ export function Studio() {
           )}
           <button className="shutter" type="button" onClick={machine.trigger} disabled={captureBusy || (complete && captureState.retakeIndex === null)} aria-label="Jepret pose"><Camera aria-hidden="true" size={30} /></button>
           <button className="editor-action" type="button" disabled={!canEdit} onClick={() => navigate('/editor')}><Sparkles aria-hidden="true" size={18} />Lanjut ke editor</button>
+          <button className="dock-reposition-btn" type="button" disabled={captureBusy} onClick={() => session.cycleShutterDockPosition()} aria-label={`Pindah posisi tombol shutter (saat ini: ${dockPos === 'bottom' ? 'Bawah' : dockPos === 'right' ? 'Kanan' : 'Kiri'})`} title="Pindah posisi tombol: Bawah ⇄ Kanan ⇄ Kiri">
+            {dockPos === 'bottom' ? <PanelRight aria-hidden="true" size={16} /> : dockPos === 'right' ? <PanelLeft aria-hidden="true" size={16} /> : <PanelBottom aria-hidden="true" size={16} />}
+            <span>{dockPos === 'bottom' ? 'Pindah ke Samping' : dockPos === 'right' ? 'Pindah ke Kiri' : 'Pindah ke Bawah'}</span>
+          </button>
         </div>
         <p className="studio-tip">Posisikan wajah di slot frame aktif. Tekan Space untuk menjepret.</p>
         {uploadContinuation && <p className="upload-continuation"><ImagePlus aria-hidden="true" size={17} /> Sesi ini berisi foto dari perangkat. Tidak ada stream kamera yang dipalsukan.</p>}
@@ -326,6 +335,7 @@ export function Studio() {
         <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
         <fieldset disabled={captureBusy}><legend>Orientasi kamera (Koreksi rotasi iPad)</legend><div className="rotation-options">{([0, 90, 180, 270] as const).map((deg) => <label key={deg}><input type="radio" name="camera-rotation" checked={session.cameraRotation === deg} onChange={() => session.setCameraRotation(deg)} /><span>{deg === 0 ? '0° Normal' : deg === 90 ? '90° Vertikal' : deg === 180 ? '180° Terbalik' : '270° Vertikal'}</span></label>)}</div></fieldset>
         <fieldset><legend>Ukuran pratinjau frame ({stageZoomPercent}%)</legend><div className="zoom-preset-options">{([0.65, 0.8, 1] as const).map((preset) => <button key={preset} type="button" className={Math.abs(stageZoom - preset) < 0.03 ? 'is-active' : ''} onClick={() => session.setStageZoom(preset)}>{preset === 0.65 ? 'Pas iPad (65%)' : preset === 0.8 ? 'Compact (80%)' : 'Normal (100%)'}</button>)}</div></fieldset>
+        <fieldset disabled={captureBusy}><legend>Posisi tombol shutter (iPad / Kiosk)</legend><div className="dock-position-options">{([['bottom', 'Bawah (Default)'], ['right', 'Kanan (iPad)'], ['left', 'Kiri']] as const).map(([pos, label]) => <label key={pos}><input type="radio" name="shutter-dock-position" checked={dockPos === pos} onChange={() => session.setShutterDockPosition(pos)} /><span>{label}</span></label>)}</div></fieldset>
         <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
         <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>

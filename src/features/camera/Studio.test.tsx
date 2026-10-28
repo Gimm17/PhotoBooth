@@ -292,4 +292,30 @@ describe('Studio', () => {
     fireEvent.click(rotateBtn)
     expect(useSessionStore.getState().cameraRotation).toBe(0)
   })
+
+  it('allows repositioning the shutter dock between bottom, right, and left', () => {
+    renderStudio()
+
+    const dock = screen.getByRole('toolbar', { name: 'Kontrol pengambilan foto' })
+    const filmstrip = screen.getByRole('region', { name: 'Progres pose' })
+    expect(dock).toHaveClass('dock-bottom')
+    expect(filmstrip).not.toHaveClass('dock-side')
+    expect(useSessionStore.getState().shutterDockPosition).toBe('bottom')
+
+    const repositionBtn = screen.getByRole('button', { name: /Pindah posisi tombol shutter/i })
+    fireEvent.click(repositionBtn)
+    expect(useSessionStore.getState().shutterDockPosition).toBe('right')
+    expect(dock).toHaveClass('dock-right')
+    expect(filmstrip).toHaveClass('dock-side')
+
+    fireEvent.click(repositionBtn)
+    expect(useSessionStore.getState().shutterDockPosition).toBe('left')
+    expect(dock).toHaveClass('dock-left')
+    expect(filmstrip).toHaveClass('dock-side')
+
+    fireEvent.click(repositionBtn)
+    expect(useSessionStore.getState().shutterDockPosition).toBe('bottom')
+    expect(dock).toHaveClass('dock-bottom')
+    expect(filmstrip).not.toHaveClass('dock-side')
+  })
 });

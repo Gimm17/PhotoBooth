@@ -322,4 +322,20 @@ describe('session store', () => {
     })
     expect(useSessionStore.getState().photos).toEqual(photos)
   })
-})
+
+  it('updates and cycles shutter dock position correctly', () => {
+    expect(useSessionStore.getState().shutterDockPosition).toBe('bottom')
+
+    useSessionStore.getState().cycleShutterDockPosition()
+    expect(useSessionStore.getState().shutterDockPosition).toBe('right')
+
+    useSessionStore.getState().cycleShutterDockPosition()
+    expect(useSessionStore.getState().shutterDockPosition).toBe('left')
+
+    useSessionStore.getState().cycleShutterDockPosition()
+    expect(useSessionStore.getState().shutterDockPosition).toBe('bottom')
+
+    useSessionStore.getState().setShutterDockPosition('right')
+    expect(useSessionStore.getState().shutterDockPosition).toBe('right')
+  })
+});

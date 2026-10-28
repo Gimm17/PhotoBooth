@@ -23,6 +23,10 @@
 .studio-rotate-trigger { align-items:center; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:.75rem; color:white; cursor:pointer; display:flex; font:.65rem/1 var(--font-mono); gap:.35rem; min-height:44px; padding:.65rem .75rem; transition:background .15s,border-color .15s; white-space:nowrap; }
 .studio-rotate-trigger:hover:not(:disabled) { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); }
 .studio-rotate-trigger.is-rotated { background:rgba(165,214,241,.18); border-color:var(--color-primary); color:var(--color-primary); }
+.studio-dock-trigger { align-items:center; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:.75rem; color:white; cursor:pointer; display:flex; font:.65rem/1 var(--font-mono); gap:.35rem; min-height:44px; padding:.65rem .75rem; transition:background .15s,border-color .15s; white-space:nowrap; }
+.studio-dock-trigger:hover:not(:disabled) { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); }
+.studio-dock-trigger.is-dock-right,.studio-dock-trigger.is-dock-left { background:rgba(255,214,10,.18); border-color:#ffd60a; color:#ffd60a; }
+
 
 .studio-workspace { min-width:0; }
 .studio-main { margin-inline:auto; max-width:min(78rem,100%); padding:clamp(.65rem,1.6vw,1.35rem); }
@@ -93,6 +97,104 @@
 .zoom-preset-options button.is-active { background:var(--color-primary); border-color:transparent; font-weight:600; }
 .zoom-preset-options button:focus-visible { outline:3px solid #32647B; outline-offset:2px; }
 
+.dock-position-options { display:grid; gap:.4rem; grid-template-columns:repeat(3,1fr); }
+.dock-position-options label { cursor:pointer; min-width:0; }
+.dock-position-options input { opacity:0; position:absolute; }
+.dock-position-options span { align-items:center; background:var(--color-paper); border:1px solid var(--color-line); border-radius:.7rem; display:flex; font-size:.73rem; justify-content:center; min-height:44px; padding:.4rem; text-align:center; transition:background .15s,border-color .15s; }
+.dock-position-options input:checked+span { background:var(--color-primary); border-color:transparent; font-weight:600; }
+.dock-position-options input:focus-visible+span { outline:3px solid #32647B; outline-offset:2px; }
+
+.dock-reposition-btn { align-items:center; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:.65rem; color:rgba(255,255,255,.8); cursor:pointer; display:inline-flex; font:.58rem/1 var(--font-mono); gap:.28rem; justify-content:center; min-height:34px; padding:.35rem .6rem; transition:all .15s; white-space:nowrap; }
+.dock-reposition-btn:hover:not(:disabled) { background:rgba(255,255,255,.16); color:white; }
+
+/* Bottom Dock */
+.studio-control-dock.dock-bottom .dock-reposition-btn {
+  background:rgba(29,29,28,.92);
+  border-color:rgba(255,255,255,.15);
+  box-shadow:0 4px 14px rgba(0,0,0,.28);
+  position:absolute;
+  right:1rem;
+  top:-2.25rem;
+}
+
+/* Side Docks (Right & Left) */
+.studio-control-dock.dock-right,
+.studio-control-dock.dock-left {
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:1.5rem;
+  bottom:auto;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);
+  display:flex;
+  flex-direction:column;
+  gap:.65rem;
+  grid-template-columns:none;
+  margin:0;
+  max-width:6.8rem;
+  padding:.85rem .6rem;
+  position:fixed;
+  top:50%;
+  transform:translateY(-50%);
+  width:auto;
+  z-index:25;
+}
+.studio-control-dock.dock-right {
+  left:auto;
+  right:max(.75rem,env(safe-area-inset-right));
+}
+.studio-control-dock.dock-left {
+  left:max(.75rem,env(safe-area-inset-left));
+  right:auto;
+}
+.studio-control-dock.dock-right .secondary-action,
+.studio-control-dock.dock-left .secondary-action {
+  font-size:.65rem;
+  min-height:38px;
+  order:1;
+  padding:.35rem .5rem;
+  width:100%;
+}
+.studio-control-dock.dock-right .shutter,
+.studio-control-dock.dock-left .shutter {
+  height:68px;
+  order:2;
+  width:68px;
+}
+.studio-control-dock.dock-right .editor-action,
+.studio-control-dock.dock-left .editor-action {
+  font-size:.65rem;
+  min-height:38px;
+  order:3;
+  padding:.35rem .5rem;
+  text-align:center;
+  width:100%;
+}
+.studio-control-dock.dock-right .dock-reposition-btn,
+.studio-control-dock.dock-left .dock-reposition-btn {
+  font-size:.54rem;
+  min-height:30px;
+  order:4;
+  padding:.25rem .4rem;
+  width:100%;
+}
+
+/* When dock is on side, filmstrip moves right down to bottom edge */
+.studio-filmstrip.dock-side {
+  border-bottom:1px solid rgba(255,255,255,.11);
+  border-radius:1rem;
+  bottom:max(.75rem,env(safe-area-inset-bottom));
+}
+
+/* Pad workspace when dock is docked to side so frame never collides */
+.studio:has(.dock-right) .studio-main {
+  padding-bottom:clamp(3.5rem,6vh,4.8rem);
+  padding-right:clamp(5.5rem,8.5vw,7.5rem);
+}
+.studio:has(.dock-left) .studio-main {
+  padding-bottom:clamp(3.5rem,6vh,4.8rem);
+  padding-left:clamp(5.5rem,8.5vw,7.5rem);
+}
+
+
 @media(max-width:720px){
   .studio { padding-bottom:10rem; }
   .studio-topbar { grid-template-columns:44px minmax(0,1fr) auto; min-height:4rem; padding:max(.45rem,env(safe-area-inset-top)) .55rem .45rem; }
@@ -104,6 +206,8 @@
   .studio-zoom-btn { min-width:26px; padding:0 .15rem; }
   .studio-zoom-value { font-size:.58rem; min-width:2.4rem; padding:0 .25rem; }
   .studio-rotate-trigger { min-height:38px; padding:.4rem .5rem; font-size:.58rem; }
+  .studio-dock-trigger { min-height:38px; padding:.4rem .5rem; font-size:.58rem; }
+  .studio-control-dock.dock-bottom .dock-reposition-btn { top:-2rem; font-size:.55rem; padding:.25rem .5rem; }
   .studio-settings-trigger { font-size:0; padding:.55rem; }
   .studio-settings-trigger span { display:none; }
   .studio-main { padding:.45rem; }
