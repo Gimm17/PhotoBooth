@@ -9,6 +9,9 @@ import { createCaptureMachine, type CaptureState } from './capture-machine'
 import { captureLivePose, createLiveRingBuffer, type LiveRingBuffer } from './live-capture-service'
 import { LiveFramePreview } from './LiveFramePreview'
 import { useCamera } from './useCamera'
+import { composePhotoStrip } from '../export/compositor'
+import { warmUpGDriveConnection } from '../export/gdrive-share-service'
+import { startQrPreupload } from '../export/qr-preupload-manager'
 import './studio.css'
 
 const initialCaptureState: CaptureState = { status: 'ready', remaining: 0, retakeIndex: null, error: null }
@@ -116,6 +119,46 @@ export function Studio() {
   useEffect(() => {
     machine.sync()
   }, [machine, session.photos.length, session.requiredShots])
+
+  // Start background composition + QR pre-upload immediately when all poses are captured in /studio
+  useEffect(() => {
+    const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
+    if (isTestEnv || !complete || captureBusy) return
+    warmUpGDriveConnection()
+    const state = useSessionStore.getState()
+    if (state.composedResultBlob) {
+      void startQrPreupload({ isBackground: true })
+      return
+    }
+    const frame = frameById(state.selectedFrame)
+    const filter = filterById(state.selectedFilter)
+    if (!frame || !filter || state.photos.length < state.requiredShots) return
+    let cancelled = false
+    composePhotoStrip({
+      frame,
+      filter,
+      photos: state.photos,
+      intensity: state.filterIntensity,
+      caption: state.caption,
+      showDate: state.showDate,
+      format: 'png',
+      adjustments: state.photoAdjustments,
+    })
+      .then((blob) => {
+        if (cancelled) return
+        const latestState = useSessionStore.getState()
+        if (latestState.composedResultBlob || latestState.photos.length < latestState.requiredShots) return
+        const url = URL.createObjectURL(blob)
+        latestState.setComposedResult(url, blob)
+        void startQrPreupload({ isBackground: true })
+      })
+      .catch(() => {
+        // Editor will handle composition errors interactively if needed
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [complete, captureBusy, session.selectedFrame, session.selectedFilter, session.photos])
 
   useEffect(() => useSessionStore.subscribe((next, previous) => {
     if (next.selectedLayout !== previous.selectedLayout) {

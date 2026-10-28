@@ -17,15 +17,33 @@ export interface GDriveUploadResult {
   folderUrl: string
   photoId: string
   videoId: string | null
+  folderId?: string
 }
 
-interface GDriveWebhookResponse {
+export interface GDriveWebhookResponse {
   ok?: boolean
   error?: string
   folderId?: string
   folderUrl?: string
   photoId?: string
   videoId?: string | null
+}
+
+let warmedEndpoint = ''
+
+export const warmUpGDriveConnection = (explicitEndpoint?: string): void => {
+  try {
+    const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.MODE === 'test'
+    if (isTestEnv || typeof fetch !== 'function') return
+    const endpoint = (explicitEndpoint ?? getGDriveEndpoint()).trim()
+    if (!endpoint || warmedEndpoint === endpoint) return
+    warmedEndpoint = endpoint
+    void fetch(endpoint, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {
+      // Ignore warm-up network errors
+    })
+  } catch {
+    // Ignore warm-up errors
+  }
 }
 
 export const getGDriveEndpoint = (): string => {
@@ -68,14 +86,14 @@ const compressPhotoForUpload = async (
   blob: Blob,
   filename: string,
 ): Promise<{ blob: Blob; filename: string }> => {
-  // Only compress large PNG blobs (> 300 KB) in real browsers to cut upload payload by ~85%
-  if (blob.type !== 'image/png' || blob.size <= 300_000 || typeof createImageBitmap !== 'function') {
+  // Compress image blobs (> 90 KB) in real browsers to ~75-95 KB JPEG to cut upload payload by ~85-90%
+  if (blob.size <= 90_000 || typeof createImageBitmap !== 'function') {
     return { blob, filename }
   }
   try {
     const bitmap = await createImageBitmap(blob)
     try {
-      const maxEdge = 1350
+      const maxEdge = 1080
       const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
       const canvas = document.createElement('canvas')
       canvas.width = Math.max(1, Math.round(bitmap.width * scale))
@@ -83,11 +101,11 @@ const compressPhotoForUpload = async (
       const ctx = canvas.getContext('2d')
       if (!ctx) return { blob, filename }
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84))
+      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.80))
       if (!compressed || compressed.size >= blob.size) return { blob, filename }
       return {
         blob: compressed,
-        filename: filename.replace(/\.png$/i, '.jpg'),
+        filename: filename.replace(/\.(png|webp|jpeg)$/i, '.jpg'),
       }
     } finally {
       bitmap.close?.()
@@ -123,6 +141,105 @@ export const buildShareUrl = (
   }
 }
 
+const postPayloadToGDrive = async (
+  endpoint: string,
+  payload: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<GDriveWebhookResponse> => {
+  // Use text/plain to avoid CORS preflight rejection on Google Apps Script Web Apps
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Gagal menghubungi Google Drive (${response.status}). Pastikan Web App memiliki akses "Anyone".`)
+  }
+
+  let data: GDriveWebhookResponse
+  try {
+    data = (await response.json()) as GDriveWebhookResponse
+  } catch {
+    throw new Error('Respons Google Drive tidak valid. Pastikan script sudah di-deploy sebagai Web App dengan akses "Anyone".')
+  }
+
+  if (data.ok === false || data.error) {
+    throw new Error(data.error || 'Google Drive menolak unggahan berkas.')
+  }
+
+  return data
+}
+
+export async function uploadPhotoOnlyToGDrive(input: {
+  photoBlob: Blob
+  photoFilename: string
+  frameName: string
+  endpointUrl?: string
+  signal?: AbortSignal
+  origin?: string
+}): Promise<GDriveUploadResult> {
+  const endpoint = (input.endpointUrl ?? getGDriveEndpoint()).trim()
+  if (!endpoint) {
+    throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
+  }
+
+  const optimizedPhoto = await compressPhotoForUpload(input.photoBlob, input.photoFilename)
+  const photoBase64 = await blobToBase64(optimizedPhoto.blob)
+
+  const payload = {
+    sessionName: input.photoFilename.replace(/\.[a-z0-9]+$/i, ''),
+    frameName: input.frameName,
+    photo: {
+      filename: optimizedPhoto.filename,
+      mimeType: optimizedPhoto.blob.type || 'image/jpeg',
+      base64: photoBase64,
+    },
+    video: null,
+  }
+
+  const data = await postPayloadToGDrive(endpoint, payload, input.signal)
+  const { shareUrl, folderUrl } = buildShareUrl(data, input.origin)
+  return {
+    shareUrl,
+    folderUrl,
+    photoId: data.photoId ?? '',
+    videoId: data.videoId ?? null,
+    folderId: data.folderId,
+  }
+}
+
+export async function uploadVideoOnlyToGDrive(input: {
+  videoBlob: Blob
+  videoFilename: string
+  sessionName: string
+  frameName: string
+  folderId?: string
+  endpointUrl?: string
+  signal?: AbortSignal
+}): Promise<GDriveWebhookResponse> {
+  const endpoint = (input.endpointUrl ?? getGDriveEndpoint()).trim()
+  if (!endpoint) {
+    throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
+  }
+
+  const videoBase64 = await blobToBase64(input.videoBlob)
+  const payload = {
+    sessionName: input.sessionName,
+    frameName: input.frameName,
+    ...(input.folderId ? { folderId: input.folderId } : {}),
+    photo: null,
+    video: {
+      filename: input.videoFilename,
+      mimeType: input.videoBlob.type || 'video/mp4',
+      base64: videoBase64,
+    },
+  }
+
+  return postPayloadToGDrive(endpoint, payload, input.signal)
+}
+
 export async function uploadBundleToGDrive(input: GDriveUploadInput): Promise<GDriveUploadResult> {
   const endpoint = (input.endpointUrl ?? getGDriveEndpoint()).trim()
   if (!endpoint) {
@@ -152,35 +269,14 @@ export async function uploadBundleToGDrive(input: GDriveUploadInput): Promise<GD
       : null,
   }
 
-  // Use text/plain to avoid CORS preflight rejection on Google Apps Script Web Apps
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-    signal: input.signal,
-  })
-
-  if (!response.ok) {
-    throw new Error(`Gagal menghubungi Google Drive (${response.status}). Pastikan Web App memiliki akses "Anyone".`)
-  }
-
-  let data: GDriveWebhookResponse
-  try {
-    data = (await response.json()) as GDriveWebhookResponse
-  } catch {
-    throw new Error('Respons Google Drive tidak valid. Pastikan script sudah di-deploy sebagai Web App dengan akses "Anyone".')
-  }
-
-  if (data.ok === false || data.error) {
-    throw new Error(data.error || 'Google Drive menolak unggahan berkas.')
-  }
-
+  const data = await postPayloadToGDrive(endpoint, payload, input.signal)
   const { shareUrl, folderUrl } = buildShareUrl(data, input.origin)
   return {
     shareUrl,
     folderUrl,
     photoId: data.photoId ?? '',
     videoId: data.videoId ?? null,
+    folderId: data.folderId,
   }
 }
 

@@ -258,14 +258,16 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
 
 ### 4.6. Arsitektur Expo QR Code & Google Drive Share (`qr-preupload-manager.ts`, `gdrive-share-service.ts`, `qr-code.ts`, `ShareLandingPage.tsx`)
 
-1. **Cross-Page Background Pre-Upload (`/editor` -> `/result` via `qr-preupload-manager.ts`)**:
-   - Begitu pratinjau cetakan di halaman **Editor (`/editor`)** selesai dirender (dan juga tepat saat tombol **"Lanjut ke unduh dan cetak"** diklik), `startQrPreupload({ isBackground: true })` langsung menjalankan Step 1 (render Live Photo 60fps 3 detik) dan Step 2 (upload ke Google Drive) di latar belakang menggunakan *signature* konfigurasi sesi.
-   - Karena dikelola oleh singleton `qr-preupload-manager.ts` di luar siklus unmount komponen, perpindahan rute dari `/editor` ke `/result` **tidak membatalkan** proses unggahan yang sedang berjalan.
-   - Saat pengguna mengklik **"Scan QR Code (Foto + Live Photo)"** di `/result`, QR Code langsung tampil instan (0 detik) jika sudah selesai, atau melanjutkan sisa progres yang sudah berjalan dari Editor. Jika pengguna tidak mengklik tombol QR, proses tetap selesai diam-diam di latar belakang.
-   - Untuk mempercepat unggahan hingga ~90%, `compressPhotoForUpload` mengonversi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.84`, maks `1350px`, ~160 KB) khusus untuk payload cloud, sementara unduhan lokal di tablet tetap PNG asli.
+1. **Multi-Stage Background Pre-Upload (`/studio` -> `/editor` -> `/result`) & Two-Track Parallel Upload (`qr-preupload-manager.ts` & `gdrive-share-service.ts`)**:
+   - **Pre-Start Sejak Pose Terakhir di Studio (`/studio`)**: Begitu pose terakhir selesai diambil di `Studio.tsx` (`complete && !captureBusy`), aplikasi langsung menyusun strip foto default (`composePhotoStrip`), melakukan *warm-up* koneksi TLS ke `script.google.com`, dan memulai `startQrPreupload({ isBackground: true })` bahkan sebelum pengguna menekan tombol **"Lanjut ke editor"**.
+   - **Reuse Instan di Editor (`/editor`)**: Saat masuk ke `/editor`, jika `composedResultBlob` sudah tersedia dan cocok dengan state sesi, Editor langsung menampilkan pratinjau tanpa *re-compose* dan meneruskan progres `startQrPreupload` tanpa terputus. Jika pengguna mengubah bingkai/filter/caption di Editor, debounce pratinjau dipersingkat (`80ms`) dan `startQrPreupload` langsung berjalan begitu `composePhotoStrip` selesai (`0ms` delay).
+   - **Two-Track Parallel Upload (Photo Upload Paralel Selama Render Live Photo 60fps)**:
+     - **Track A (`uploadPhotoOnlyToGDrive`)**: Dimulai **seketika pada `t = 0ms`** tanpa menunggu render video Live Photo 60fps (3 detik) selesai. Foto dikompresi ke JPEG ringan (`maxEdge = 1080`, kualitas `0.80`, ~75–95 KB) dan langsung diunggah ke Google Drive bersamaan saat `composeBoomerang` sedang merekam video 3 detik di browser.
+     - **Track B (`uploadVideoOnlyToGDrive`)**: Begitu `composeBoomerang` selesai (resolusi optimal `720px` / `600px`, bitrate `900 kbps` / `680 kbps`, ukuran video ~220–280 KB), aplikasi hanya mengunggah berkas video (`photo: null`) secara terpisah, memangkas waktu eksekusi Google Apps Script hingga separuhnya.
+     - **Graceful Fallback**: Jika unggahan video mengalami kendala jaringan pameran sementara unggahan foto berhasil, QR Code tetap disajikan dengan foto strip agar antrean pengunjung tidak pernah terhambat.
 2. **QR Code Mandiri & Halaman Unduh Mobile (`/share`)**:
    - `qr-code.ts` menghasilkan matriks QR Code standar ISO/IEC 18004 (Byte mode, Reed-Solomon EC Level L, Version 1–10) secara murni di sisi klien tanpa library eksternal, dirender sebagai single `<path>` SVG tajam di `QrShareModal.tsx`.
-   - Ketika pengunjung memindai QR Code dengan kamera HP, mereka diarahkan ke `/share?p=<photoId>&v=<videoId>&d=<folderId>` (`ShareLandingPage.tsx`) yang menampilkan pratinjau foto, pemutar Live Photo 60fps, serta tombol **Unduh Foto** dan **Unduh Live Photo 60fps** langsung ke HP pengunjung.
+   - Ketika pengunjung memindai QR Code dengan kamera HP, mereka diarahkan ke `/share?p=<photoId>&v=<videoId>&d=<folderId>` (`ShareLandingPage.tsx`) yang menampilkan pratinjau foto, serta tombol **Unduh Foto Strip** dan **Unduh Live Photo (60 FPS)** langsung ke HP pengunjung.
 
 ---
 

@@ -229,7 +229,17 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
 
   const openLive = async () => {
     setActiveView('live')
+    const currentBoomerang = useSessionStore.getState().boomerangResult
+    if (currentBoomerang) {
+      setLiveStatus({ kind: 'ready', ...currentBoomerang })
+      return
+    }
     if (liveStatus.kind === 'ready' || liveStatus.kind === 'generating') return
+    // If background QR pre-upload is already composing the Live Photo, wait for it instead of duplicating CPU work
+    if (qrState.status === 'preparing-live') {
+      setLiveStatus({ kind: 'generating' })
+      return
+    }
     const controller = new AbortController()
     liveController.current?.abort()
     liveController.current = controller

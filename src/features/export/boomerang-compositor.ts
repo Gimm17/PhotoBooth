@@ -53,7 +53,7 @@ export const livePhotoOrder = (
 export const boomerangOrder = livePhotoOrder
 
 export const chooseBoomerangDimensions = (frame: FrameTemplate, capability: VideoCapability): Dimensions => {
-  const maxLongEdge = capability === 'low' ? 720 : 960
+  const maxLongEdge = capability === 'low' ? 600 : 720
   const scale = Math.min(1, maxLongEdge / Math.max(frame.output.width, frame.output.height))
   return { width: Math.max(1, Math.round(frame.output.width * scale)), height: Math.max(1, Math.round(frame.output.height * scale)) }
 }
@@ -141,7 +141,7 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
         const drawElapsed = performance.now() - drawStart
         await dependencies.wait(Math.max(1, (1_000 / fps) - drawElapsed), signal)
       }
-    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 1_000_000 : 1_350_000 })
+    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 680_000 : 900_000 })
   } finally {
     decoded.flat().forEach((frame) => frame.close?.())
   }

@@ -5,6 +5,7 @@ import { filterById } from '../../catalog/filters'
 import { frameById } from '../../catalog/frames'
 import type { FilterCategory, FrameCategory, FrameOrientation } from '../../catalog/types'
 import { composePhotoStrip } from '../export/compositor'
+import { warmUpGDriveConnection } from '../export/gdrive-share-service'
 import { startQrPreupload } from '../export/qr-preupload-manager'
 import { useSessionStore } from '../../store/session-store'
 import type { EditorHistorySnapshot } from '../../store/session-store'
@@ -65,15 +66,22 @@ export function Editor() {
   const updateShowDate = (showDate: boolean) => record(() => useSessionStore.setState({ showDate }))
 
   useEffect(() => {
+    warmUpGDriveConnection()
     const request = ++generation.current
     if (!frame || !filter || !isComplete) {
       setPreviewStatus(isComplete ? 'error' : 'idle')
       setPreviewError(isComplete ? 'Pilihan bingkai atau filter tidak ditemukan.' : `Bingkai ini membutuhkan ${session.requiredShots} foto.`)
       return
     }
+    const existingSession = useSessionStore.getState()
+    if (existingSession.composedResultBlob && existingSession.composedResultUrl) {
+      setPreviewStatus('ready')
+      setPreviewError(null)
+      void startQrPreupload({ isBackground: true })
+      return
+    }
     setPreviewStatus('loading')
     setPreviewError(null)
-    let preuploadTimer: number | null = null
     const timer = window.setTimeout(() => {
       composePhotoStrip({
         frame,
@@ -90,21 +98,16 @@ export function Editor() {
           const url = URL.createObjectURL(blob)
           useSessionStore.getState().setComposedResult(url, blob)
           setPreviewStatus('ready')
-          preuploadTimer = window.setTimeout(() => {
-            if (generation.current === request) {
-              void startQrPreupload({ isBackground: true })
-            }
-          }, 300)
+          void startQrPreupload({ isBackground: true })
         })
         .catch((error: unknown) => {
           if (generation.current !== request) return
           setPreviewStatus('error')
           setPreviewError(error instanceof Error ? error.message : 'Tidak dapat membuat cetakan.')
         })
-    }, 160)
+    }, 80)
     return () => {
       window.clearTimeout(timer)
-      if (preuploadTimer !== null) window.clearTimeout(preuploadTimer)
       if (generation.current === request) generation.current++
     }
   }, [editorKey, filter, frame, isComplete, session.caption, session.filterIntensity, session.photoAdjustments, session.photos, session.requiredShots, session.showDate])

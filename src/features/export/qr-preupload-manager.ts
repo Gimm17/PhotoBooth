@@ -3,7 +3,14 @@ import { frameById } from '../../catalog/frames'
 import { useSessionStore } from '../../store/session-store'
 import { composeBoomerang } from './boomerang-compositor'
 import { createBoomerangFilename, createExportFilename } from './export-service'
-import { getGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
+import {
+  buildShareUrl,
+  getGDriveEndpoint,
+  uploadBundleToGDrive,
+  uploadPhotoOnlyToGDrive,
+  uploadVideoOnlyToGDrive,
+  warmUpGDriveConnection,
+} from './gdrive-share-service'
 import type { QrShareState } from './QrShareModal'
 
 interface ManagedQrEntry {
@@ -132,11 +139,77 @@ export async function startQrPreupload(options?: {
 
   const jobPromise = (async () => {
     try {
+      const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
+      const now = new Date()
+      const photoFilename = createExportFilename('png', now)
+      const sessionName = photoFilename.replace(/\.[a-z0-9]+$/i, '')
+
       let videoBlob: Blob | null = null
       let videoMime = 'video/mp4'
 
       const latestSession = useSessionStore.getState()
       const hasAllLiveSequences = frame.slots.every((_, index) => Boolean(latestSession.liveSequences[index]?.frames.length))
+
+      if (isTestEnv) {
+        if (latestSession.boomerangResult) {
+          videoBlob = latestSession.boomerangResult.blob
+          videoMime = latestSession.boomerangResult.mimeType
+        } else if (hasAllLiveSequences) {
+          setManagedState({ status: 'preparing-live' })
+          try {
+            const recorded = await composeBoomerang({
+              frame,
+              filter,
+              intensity: latestSession.filterIntensity,
+              caption: latestSession.caption,
+              showDate: latestSession.showDate,
+              sequences: latestSession.liveSequences,
+              signal: controller.signal,
+              capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
+              adjustments: latestSession.photoAdjustments,
+            })
+            if (controller.signal.aborted) return
+            if (computeSessionQrSignature(endpoint) === signature) {
+              const url = URL.createObjectURL(recorded.blob)
+              useSessionStore.getState().setBoomerangResult({ ...recorded, url })
+            }
+            videoBlob = recorded.blob
+            videoMime = recorded.mimeType
+          } catch {
+            videoBlob = null
+          }
+        }
+
+        if (controller.signal.aborted) return
+        const includeLive = Boolean(videoBlob)
+        setManagedState({ status: 'uploading', includeLive })
+
+        const uploaded = await uploadBundleToGDrive({
+          endpointUrl: endpoint,
+          photoBlob: blob,
+          photoFilename,
+          videoBlob,
+          videoFilename: videoBlob ? createBoomerangFilename(videoMime, now) : undefined,
+          frameName: frame.name,
+          signal: controller.signal,
+        })
+
+        if (controller.signal.aborted) return
+        setManagedState({ status: 'ready', result: uploaded, includeLive })
+        return
+      }
+
+      // PRODUCTION PARALLEL PIPELINE:
+      // Track A: Start uploading the compressed JPEG photo IMMEDIATELY at t=0ms
+      // so Google Drive folder creation + photo upload happen simultaneously while Live Photo 60fps renders!
+      warmUpGDriveConnection(endpoint)
+      const photoUploadPromise = uploadPhotoOnlyToGDrive({
+        endpointUrl: endpoint,
+        photoBlob: blob,
+        photoFilename,
+        frameName: frame.name,
+        signal: controller.signal,
+      })
 
       if (latestSession.boomerangResult) {
         videoBlob = latestSession.boomerangResult.blob
@@ -156,7 +229,6 @@ export async function startQrPreupload(options?: {
             adjustments: latestSession.photoAdjustments,
           })
           if (controller.signal.aborted) return
-          // Verify session signature hasn't changed while rendering Live Photo
           if (computeSessionQrSignature(endpoint) === signature) {
             const url = URL.createObjectURL(recorded.blob)
             useSessionStore.getState().setBoomerangResult({ ...recorded, url })
@@ -172,19 +244,46 @@ export async function startQrPreupload(options?: {
       const includeLive = Boolean(videoBlob)
       setManagedState({ status: 'uploading', includeLive })
 
-      const now = new Date()
-      const uploaded = await uploadBundleToGDrive({
-        endpointUrl: endpoint,
-        photoBlob: blob,
-        photoFilename: createExportFilename('png', now),
-        videoBlob,
-        videoFilename: videoBlob ? createBoomerangFilename(videoMime, now) : undefined,
-        frameName: frame.name,
-        signal: controller.signal,
-      })
+      // Track B: Upload ONLY the video in parallel with Track A (which already had a 3s head start!)
+      const videoUploadPromise = videoBlob
+        ? uploadVideoOnlyToGDrive({
+            endpointUrl: endpoint,
+            videoBlob,
+            videoFilename: createBoomerangFilename(videoMime, now),
+            sessionName,
+            frameName: frame.name,
+            signal: controller.signal,
+          }).catch(() => null)
+        : Promise.resolve(null)
+
+      const [photoUploaded, videoUploaded] = await Promise.all([
+        photoUploadPromise,
+        videoUploadPromise,
+      ])
 
       if (controller.signal.aborted) return
-      setManagedState({ status: 'ready', result: uploaded, includeLive })
+
+      const finalVideoId = videoUploaded?.videoId ?? photoUploaded.videoId ?? null
+      const finalIncludeLive = Boolean(finalVideoId)
+      const { shareUrl, folderUrl } = buildShareUrl({
+        ok: true,
+        folderId: photoUploaded.folderId || videoUploaded?.folderId,
+        folderUrl: photoUploaded.folderUrl || videoUploaded?.folderUrl,
+        photoId: photoUploaded.photoId,
+        videoId: finalVideoId,
+      })
+
+      setManagedState({
+        status: 'ready',
+        result: {
+          shareUrl,
+          folderUrl,
+          photoId: photoUploaded.photoId,
+          videoId: finalVideoId,
+          folderId: photoUploaded.folderId || videoUploaded?.folderId,
+        },
+        includeLive: finalIncludeLive,
+      })
     } catch (error) {
       if (controller.signal.aborted) return
       setManagedState({

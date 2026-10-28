@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildShareUrl, DEFAULT_GDRIVE_WEBAPP_URL, getGDriveEndpoint, setGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
+import {
+  buildShareUrl,
+  DEFAULT_GDRIVE_WEBAPP_URL,
+  getGDriveEndpoint,
+  setGDriveEndpoint,
+  uploadBundleToGDrive,
+  uploadPhotoOnlyToGDrive,
+  uploadVideoOnlyToGDrive,
+} from './gdrive-share-service'
 
 describe('gdrive-share-service', () => {
   afterEach(() => {
@@ -53,5 +61,51 @@ describe('gdrive-share-service', () => {
     expect(parsedBody.photo.filename).toBe('photobooth-2026-10-28_14-50-00.png')
     expect(parsedBody.video.filename).toBe('photobooth-2026-10-28_14-50-00-live.mp4')
     expect(result.shareUrl).toBe('https://photobooth-neon-alpha.vercel.app/share?p=img_1&v=vid_1&d=fld_1')
+  })
+
+  it('supports decoupled parallel photo-only and video-only uploads for low-latency QR generation', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { photo?: unknown; video?: unknown }
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          folderId: 'fld_parallel',
+          folderUrl: 'https://drive.google.com/drive/folders/fld_parallel',
+          photoId: body.photo ? 'img_parallel' : '',
+          videoId: body.video ? 'vid_parallel' : null,
+        }),
+      } as Response
+    })
+
+    const [photoRes, videoRes] = await Promise.all([
+      uploadPhotoOnlyToGDrive({
+        endpointUrl: 'https://script.google.com/macros/s/test/exec',
+        photoBlob: new Blob(['photo'], { type: 'image/jpeg' }),
+        photoFilename: 'photobooth-parallel.jpg',
+        frameName: 'Classic Polaroid',
+        origin: 'https://photobooth-neon-alpha.vercel.app',
+      }),
+      uploadVideoOnlyToGDrive({
+        endpointUrl: 'https://script.google.com/macros/s/test/exec',
+        videoBlob: new Blob(['video'], { type: 'video/mp4' }),
+        videoFilename: 'photobooth-parallel-live.mp4',
+        sessionName: 'photobooth-parallel',
+        frameName: 'Classic Polaroid',
+      }),
+    ])
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    const combined = buildShareUrl(
+      {
+        ok: true,
+        folderId: photoRes.folderId,
+        folderUrl: photoRes.folderUrl,
+        photoId: photoRes.photoId,
+        videoId: videoRes.videoId,
+      },
+      'https://photobooth-neon-alpha.vercel.app',
+    )
+    expect(combined.shareUrl).toBe('https://photobooth-neon-alpha.vercel.app/share?p=img_parallel&v=vid_parallel&d=fld_parallel')
   })
 })
