@@ -5,6 +5,7 @@ import { filterById } from '../../catalog/filters'
 import { frameById } from '../../catalog/frames'
 import type { FilterCategory, FrameCategory, FrameOrientation } from '../../catalog/types'
 import { composePhotoStrip } from '../export/compositor'
+import { startQrPreupload } from '../export/qr-preupload-manager'
 import { useSessionStore } from '../../store/session-store'
 import type { EditorHistorySnapshot } from '../../store/session-store'
 import { FilterBrowser } from './FilterBrowser'
@@ -72,6 +73,7 @@ export function Editor() {
     }
     setPreviewStatus('loading')
     setPreviewError(null)
+    let preuploadTimer: number | null = null
     const timer = window.setTimeout(() => {
       composePhotoStrip({
         frame,
@@ -88,6 +90,11 @@ export function Editor() {
           const url = URL.createObjectURL(blob)
           useSessionStore.getState().setComposedResult(url, blob)
           setPreviewStatus('ready')
+          preuploadTimer = window.setTimeout(() => {
+            if (generation.current === request) {
+              void startQrPreupload({ isBackground: true })
+            }
+          }, 300)
         })
         .catch((error: unknown) => {
           if (generation.current !== request) return
@@ -97,6 +104,7 @@ export function Editor() {
     }, 160)
     return () => {
       window.clearTimeout(timer)
+      if (preuploadTimer !== null) window.clearTimeout(preuploadTimer)
       if (generation.current === request) generation.current++
     }
   }, [editorKey, filter, frame, isComplete, session.caption, session.filterIntensity, session.photoAdjustments, session.photos, session.requiredShots, session.showDate])
@@ -155,7 +163,7 @@ export function Editor() {
     <div className="editor-workspace">
       <aside className="editor-library" aria-label="Peralatan editor"><nav className="editor-tool-rail" aria-label="Kategori peralatan"><button className={tool === 'frames' ? 'is-active' : ''} type="button" onClick={() => setTool('frames')}><Image aria-hidden="true" size={20} /><span>Bingkai</span></button><button className={tool === 'filters' ? 'is-active' : ''} type="button" onClick={() => setTool('filters')}><Palette aria-hidden="true" size={20} /><span>Filter</span></button><button className={tool === 'photos' ? 'is-active' : ''} type="button" onClick={() => setTool('photos')}><Layers aria-hidden="true" size={20} /><span>Foto</span></button></nav><div className="editor-catalog">{activePanel}</div></aside>
       {frame && <PrintPreview frame={frame} resultUrl={session.composedResultUrl} status={previewStatus} />}
-      <aside className="editor-right"><Inspector caption={session.caption} intensity={session.filterIntensity} showDate={session.showDate} onCaptionChange={(value) => record(() => useSessionStore.getState().setCaption(value))} onIntensityChange={(value) => record(() => useSessionStore.getState().setFilterIntensity(value))} onShowDateChange={updateShowDate} />{previewError && <p className="editor-error" role="alert">{previewError}</p>}<button className="button primary-button editor-continue" type="button" disabled={previewStatus !== 'ready'} onClick={() => navigate('/result')}>Lanjut ke unduh dan cetak</button></aside>
+      <aside className="editor-right"><Inspector caption={session.caption} intensity={session.filterIntensity} showDate={session.showDate} onCaptionChange={(value) => record(() => useSessionStore.getState().setCaption(value))} onIntensityChange={(value) => record(() => useSessionStore.getState().setFilterIntensity(value))} onShowDateChange={updateShowDate} />{previewError && <p className="editor-error" role="alert">{previewError}</p>}<button className="button primary-button editor-continue" type="button" disabled={previewStatus !== 'ready'} onClick={() => { void startQrPreupload({ isBackground: true }); navigate('/result') }}>Lanjut ke unduh dan cetak</button></aside>
     </div>
   </section>
 }

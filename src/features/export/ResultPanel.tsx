@@ -8,7 +8,8 @@ import { composePhotoStrip } from './compositor'
 import type { OutputFormat } from './compositor'
 import { composeBoomerang } from './boomerang-compositor'
 import { createBoomerangFilename, createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
-import { getGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
+import { getGDriveEndpoint } from './gdrive-share-service'
+import { getQrPreuploadState, resetQrPreupload, startQrPreupload, subscribeQrPreupload } from './qr-preupload-manager'
 import { QrShareModal, type QrShareState } from './QrShareModal'
 import './result.css'
 
@@ -61,9 +62,8 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const recompositionRequest = useRef(0)
   const saveInFlight = useRef(false)
   const liveController = useRef<AbortController | null>(null)
-  const qrController = useRef<AbortController | null>(null)
   const [qrModalOpen, setQrModalOpen] = useState(false)
-  const [qrState, setQrState] = useState<QrShareState>({ status: 'idle' })
+  const [qrState, setQrState] = useState<QrShareState>(() => getQrPreuploadState())
 
   useEffect(() => {
     recompositionRequest.current += 1
@@ -75,35 +75,37 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
 
   useEffect(() => () => {
     liveController.current?.abort()
-    qrController.current?.abort()
   }, [])
+
+  useEffect(() => {
+    setQrState(getQrPreuploadState())
+    return subscribeQrPreupload((nextState) => {
+      setQrState(nextState)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (session.boomerangResult) {
+      setLiveStatus({ kind: 'ready', ...session.boomerangResult })
+    }
+  }, [session.boomerangResult])
 
   useEffect(() => {
     liveController.current?.abort()
     liveController.current = null
-    qrController.current?.abort()
-    qrController.current = null
     setActiveView('photo')
     setLiveStatus(session.boomerangResult ? { kind: 'ready', ...session.boomerangResult } : { kind: 'idle' })
-    setQrState({ status: 'idle' })
+    setQrState(getQrPreuploadState())
     setQrModalOpen(false)
   }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences, session.photoAdjustments])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
-  const prewarmQrRef = useRef<((openModal: boolean, explicitEndpoint?: string, force?: boolean) => Promise<void>) | null>(null)
 
-  // Pre-warm QR upload in the background in production browsers so the QR code is ready instantly when clicked
+  // Ensure background pre-upload continues or starts immediately when /result is open
   useEffect(() => {
     if (!hasResult || !blob || !frame || !filter) return
-    const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
-    if (isTestEnv) return
-    const endpoint = getGDriveEndpoint().trim()
-    if (!endpoint || qrState.status !== 'idle') return
-    const timer = window.setTimeout(() => {
-      void prewarmQrRef.current?.(false, endpoint)
-    }, 20)
-    return () => window.clearTimeout(timer)
-  }, [hasResult, blob, frame, filter, qrState.status])
+    void startQrPreupload({ isBackground: true })
+  }, [hasResult, blob, frame, filter])
 
   if (!hasResult || !blob || !frame || !filter) {
     return <section className="result-guard page-width">
@@ -295,99 +297,25 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     }
   }
 
-  const hasAllLiveSequences = frame.slots.every((_, index) => Boolean(session.liveSequences[index]?.frames.length))
-
-  const runQrUploadFlow = async (openModal: boolean, explicitEndpoint?: string, force = false) => {
-    if (openModal) setQrModalOpen(true)
+  const startQrShare = async (explicitEndpoint?: string) => {
+    setQrModalOpen(true)
     const endpoint = (explicitEndpoint ?? getGDriveEndpoint()).trim()
     if (!endpoint) {
-      if (openModal) setQrState({ status: 'idle' })
+      setQrState({ status: 'idle' })
       return
     }
-    if (!force && (qrState.status === 'ready' || qrState.status === 'preparing-live' || qrState.status === 'uploading')) {
-      return
-    }
-
-    const controller = new AbortController()
-    qrController.current?.abort()
-    qrController.current = controller
-
-    try {
-      let videoBlob: Blob | null = null
-      let videoMime = 'video/mp4'
-
-      if (liveStatus.kind === 'ready') {
-        videoBlob = liveStatus.blob
-        videoMime = liveStatus.mimeType
-      } else if (session.boomerangResult) {
-        videoBlob = session.boomerangResult.blob
-        videoMime = session.boomerangResult.mimeType
-      } else if (hasAllLiveSequences) {
-        setQrState({ status: 'preparing-live' })
-        try {
-          const recorded = await composeBoomerang({
-            frame,
-            filter,
-            intensity: session.filterIntensity,
-            caption: session.caption,
-            showDate: session.showDate,
-            sequences: session.liveSequences,
-            signal: controller.signal,
-            capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
-            adjustments: session.photoAdjustments,
-          })
-          if (controller.signal.aborted) return
-          const url = URL.createObjectURL(recorded.blob)
-          const readyLive = { ...recorded, url }
-          useSessionStore.getState().setBoomerangResult(readyLive)
-          setLiveStatus({ kind: 'ready', ...readyLive })
-          videoBlob = recorded.blob
-          videoMime = recorded.mimeType
-        } catch {
-          // If Live Photo cannot be generated on this browser, still upload the photo strip
-          videoBlob = null
-        }
-      }
-
-      if (controller.signal.aborted) return
-      const includeLive = Boolean(videoBlob)
-      setQrState({ status: 'uploading', includeLive })
-
-      const now = new Date()
-      const uploaded = await uploadBundleToGDrive({
-        endpointUrl: endpoint,
-        photoBlob: blob,
-        photoFilename: createExportFilename(format, now),
-        videoBlob,
-        videoFilename: videoBlob ? createBoomerangFilename(videoMime, now) : undefined,
-        frameName: frame.name,
-        signal: controller.signal,
-      })
-
-      if (controller.signal.aborted) return
-      setQrState({ status: 'ready', result: uploaded, includeLive })
-    } catch (error) {
-      if (controller.signal.aborted) return
-      setQrState({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Gagal membuat QR Code unduhan.',
-      })
-    } finally {
-      if (qrController.current === controller) qrController.current = null
-    }
-  }
-
-  prewarmQrRef.current = runQrUploadFlow
-
-  const startQrShare = async (explicitEndpoint?: string) => {
-    await runQrUploadFlow(true, explicitEndpoint)
+    await startQrPreupload({ explicitEndpoint: endpoint })
   }
 
   const retryQrShare = () => {
-    void runQrUploadFlow(true, undefined, true)
+    setQrModalOpen(true)
+    void startQrPreupload({ force: true })
   }
 
-  const createNew = () => useSessionStore.getState().resetSession()
+  const createNew = () => {
+    resetQrPreupload()
+    useSessionStore.getState().resetSession()
+  }
 
   return <section className="result-page page-width" aria-labelledby="result-title">
     <header className="result-heading">
