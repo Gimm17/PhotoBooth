@@ -32,7 +32,7 @@ function QrSvg({ value }: { value: string }) {
   }, [value])
 
   if (!matrix) return null
-  const quietZone = 4
+  const quietZone = 3
   const size = matrix.length + quietZone * 2
   const paths: string[] = []
   for (let r = 0; r < matrix.length; r += 1) {
@@ -51,8 +51,8 @@ function QrSvg({ value }: { value: string }) {
       aria-label="QR Code unduhan Foto dan Live Photo"
       shapeRendering="crispEdges"
     >
-      <rect width={size} height={size} fill="#FFFFFF" />
-      <path d={paths.join('')} fill="#000000" />
+      <rect width={size} height={size} fill="#FFFFFF" rx="2" />
+      <path d={paths.join('')} fill="#1E1D1B" />
     </svg>
   )
 }
@@ -88,21 +88,21 @@ export function QrShareModal({
         aria-modal="true"
         aria-labelledby="qr-modal-title"
       >
+        <button
+          type="button"
+          className="qr-modal-close"
+          aria-label="Tutup dialog QR Code"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" size={18} />
+        </button>
+
         <header className="qr-modal-header">
-          <div className="qr-modal-title-wrap">
-            <QrCode aria-hidden="true" size={20} />
-            <h2 id="qr-modal-title">Scan QR Code — Ambil Foto &amp; Live Photo</h2>
-          </div>
-          <div className="qr-modal-header-actions">
-            <button
-              type="button"
-              className="qr-modal-close"
-              aria-label="Tutup dialog QR Code"
-              onClick={onClose}
-            >
-              <X aria-hidden="true" size={20} />
-            </button>
-          </div>
+          <span className="qr-eyebrow">
+            <QrCode aria-hidden="true" size={13} />
+            GOOGLE DRIVE · AKSES UNDUH
+          </span>
+          <h2 id="qr-modal-title">Scan QR Code — Ambil Foto &amp; Live Photo</h2>
         </header>
 
         <div className="qr-modal-body">
@@ -132,28 +132,43 @@ export function QrShareModal({
 
           {state.status === 'ready' && (
             <div className="qr-ready-view">
-              <div className="qr-frame-box">
-                <QrSvg value={state.result.folderUrl || state.result.shareUrl} />
+              <div className="qr-stage-shell">
+                <span className="qr-stage-tape" aria-hidden="true">SCAN DISINI</span>
+                <div className="qr-frame-box">
+                  <span className="qr-corner qr-corner-tl" aria-hidden="true" />
+                  <span className="qr-corner qr-corner-tr" aria-hidden="true" />
+                  <span className="qr-corner qr-corner-bl" aria-hidden="true" />
+                  <span className="qr-corner qr-corner-br" aria-hidden="true" />
+                  <QrSvg value={state.result.folderUrl || state.result.shareUrl} />
+                </div>
               </div>
-              <p className="qr-scan-hint">
-                Tunggu kurang lebih 5 menit hingga foto &amp; video muncul di dalam folder Google Drive.
-              </p>
+
+              <div className="qr-wait-card">
+                <span className="qr-wait-dot" aria-hidden="true" />
+                <p className="qr-scan-hint">
+                  Tunggu kurang lebih <b>5 menit</b> di dalam folder Google Drive hingga foto &amp; video muncul.
+                </p>
+              </div>
+
               <div className="qr-ready-actions">
                 <button
                   type="button"
-                  className="button secondary-button"
+                  className="qr-action-secondary"
                   onClick={() => void copyShareUrl(state.result.folderUrl || state.result.shareUrl)}
                 >
-                  {copiedLink ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-                  {copiedLink ? 'Tautan disalin' : 'Salin tautan Drive'}
+                  {copiedLink ? <Check aria-hidden="true" size={15} /> : <Copy aria-hidden="true" size={15} />}
+                  <span>{copiedLink ? 'Tautan disalin' : 'Salin tautan'}</span>
                 </button>
                 <a
-                  className="button secondary-button"
+                  className="qr-action-primary"
                   href={state.result.folderUrl || state.result.shareUrl}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Buka Google Drive <ExternalLink aria-hidden="true" size={15} />
+                  <span>Buka Google Drive</span>
+                  <span className="qr-action-icon-pill" aria-hidden="true">
+                    <ExternalLink size={14} />
+                  </span>
                 </a>
               </div>
             </div>

@@ -266,8 +266,8 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
    - **Langkah 2 — Detached Background Upload Kualitas Jernih 100% (`uploadBundleToGDrive` ke `folderId`)**:
      - Saat pengguna menekan **"Lanjut ke unduh dan cetak"** (masuk ke `/result`), proses latar belakang yang terpisah (*detached*) merender video Live Photo 60fps beresolusi tinggi (`960px` / `720px`, bitrate tinggi `2.5 Mbps` / `1.5 Mbps`) dan mengunggah **Foto Kualitas Asli (PNG tanpa kompresi penurunan kualitas)** beserta **Video Live Photo 60fps** ke dalam `folderId` yang sama.
      - Walaupun pengunjung sudah selesai scan QR, keluar dari antrean, dan pengunjung berikutnya menekan **"Buat foto baru"** (`resetQrPreupload`), proses *detached background upload* milik pengunjung sebelumnya **tetap berjalan sampai tuntas** di latar belakang hingga file masuk ke folder Google Drive mereka.
-2. **UI Modal QR Minimalis & Endpoint Hardcoded (`QrShareModal.tsx`)**:
-   - Menampilkan UI modal QR yang bersih dan estetik: hanya judul header (`Scan QR Code — Ambil Foto & Live Photo`), kotak QR Code, teks singkat (`"Tunggu kurang lebih 5 menit hingga foto & video muncul di dalam folder Google Drive."`), serta tombol aksi.
+2. **UI Modal QR Estetik (Warm Scrapbook Double-Bezel) & Endpoint Hardcoded (`QrShareModal.tsx`, `result.css`)**:
+   - Menampilkan UI modal QR bergaya *Editorial Polaroid / Warm Scrapbook* dengan kartu *Double-Bezel* (`.qr-stage-shell` + `.qr-frame-box`), aksen pita washi atas (`SCAN DISINI`), *corner viewfinder brackets*, kartu indikator waktu tunggu 5 menit (`.qr-wait-card`), serta tombol CTA kapsul *Button-in-Button* (`Buka Google Drive`).
    - Tombol pengaturan (Settings ⚙️) dihapus sepenuhnya dari UI publik agar pengunjung tidak dapat melihat atau mengubah tautan Google Apps Script; seluruh pembaruan tautan Apps Script dikelola secara *hardcoded* melalui `DEFAULT_GDRIVE_WEBAPP_URL` di `gdrive-share-service.ts`.
 
 ---

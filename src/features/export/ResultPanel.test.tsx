@@ -260,7 +260,7 @@ describe('ResultPanel', () => {
     await waitFor(() => expect(mocks.composeBoomerang).toHaveBeenCalledOnce())
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledOnce())
     expect(await screen.findByRole('img', { name: /QR Code unduhan Foto dan Live Photo/i })).toBeInTheDocument()
-    expect(screen.getByText(/Tunggu kurang lebih 5 menit/i)).toBeInTheDocument()
+    expect(screen.getByText(/Tunggu kurang lebih/i)).toBeInTheDocument()
 
     localStorage.removeItem('photobooth.gdriveWebAppUrl')
     fetchSpy.mockRestore()
