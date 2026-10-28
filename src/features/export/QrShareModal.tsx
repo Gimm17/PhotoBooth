@@ -12,7 +12,12 @@ export type QrShareState =
   | { status: 'idle' }
   | { status: 'preparing-live' }
   | { status: 'uploading'; includeLive: boolean }
-  | { status: 'ready'; result: GDriveUploadResult; includeLive: boolean }
+  | {
+      status: 'ready'
+      result: GDriveUploadResult
+      includeLive: boolean
+      backgroundSync?: 'syncing' | 'completed'
+    }
   | { status: 'error'; message: string }
 
 interface QrShareModalProps {
@@ -206,12 +211,8 @@ export function QrShareModal({
             {state.status === 'uploading' && (
               <div className="qr-loading-box" role="status">
                 <RefreshCw className="qr-spin" aria-hidden="true" size={28} />
-                <strong>
-                  {state.includeLive
-                    ? 'Langkah 2/2: Mengunggah Foto + Live Photo 60fps ke Google Drive…'
-                    : 'Mengunggah Foto ke Google Drive…'}
-                </strong>
-                <span>Membuat folder sesi dan menyiapkan QR Code untuk pengunjung.</span>
+                <strong>Menyiapkan Folder Google Drive Anda…</strong>
+                <span>Membuat QR Code instan langsung ke folder Google Drive sesi ini.</span>
               </div>
             )}
 
@@ -238,23 +239,36 @@ export function QrShareModal({
                     : 'PAKET CETAKAN FOTO STRIP'}
                 </span>
                 <div className="qr-frame-box">
-                  <QrSvg value={state.result.shareUrl} />
+                  <QrSvg value={state.result.folderUrl || state.result.shareUrl} />
                 </div>
-                <p className="qr-scan-hint">
-                  Arahkan kamera HP Anda ke QR Code di atas untuk langsung mengunduh Foto &amp; Live Photo.
-                </p>
+                <div className="qr-expo-wait-notice" role="status">
+                  <strong>⏱️ Silakan Scan Sekarang &amp; Langsung Keluar dari Antrean!</strong>
+                  <p>
+                    QR Code ini langsung membuka <b>Folder Google Drive</b> Anda. File <b>Foto Jernih Asli</b> &amp; <b>Live Photo 60fps</b> sedang dikirim di latar belakang — <b>mohon tunggu sekitar ±5 menit</b> lalu <i>refresh</i> Google Drive Anda hingga file muncul untuk diunduh manual.
+                  </p>
+                  {state.backgroundSync === 'syncing' && (
+                    <span className="qr-sync-pill is-syncing">
+                      ⏳ Sedang mengunggah Foto &amp; Live Photo 60fps jernih di latar belakang…
+                    </span>
+                  )}
+                  {state.backgroundSync === 'completed' && (
+                    <span className="qr-sync-pill is-done">
+                      ✅ Foto &amp; Live Photo 60fps sudah masuk ke Folder Google Drive!
+                    </span>
+                  )}
+                </div>
                 <div className="qr-ready-actions">
                   <button
                     type="button"
                     className="button secondary-button"
-                    onClick={() => void copyShareUrl(state.result.shareUrl)}
+                    onClick={() => void copyShareUrl(state.result.folderUrl || state.result.shareUrl)}
                   >
                     {copiedLink ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-                    {copiedLink ? 'Tautan disalin' : 'Salin tautan'}
+                    {copiedLink ? 'Tautan disalin' : 'Salin tautan Drive'}
                   </button>
                   <a
                     className="button secondary-button"
-                    href={state.result.folderUrl}
+                    href={state.result.folderUrl || state.result.shareUrl}
                     target="_blank"
                     rel="noreferrer"
                   >

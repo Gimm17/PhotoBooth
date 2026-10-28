@@ -7,6 +7,7 @@ export interface GDriveUploadInput {
   videoBlob?: Blob | null
   videoFilename?: string
   frameName: string
+  folderId?: string
   endpointUrl?: string
   signal?: AbortSignal
   origin?: string
@@ -82,39 +83,6 @@ export const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolv
   reader.readAsDataURL(blob)
 })
 
-const compressPhotoForUpload = async (
-  blob: Blob,
-  filename: string,
-): Promise<{ blob: Blob; filename: string }> => {
-  // Compress image blobs (> 90 KB) in real browsers to ~75-95 KB JPEG to cut upload payload by ~85-90%
-  if (blob.size <= 90_000 || typeof createImageBitmap !== 'function') {
-    return { blob, filename }
-  }
-  try {
-    const bitmap = await createImageBitmap(blob)
-    try {
-      const maxEdge = 1080
-      const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return { blob, filename }
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.80))
-      if (!compressed || compressed.size >= blob.size) return { blob, filename }
-      return {
-        blob: compressed,
-        filename: filename.replace(/\.(png|webp|jpeg)$/i, '.jpg'),
-      }
-    } finally {
-      bitmap.close?.()
-    }
-  } catch {
-    return { blob, filename }
-  }
-}
-
 export const buildShareUrl = (
   response: GDriveWebhookResponse,
   origin = typeof window !== 'undefined' ? window.location.origin : 'https://photobooth-neon-alpha.vercel.app',
@@ -172,10 +140,46 @@ const postPayloadToGDrive = async (
   return data
 }
 
+export async function createGDriveSessionFolder(input: {
+  sessionName: string
+  frameName: string
+  endpointUrl?: string
+  signal?: AbortSignal
+}): Promise<GDriveUploadResult> {
+  const endpoint = (input.endpointUrl ?? getGDriveEndpoint()).trim()
+  if (!endpoint) {
+    throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
+  }
+
+  const payload = {
+    action: 'create-folder',
+    sessionName: input.sessionName,
+    frameName: input.frameName,
+    photo: null,
+    video: null,
+  }
+
+  const data = await postPayloadToGDrive(endpoint, payload, input.signal)
+  const folderId = data.folderId?.trim() || ''
+  const folderUrl = data.folderUrl?.trim() || (folderId ? `https://drive.google.com/drive/folders/${folderId}` : '')
+  if (!folderUrl) {
+    throw new Error('Google Drive tidak mengembalikan tautan folder sesi.')
+  }
+
+  return {
+    shareUrl: folderUrl,
+    folderUrl,
+    photoId: '',
+    videoId: null,
+    folderId,
+  }
+}
+
 export async function uploadPhotoOnlyToGDrive(input: {
   photoBlob: Blob
   photoFilename: string
   frameName: string
+  folderId?: string
   endpointUrl?: string
   signal?: AbortSignal
   origin?: string
@@ -185,15 +189,15 @@ export async function uploadPhotoOnlyToGDrive(input: {
     throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
   }
 
-  const optimizedPhoto = await compressPhotoForUpload(input.photoBlob, input.photoFilename)
-  const photoBase64 = await blobToBase64(optimizedPhoto.blob)
+  const photoBase64 = await blobToBase64(input.photoBlob)
 
   const payload = {
     sessionName: input.photoFilename.replace(/\.[a-z0-9]+$/i, ''),
     frameName: input.frameName,
+    ...(input.folderId ? { folderId: input.folderId } : {}),
     photo: {
-      filename: optimizedPhoto.filename,
-      mimeType: optimizedPhoto.blob.type || 'image/jpeg',
+      filename: input.photoFilename,
+      mimeType: input.photoBlob.type || 'image/png',
       base64: photoBase64,
     },
     video: null,
@@ -202,11 +206,11 @@ export async function uploadPhotoOnlyToGDrive(input: {
   const data = await postPayloadToGDrive(endpoint, payload, input.signal)
   const { shareUrl, folderUrl } = buildShareUrl(data, input.origin)
   return {
-    shareUrl,
-    folderUrl,
+    shareUrl: folderUrl || shareUrl,
+    folderUrl: folderUrl || shareUrl,
     photoId: data.photoId ?? '',
     videoId: data.videoId ?? null,
-    folderId: data.folderId,
+    folderId: data.folderId ?? input.folderId,
   }
 }
 
@@ -246,18 +250,19 @@ export async function uploadBundleToGDrive(input: GDriveUploadInput): Promise<GD
     throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
   }
 
-  const optimizedPhoto = await compressPhotoForUpload(input.photoBlob, input.photoFilename)
+  // Upload 100% original uncompressed Photo + High-Clarity 60fps Live Photo Video
   const [photoBase64, videoBase64] = await Promise.all([
-    blobToBase64(optimizedPhoto.blob),
+    blobToBase64(input.photoBlob),
     input.videoBlob ? blobToBase64(input.videoBlob) : Promise.resolve(null),
   ])
 
   const payload = {
     sessionName: input.photoFilename.replace(/\.[a-z0-9]+$/i, ''),
     frameName: input.frameName,
+    ...(input.folderId ? { folderId: input.folderId } : {}),
     photo: {
-      filename: optimizedPhoto.filename,
-      mimeType: optimizedPhoto.blob.type || 'image/jpeg',
+      filename: input.photoFilename,
+      mimeType: input.photoBlob.type || 'image/png',
       base64: photoBase64,
     },
     video: input.videoBlob && videoBase64
@@ -276,7 +281,7 @@ export async function uploadBundleToGDrive(input: GDriveUploadInput): Promise<GD
     folderUrl,
     photoId: data.photoId ?? '',
     videoId: data.videoId ?? null,
-    folderId: data.folderId,
+    folderId: data.folderId ?? input.folderId,
   }
 }
 
@@ -307,11 +312,22 @@ function getOrCreateRootFolder() {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
-    const rootFolder = getOrCreateRootFolder();
 
-    // Buat subfolder untuk setiap sesi pengunjung agar rapi
-    const sessionFolder = rootFolder.createFolder(payload.sessionName || ('Sesi_' + new Date().getTime()));
-    sessionFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Gunakan folder sesi yang sudah dibuat jika folderId dikirim, atau buat folder baru
+    let sessionFolder = null;
+    if (payload.folderId) {
+      try {
+        sessionFolder = DriveApp.getFolderById(payload.folderId);
+      } catch (errFolder) {
+        sessionFolder = null;
+      }
+    }
+
+    if (!sessionFolder) {
+      const rootFolder = getOrCreateRootFolder();
+      sessionFolder = rootFolder.createFolder(payload.sessionName || ('Sesi_' + new Date().getTime()));
+      sessionFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
 
     let photoId = '';
     if (payload.photo && payload.photo.base64) {

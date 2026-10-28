@@ -19,8 +19,8 @@ describe('Live Photo 60fps compositor', () => {
 
   it('caps output dimensions based on device capability', () => {
     const frame = { ...FRAME_TEMPLATES[0], output: { width: 2400, height: 1200 } }
-    expect(chooseBoomerangDimensions(frame, 'low')).toEqual({ width: 600, height: 300 })
-    expect(chooseBoomerangDimensions(frame, 'standard')).toEqual({ width: 720, height: 360 })
+    expect(chooseBoomerangDimensions(frame, 'low')).toEqual({ width: 720, height: 360 })
+    expect(chooseBoomerangDimensions(frame, 'standard')).toEqual({ width: 960, height: 480 })
   })
 
   it('clamps shorter sequences while every slot advances forward on the 60fps timeline', async () => {

@@ -23,12 +23,11 @@
 - **Perubahan & Perbaikan Utama**:
   1. **Generator QR Code Mandiri (Zero-Dependency ISO/IEC 18004)**:
      - Mengimplementasikan encoder QR Code murni di `qr-code.ts` (Byte mode, Reed-Solomon EC Level L, Version 1–10) dengan perbaikan orientasi koordinat format bits (`modules[row][col]`) dan rendering SVG single `<path>` yang tajam untuk kamera HP iOS/Android.
-  2. **Multi-Stage Background Pre-Upload (`/studio` -> `/editor` -> `/result`) & Two-Track Parallel Upload (`qr-preupload-manager.ts`, `gdrive-share-service.ts`)**:
-     - **Pre-Start Sejak Pose Terakhir di Studio (`Studio.tsx`)**: Memulai komposisi foto default dan background pre-upload tepat saat pose terakhir selesai dijepret di `/studio` (sebelum pengguna mengklik *"Lanjut ke editor"*), serta langsung memakai ulang hasilnya di `/editor` tanpa *re-compose* ulang jika tidak ada perubahan.
-     - **Two-Track Parallel Upload (Memangkas Waktu Step 2 hingga ~70%)**:
-       - **Track A (`uploadPhotoOnlyToGDrive`)**: Langsung mengunggah foto JPEG terkompresi (`maxEdge = 1080`, kualitas `0.80`, ~75–95 KB) pada `t = 0ms` **secara paralel** bersamaan saat Step 1 (`composeBoomerang`, 3 detik) sedang merekam video Live Photo 60fps, sehingga saat Step 1 selesai, foto sudah 100% terunggah di Google Drive.
-       - **Track B (`uploadVideoOnlyToGDrive`)**: Begitu Step 1 selesai, hanya mengunggah berkas video Live Photo 60fps (`720px`/`600px`, `900 kbps`/`680 kbps`, ~220–280 KB) tanpa mengunggah ulang foto, memangkas separuh beban RPC `DriveApp` di Google Apps Script.
-       - **Preconnect & Warm-up**: Menambahkan `<link rel="preconnect">` ke `script.google.com` & `script.googleusercontent.com` di `index.html` serta fungsi `warmUpGDriveConnection()` untuk menghilangkan latensi jabat tangan DNS/TLS.
+  2. **Instant Google Drive Folder QR Code + Full-Quality Detached Background Upload (`qr-preupload-manager.ts`, `gdrive-share-service.ts`, `QrShareModal.tsx`)**:
+     - **Kualitas Foto & Live Photo 60fps Dikembalikan 100% Jernih**: Menghapus kompresi penurunan resolusi foto sehingga foto diunggah dalam resolusi PNG/cetak asli yang jernih, serta mengembalikan resolusi Live Photo 60fps ke `960px`/`720px` dengan bitrate tinggi **`2.5 Mbps`** (`2_500_000` bps).
+     - **QR Code Instan Langsung ke Folder Google Drive**: Memisahkan pembuatan folder sesi (`createGDriveSessionFolder` saat di `/studio` & `/editor`, hanya ~1.5 detik) dari proses unggah file. Begitu folder terbuat, QR Code langsung berstatus `ready` dan mengarah **langsung ke URL Folder Google Drive** (`https://drive.google.com/drive/folders/<folderId>`).
+     - **Detached Background Upload (Anti-Antrean Pameran)**: Saat masuk ke `/result`, Foto jernih + Live Photo 60fps diunggah ke `folderId` tersebut secara *detached* di latar belakang (tetap lanjut sampai selesai meskipun pengunjung berikutnya menekan *"Buat foto baru"*).
+     - **Info Tunggu ±5 Menit**: Menampilkan informasi jelas pada modal QR agar pengunjung bisa langsung scan QR, keluar dari antrean, dan menunggu sekitar ±5 menit hingga file muncul lengkap di dalam folder Google Drive mereka untuk diunduh manual.
   3. **Halaman Unduh Mobile Pengunjung (`/share`)**:
      - Menyediakan halaman `/share` khusus pengunjung yang memindai QR Code untuk melihat pratinjau Foto Strip, memutar Live Photo 60fps, dan mengunduh keduanya langsung ke HP mereka.
      - Memperbarui CSP di `vercel.json` (`connect-src`, `img-src`, `media-src`) serta SPA rewrites untuk `/share` dan `/frames`.

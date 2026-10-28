@@ -127,13 +127,14 @@ export function Studio() {
     warmUpGDriveConnection()
     const state = useSessionStore.getState()
     if (state.composedResultBlob) {
-      void startQrPreupload({ isBackground: true })
+      void startQrPreupload({ isBackground: true, folderOnly: true })
       return
     }
     const frame = frameById(state.selectedFrame)
     const filter = filterById(state.selectedFilter)
     if (!frame || !filter || state.photos.length < state.requiredShots) return
     let cancelled = false
+    void startQrPreupload({ isBackground: true, folderOnly: true })
     composePhotoStrip({
       frame,
       filter,
@@ -150,7 +151,6 @@ export function Studio() {
         if (latestState.composedResultBlob || latestState.photos.length < latestState.requiredShots) return
         const url = URL.createObjectURL(blob)
         latestState.setComposedResult(url, blob)
-        void startQrPreupload({ isBackground: true })
       })
       .catch(() => {
         // Editor will handle composition errors interactively if needed

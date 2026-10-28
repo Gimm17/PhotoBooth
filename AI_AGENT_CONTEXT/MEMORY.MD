@@ -256,18 +256,18 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
 
 ---
 
-### 4.6. Arsitektur Expo QR Code & Google Drive Share (`qr-preupload-manager.ts`, `gdrive-share-service.ts`, `qr-code.ts`, `ShareLandingPage.tsx`)
+### 4.6. Arsitektur Expo QR Code & Google Drive Share (`qr-preupload-manager.ts`, `gdrive-share-service.ts`, `qr-code.ts`, `QrShareModal.tsx`)
 
-1. **Multi-Stage Background Pre-Upload (`/studio` -> `/editor` -> `/result`) & Two-Track Parallel Upload (`qr-preupload-manager.ts` & `gdrive-share-service.ts`)**:
-   - **Pre-Start Sejak Pose Terakhir di Studio (`/studio`)**: Begitu pose terakhir selesai diambil di `Studio.tsx` (`complete && !captureBusy`), aplikasi langsung menyusun strip foto default (`composePhotoStrip`), melakukan *warm-up* koneksi TLS ke `script.google.com`, dan memulai `startQrPreupload({ isBackground: true })` bahkan sebelum pengguna menekan tombol **"Lanjut ke editor"**.
-   - **Reuse Instan di Editor (`/editor`)**: Saat masuk ke `/editor`, jika `composedResultBlob` sudah tersedia dan cocok dengan state sesi, Editor langsung menampilkan pratinjau tanpa *re-compose* dan meneruskan progres `startQrPreupload` tanpa terputus. Jika pengguna mengubah bingkai/filter/caption di Editor, debounce pratinjau dipersingkat (`80ms`) dan `startQrPreupload` langsung berjalan begitu `composePhotoStrip` selesai (`0ms` delay).
-   - **Two-Track Parallel Upload (Photo Upload Paralel Selama Render Live Photo 60fps)**:
-     - **Track A (`uploadPhotoOnlyToGDrive`)**: Dimulai **seketika pada `t = 0ms`** tanpa menunggu render video Live Photo 60fps (3 detik) selesai. Foto dikompresi ke JPEG ringan (`maxEdge = 1080`, kualitas `0.80`, ~75–95 KB) dan langsung diunggah ke Google Drive bersamaan saat `composeBoomerang` sedang merekam video 3 detik di browser.
-     - **Track B (`uploadVideoOnlyToGDrive`)**: Begitu `composeBoomerang` selesai (resolusi optimal `720px` / `600px`, bitrate `900 kbps` / `680 kbps`, ukuran video ~220–280 KB), aplikasi hanya mengunggah berkas video (`photo: null`) secara terpisah, memangkas waktu eksekusi Google Apps Script hingga separuhnya.
-     - **Graceful Fallback**: Jika unggahan video mengalami kendala jaringan pameran sementara unggahan foto berhasil, QR Code tetap disajikan dengan foto strip agar antrean pengunjung tidak pernah terhambat.
-2. **QR Code Mandiri & Halaman Unduh Mobile (`/share`)**:
-   - `qr-code.ts` menghasilkan matriks QR Code standar ISO/IEC 18004 (Byte mode, Reed-Solomon EC Level L, Version 1–10) secara murni di sisi klien tanpa library eksternal, dirender sebagai single `<path>` SVG tajam di `QrShareModal.tsx`.
-   - Ketika pengunjung memindai QR Code dengan kamera HP, mereka diarahkan ke `/share?p=<photoId>&v=<videoId>&d=<folderId>` (`ShareLandingPage.tsx`) yang menampilkan pratinjau foto, serta tombol **Unduh Foto Strip** dan **Unduh Live Photo (60 FPS)** langsung ke HP pengunjung.
+1. **Instant Folder QR Code (Direct ke Google Drive Folder) & Detached Full-Quality Background Upload (`qr-preupload-manager.ts` & `gdrive-share-service.ts`)**:
+   - **Langkah 1 — Buat Folder Kosong Terlebih Dahulu di Studio/Editor (`folderOnly: true`, ~1.5 Detik)**:
+     - Begitu pose terakhir selesai dijepret di `/studio` atau saat berada di `/editor`, aplikasi memanggil `createGDriveSessionFolder()` (tanpa mengirim file berat) untuk membuat 1 folder sesi di Google Drive (`https://drive.google.com/drive/folders/<folderId>`).
+     - Begitu `folderUrl` kembali (~1.5 detik), status QR langsung menjadi **`ready`**, dan QR Code **langsung mengarah ke URL Folder Google Drive tersebut** (tanpa redirect ke halaman perantara).
+     - Saat pengguna tiba di `/result` dan menekan tombol **"Scan QR Code"**, QR Code langsung muncul **0.0 detik (instan)**!
+   - **Langkah 2 — Detached Background Upload Kualitas Jernih 100% (`uploadBundleToGDrive` ke `folderId`)**:
+     - Saat pengguna menekan **"Lanjut ke unduh dan cetak"** (masuk ke `/result`), proses latar belakang yang terpisah (*detached*) merender video Live Photo 60fps beresolusi tinggi (`960px` / `720px`, bitrate tinggi `2.5 Mbps` / `1.5 Mbps`) dan mengunggah **Foto Kualitas Asli (PNG tanpa kompresi penurunan kualitas)** beserta **Video Live Photo 60fps** ke dalam `folderId` yang sama.
+     - Walaupun pengunjung sudah selesai scan QR, keluar dari antrean, dan pengunjung berikutnya menekan **"Buat foto baru"** (`resetQrPreupload`), proses *detached background upload* milik pengunjung sebelumnya **tetap berjalan sampai tuntas** di latar belakang hingga file masuk ke folder Google Drive mereka.
+2. **Pesan Panduan Pengunjung Expo di Modal QR (`QrShareModal.tsx`)**:
+   - Menampilkan instruksi jelas pada modal QR agar pengunjung langsung memindai QR Code (membuka folder Google Drive mereka), langsung keluar dari antrean agar tidak menumpuk, dan menunggu sekitar **±5 menit** (lalu *refresh* halaman Google Drive) sampai Foto & Live Photo 60fps selesai terunggah dan siap diunduh manual.
 
 ---
 

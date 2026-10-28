@@ -25,11 +25,22 @@ function getOrCreateRootFolder() {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
-    const rootFolder = getOrCreateRootFolder();
 
-    // Buat subfolder untuk setiap sesi pengunjung agar rapi
-    const sessionFolder = rootFolder.createFolder(payload.sessionName || ('Sesi_' + new Date().getTime()));
-    sessionFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Gunakan folder sesi yang sudah dibuat jika folderId dikirim, atau buat folder baru
+    let sessionFolder = null;
+    if (payload.folderId) {
+      try {
+        sessionFolder = DriveApp.getFolderById(payload.folderId);
+      } catch (errFolder) {
+        sessionFolder = null;
+      }
+    }
+
+    if (!sessionFolder) {
+      const rootFolder = getOrCreateRootFolder();
+      sessionFolder = rootFolder.createFolder(payload.sessionName || ('Sesi_' + new Date().getTime()));
+      sessionFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
 
     let photoId = '';
     if (payload.photo && payload.photo.base64) {

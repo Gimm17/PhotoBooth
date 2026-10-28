@@ -77,11 +77,12 @@ export function Editor() {
     if (existingSession.composedResultBlob && existingSession.composedResultUrl) {
       setPreviewStatus('ready')
       setPreviewError(null)
-      void startQrPreupload({ isBackground: true })
+      void startQrPreupload({ isBackground: true, folderOnly: true })
       return
     }
     setPreviewStatus('loading')
     setPreviewError(null)
+    void startQrPreupload({ isBackground: true, folderOnly: true })
     const timer = window.setTimeout(() => {
       composePhotoStrip({
         frame,
@@ -98,7 +99,6 @@ export function Editor() {
           const url = URL.createObjectURL(blob)
           useSessionStore.getState().setComposedResult(url, blob)
           setPreviewStatus('ready')
-          void startQrPreupload({ isBackground: true })
         })
         .catch((error: unknown) => {
           if (generation.current !== request) return
