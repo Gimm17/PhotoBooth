@@ -4,6 +4,7 @@ import { GalleryPage } from '../pages/GalleryPage'
 import { FrameSelectionPage } from '../pages/FrameSelectionPage'
 import { HomePage } from '../pages/HomePage'
 import { ResultPage } from '../pages/ResultPage'
+import { ShareLandingPage } from '../pages/ShareLandingPage'
 import { SetupPage } from '../pages/SetupPage'
 import { StudioPage } from '../pages/StudioPage'
 
@@ -14,6 +15,7 @@ export const routes = [
   { path: '/studio', element: <StudioPage /> },
   { path: '/editor', element: <EditorPage /> },
   { path: '/result', element: <ResultPage /> },
+  { path: '/share', element: <ShareLandingPage /> },
   { path: '/gallery', element: <GalleryPage /> },
 ]
 

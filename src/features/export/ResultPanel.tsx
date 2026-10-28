@@ -1,4 +1,4 @@
-import { ArrowRight, Bookmark, Download, Film, Printer, Share2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Bookmark, Download, Film, Printer, QrCode, Share2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { filterById } from '../../catalog/filters'
@@ -8,6 +8,8 @@ import { composePhotoStrip } from './compositor'
 import type { OutputFormat } from './compositor'
 import { composeBoomerang } from './boomerang-compositor'
 import { createBoomerangFilename, createExportFilename, downloadBlob, printBlob, shareBlob } from './export-service'
+import { getGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
+import { QrShareModal, type QrShareState } from './QrShareModal'
 import './result.css'
 
 export type GallerySaveRequest =
@@ -59,6 +61,9 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   const recompositionRequest = useRef(0)
   const saveInFlight = useRef(false)
   const liveController = useRef<AbortController | null>(null)
+  const qrController = useRef<AbortController | null>(null)
+  const [qrModalOpen, setQrModalOpen] = useState(false)
+  const [qrState, setQrState] = useState<QrShareState>({ status: 'idle' })
 
   useEffect(() => {
     recompositionRequest.current += 1
@@ -68,13 +73,20 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     return () => { recompositionRequest.current += 1 }
   }, [blob, session.composedResultUrl])
 
-  useEffect(() => () => liveController.current?.abort(), [])
+  useEffect(() => () => {
+    liveController.current?.abort()
+    qrController.current?.abort()
+  }, [])
 
   useEffect(() => {
     liveController.current?.abort()
     liveController.current = null
+    qrController.current?.abort()
+    qrController.current = null
     setActiveView('photo')
     setLiveStatus(session.boomerangResult ? { kind: 'ready', ...session.boomerangResult } : { kind: 'idle' })
+    setQrState({ status: 'idle' })
+    setQrModalOpen(false)
   }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences, session.photoAdjustments])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
@@ -268,6 +280,93 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     }
   }
 
+  const hasAllLiveSequences = frame.slots.every((_, index) => Boolean(session.liveSequences[index]?.frames.length))
+
+  const startQrShare = async (explicitEndpoint?: string) => {
+    setQrModalOpen(true)
+    const endpoint = (explicitEndpoint ?? getGDriveEndpoint()).trim()
+    if (!endpoint) {
+      setQrState({ status: 'idle' })
+      return
+    }
+    if (qrState.status === 'ready' || qrState.status === 'preparing-live' || qrState.status === 'uploading') {
+      return
+    }
+
+    const controller = new AbortController()
+    qrController.current?.abort()
+    qrController.current = controller
+
+    try {
+      let videoBlob: Blob | null = null
+      let videoMime = 'video/mp4'
+
+      if (liveStatus.kind === 'ready') {
+        videoBlob = liveStatus.blob
+        videoMime = liveStatus.mimeType
+      } else if (session.boomerangResult) {
+        videoBlob = session.boomerangResult.blob
+        videoMime = session.boomerangResult.mimeType
+      } else if (hasAllLiveSequences) {
+        setQrState({ status: 'preparing-live' })
+        try {
+          const recorded = await composeBoomerang({
+            frame,
+            filter,
+            intensity: session.filterIntensity,
+            caption: session.caption,
+            showDate: session.showDate,
+            sequences: session.liveSequences,
+            signal: controller.signal,
+            capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
+            adjustments: session.photoAdjustments,
+          })
+          if (controller.signal.aborted) return
+          const url = URL.createObjectURL(recorded.blob)
+          const readyLive = { ...recorded, url }
+          useSessionStore.getState().setBoomerangResult(readyLive)
+          setLiveStatus({ kind: 'ready', ...readyLive })
+          videoBlob = recorded.blob
+          videoMime = recorded.mimeType
+        } catch {
+          // If Live Photo cannot be generated on this browser, still upload the photo strip
+          videoBlob = null
+        }
+      }
+
+      if (controller.signal.aborted) return
+      const includeLive = Boolean(videoBlob)
+      setQrState({ status: 'uploading', includeLive })
+
+      const now = new Date()
+      const uploaded = await uploadBundleToGDrive({
+        endpointUrl: endpoint,
+        photoBlob: blob,
+        photoFilename: createExportFilename(format, now),
+        videoBlob,
+        videoFilename: videoBlob ? createBoomerangFilename(videoMime, now) : undefined,
+        frameName: frame.name,
+        signal: controller.signal,
+      })
+
+      if (controller.signal.aborted) return
+      setQrState({ status: 'ready', result: uploaded, includeLive })
+    } catch (error) {
+      if (controller.signal.aborted) return
+      setQrState({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Gagal membuat QR Code unduhan.',
+      })
+    } finally {
+      if (qrController.current === controller) qrController.current = null
+    }
+  }
+
+  const retryQrShare = () => {
+    setQrState({ status: 'idle' })
+    setTimeout(() => { void startQrShare() }, 0)
+  }
+
   const createNew = () => useSessionStore.getState().resetSession()
 
   return <section className="result-page page-width" aria-labelledby="result-title">
@@ -298,6 +397,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       <div className="result-controls">
         {activeView === 'live' && <div className="live-result-actions">
           <button className="button primary-button result-download" type="button" disabled={liveStatus.kind !== 'ready'} onClick={handleLiveDownload}><Download aria-hidden="true" size={20} /> Unduh Live Photo</button>
+          <button className="button qr-action-button" type="button" disabled={isRecomposing} onClick={() => void startQrShare()}><QrCode aria-hidden="true" size={20} /> Scan QR Code (Foto + Live Photo)</button>
           <button className="button secondary-button" type="button" disabled={liveStatus.kind !== 'ready'} onClick={() => void handleLiveShare()}><Share2 aria-hidden="true" size={18} /> Bagikan Live Photo</button>
           <button className="button secondary-button" type="button" disabled={!saveToGallery || liveStatus.kind !== 'ready' || isSaving} onClick={() => void handleSaveAll()}><Bookmark aria-hidden="true" size={18} /> Simpan semua</button>
         </div>}
@@ -316,6 +416,9 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         <button className="button primary-button result-download" type="button" disabled={isRecomposing} onClick={handleDownload}>
           <Download aria-hidden="true" size={20} /> Unduh foto ({formatDetails[format].label})
         </button>
+        <button className="button qr-action-button" type="button" disabled={isRecomposing} onClick={() => void startQrShare()}>
+          <QrCode aria-hidden="true" size={20} /> Scan QR Code (Foto + Live Photo)
+        </button>
         <p className="result-file-meta">Perkiraan berkas · {fileSize(blob.size)} <span>Diproses di perangkat</span></p>
 
         <div className="result-secondary-actions">
@@ -332,5 +435,15 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     </div>
 
     <div className="result-design-meta"><span>Gaya frame: {frame.name}</span><span>Filter: {filter.name}</span><Link to="/editor">Ubah filter atau desain <ArrowRight aria-hidden="true" size={16} /></Link></div>
+    <QrShareModal
+      open={qrModalOpen}
+      state={qrState}
+      onClose={() => setQrModalOpen(false)}
+      onRetry={retryQrShare}
+      onEndpointSaved={(url) => {
+        setQrState({ status: 'idle' })
+        void startQrShare(url)
+      }}
+    />
   </section>
 }

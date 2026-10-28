@@ -240,4 +240,29 @@ describe('ResultPanel', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Foto tersimpan.*Video gagal/i))
     expect(saveToGallery).toHaveBeenCalledTimes(2)
   })
+
+  it('automatically bundles Photo + Live Photo 60fps and displays a QR Code when configured with Google Drive', async () => {
+    localStorage.setItem('photobooth.gdriveWebAppUrl', 'https://script.google.com/macros/s/expo/exec')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        folderId: 'drive_folder_1',
+        folderUrl: 'https://drive.google.com/drive/folders/drive_folder_1',
+        photoId: 'drive_photo_1',
+        videoId: 'drive_video_1',
+      }),
+    } as Response)
+
+    renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: /Scan QR Code \(Foto \+ Live Photo\)/i }))
+
+    await waitFor(() => expect(mocks.composeBoomerang).toHaveBeenCalledOnce())
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('img', { name: /QR Code unduhan Foto dan Live Photo/i })).toBeInTheDocument()
+    expect(screen.getByText(/PAKET LENGKAP: FOTO STRIP \+ LIVE PHOTO 60 FPS/i)).toBeInTheDocument()
+
+    localStorage.removeItem('photobooth.gdriveWebAppUrl')
+    fetchSpy.mockRestore()
+  })
 })
