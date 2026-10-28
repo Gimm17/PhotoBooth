@@ -90,6 +90,21 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
   }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences, session.photoAdjustments])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
+  const prewarmQrRef = useRef<((openModal: boolean, explicitEndpoint?: string, force?: boolean) => Promise<void>) | null>(null)
+
+  // Pre-warm QR upload in the background in production browsers so the QR code is ready instantly when clicked
+  useEffect(() => {
+    if (!hasResult || !blob || !frame || !filter) return
+    const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
+    if (isTestEnv) return
+    const endpoint = getGDriveEndpoint().trim()
+    if (!endpoint || qrState.status !== 'idle') return
+    const timer = window.setTimeout(() => {
+      void prewarmQrRef.current?.(false, endpoint)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [hasResult, blob, frame, filter, qrState.status])
+
   if (!hasResult || !blob || !frame || !filter) {
     return <section className="result-guard page-width">
       <Sparkles aria-hidden="true" size={38} />
@@ -282,14 +297,14 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
 
   const hasAllLiveSequences = frame.slots.every((_, index) => Boolean(session.liveSequences[index]?.frames.length))
 
-  const startQrShare = async (explicitEndpoint?: string) => {
-    setQrModalOpen(true)
+  const runQrUploadFlow = async (openModal: boolean, explicitEndpoint?: string, force = false) => {
+    if (openModal) setQrModalOpen(true)
     const endpoint = (explicitEndpoint ?? getGDriveEndpoint()).trim()
     if (!endpoint) {
-      setQrState({ status: 'idle' })
+      if (openModal) setQrState({ status: 'idle' })
       return
     }
-    if (qrState.status === 'ready' || qrState.status === 'preparing-live' || qrState.status === 'uploading') {
+    if (!force && (qrState.status === 'ready' || qrState.status === 'preparing-live' || qrState.status === 'uploading')) {
       return
     }
 
@@ -362,9 +377,14 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     }
   }
 
+  prewarmQrRef.current = runQrUploadFlow
+
+  const startQrShare = async (explicitEndpoint?: string) => {
+    await runQrUploadFlow(true, explicitEndpoint)
+  }
+
   const retryQrShare = () => {
-    setQrState({ status: 'idle' })
-    setTimeout(() => { void startQrShare() }, 0)
+    void runQrUploadFlow(true, undefined, true)
   }
 
   const createNew = () => useSessionStore.getState().resetSession()

@@ -40,7 +40,8 @@ export const livePhotoOrder = (
   if (frameCount < 2) return [0]
   const safeSourceFps = Math.max(1, sourceFps)
   const safeTargetFps = Math.max(1, targetFps)
-  const outputLength = Math.max(frameCount, Math.round((frameCount / safeSourceFps) * safeTargetFps))
+  const rawOutputLength = Math.max(frameCount, Math.round((frameCount / safeSourceFps) * safeTargetFps))
+  const outputLength = rawOutputLength > frameCount ? Math.min(108, rawOutputLength) : rawOutputLength
   return Array.from({ length: outputLength }, (_, tick) => (
     Math.min(frameCount - 1, Math.floor((tick * frameCount) / outputLength))
   ))
@@ -119,7 +120,7 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
         })
         await dependencies.wait(1_000 / fps, signal)
       }
-    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 4_000_000 : 8_000_000 })
+    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 1_800_000 : 2_500_000 })
   } finally {
     decoded.flat().forEach((frame) => frame.close?.())
   }

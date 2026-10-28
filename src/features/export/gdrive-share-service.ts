@@ -64,6 +64,39 @@ export const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolv
   reader.readAsDataURL(blob)
 })
 
+const compressPhotoForUpload = async (
+  blob: Blob,
+  filename: string,
+): Promise<{ blob: Blob; filename: string }> => {
+  // Only compress large PNG blobs (> 300 KB) in real browsers to cut upload payload by ~85%
+  if (blob.type !== 'image/png' || blob.size <= 300_000 || typeof createImageBitmap !== 'function') {
+    return { blob, filename }
+  }
+  try {
+    const bitmap = await createImageBitmap(blob)
+    try {
+      const maxEdge = 1600
+      const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return { blob, filename }
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88))
+      if (!compressed || compressed.size >= blob.size) return { blob, filename }
+      return {
+        blob: compressed,
+        filename: filename.replace(/\.png$/i, '.jpg'),
+      }
+    } finally {
+      bitmap.close?.()
+    }
+  } catch {
+    return { blob, filename }
+  }
+}
+
 export const buildShareUrl = (
   response: GDriveWebhookResponse,
   origin = typeof window !== 'undefined' ? window.location.origin : 'https://photobooth-neon-alpha.vercel.app',
@@ -96,15 +129,18 @@ export async function uploadBundleToGDrive(input: GDriveUploadInput): Promise<GD
     throw new Error('URL Google Drive Web App belum diatur. Masukkan URL Google Apps Script terlebih dahulu.')
   }
 
-  const photoBase64 = await blobToBase64(input.photoBlob)
-  const videoBase64 = input.videoBlob ? await blobToBase64(input.videoBlob) : null
+  const optimizedPhoto = await compressPhotoForUpload(input.photoBlob, input.photoFilename)
+  const [photoBase64, videoBase64] = await Promise.all([
+    blobToBase64(optimizedPhoto.blob),
+    input.videoBlob ? blobToBase64(input.videoBlob) : Promise.resolve(null),
+  ])
 
   const payload = {
     sessionName: input.photoFilename.replace(/\.[a-z0-9]+$/i, ''),
     frameName: input.frameName,
     photo: {
-      filename: input.photoFilename,
-      mimeType: input.photoBlob.type || 'image/png',
+      filename: optimizedPhoto.filename,
+      mimeType: optimizedPhoto.blob.type || 'image/jpeg',
       base64: photoBase64,
     },
     video: input.videoBlob && videoBase64

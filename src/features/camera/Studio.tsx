@@ -43,7 +43,7 @@ export function Studio() {
         enabled: latest.current.liveEnabled && currentCamera.current.status === 'active',
       }),
       fps: 30,
-      maxDurationMs: 1_500,
+      maxDurationMs: 900,
     })
   }
 

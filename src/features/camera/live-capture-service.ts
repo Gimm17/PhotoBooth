@@ -184,7 +184,7 @@ export function createLiveRingBuffer(
 
 export async function captureLivePose(video: HTMLVideoElement, options: LiveCaptureOptions): Promise<CapturedPose> {
   const preRoll = options.preRollFrames ?? []
-  const durationMs = options.durationMs ?? (preRoll.length > 0 ? 1_000 : 1_500)
+  const durationMs = options.durationMs ?? (preRoll.length > 0 ? 850 : 1_200)
   const fps = options.fps ?? 30
   const dimensions = captureDimensions(video, options.maxLongEdge ?? 640)
   const dependencies = options.dependencies ?? defaultDependencies
