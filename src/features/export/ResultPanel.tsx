@@ -398,10 +398,6 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       state={qrState}
       onClose={() => setQrModalOpen(false)}
       onRetry={retryQrShare}
-      onEndpointSaved={(url) => {
-        setQrState({ status: 'idle' })
-        void startQrShare(url)
-      }}
     />
   </section>
 }
