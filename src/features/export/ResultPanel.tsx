@@ -101,7 +101,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     if (!endpoint || qrState.status !== 'idle') return
     const timer = window.setTimeout(() => {
       void prewarmQrRef.current?.(false, endpoint)
-    }, 300)
+    }, 20)
     return () => window.clearTimeout(timer)
   }, [hasResult, blob, frame, filter, qrState.status])
 

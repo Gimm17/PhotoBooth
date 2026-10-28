@@ -75,7 +75,7 @@ const compressPhotoForUpload = async (
   try {
     const bitmap = await createImageBitmap(blob)
     try {
-      const maxEdge = 1600
+      const maxEdge = 1350
       const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
       const canvas = document.createElement('canvas')
       canvas.width = Math.max(1, Math.round(bitmap.width * scale))
@@ -83,7 +83,7 @@ const compressPhotoForUpload = async (
       const ctx = canvas.getContext('2d')
       if (!ctx) return { blob, filename }
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88))
+      const compressed = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84))
       if (!compressed || compressed.size >= blob.size) return { blob, filename }
       return {
         blob: compressed,

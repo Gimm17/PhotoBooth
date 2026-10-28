@@ -88,19 +88,26 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
   const dependencies = input.dependencies ?? defaultDependencies
   const decoded: DecodedFrameSource[][] = []
   try {
-    for (const sequence of requiredSequences) {
-      const frames: DecodedFrameSource[] = []
-      decoded.push(frames)
-      for (const sample of sequence.frames) {
-        throwIfAborted(input.signal)
-        frames.push(await dependencies.decodeFrame(sample.blob))
-      }
-    }
+    const [decodedResult, assets] = await Promise.all([
+      Promise.all(
+        requiredSequences.map(async (sequence) => {
+          const frames = await Promise.all(
+            sequence.frames.map(async (sample) => {
+              throwIfAborted(input.signal)
+              return dependencies.decodeFrame(sample.blob)
+            }),
+          )
+          return frames
+        }),
+      ),
+      dependencies.prepareAssets(input.frame),
+    ])
+    decoded.push(...decodedResult)
+    throwIfAborted(input.signal)
     const dimensions = chooseBoomerangDimensions(input.frame, input.capability ?? 'standard')
     const canvas = dependencies.createCanvas(dimensions)
     const context = canvas.getContext('2d')
     if (!context) throw new Error('Canvas Live Photo tidak tersedia.')
-    const assets = await dependencies.prepareAssets(input.frame)
     const fps = input.fps ?? LIVE_PHOTO_FPS
     const maxFrames = Math.max(...decoded.map((frames) => frames.length))
     const longestSequence = requiredSequences.reduce((best, current) => (
@@ -134,7 +141,7 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
         const drawElapsed = performance.now() - drawStart
         await dependencies.wait(Math.max(1, (1_000 / fps) - drawElapsed), signal)
       }
-    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 1_800_000 : 2_500_000 })
+    }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 1_000_000 : 1_350_000 })
   } finally {
     decoded.flat().forEach((frame) => frame.close?.())
   }
