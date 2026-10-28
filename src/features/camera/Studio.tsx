@@ -43,7 +43,7 @@ export function Studio() {
         enabled: latest.current.liveEnabled && currentCamera.current.status === 'active',
       }),
       fps: 30,
-      maxDurationMs: 900,
+      maxDurationMs: 3_000,
     })
   }
 
@@ -57,19 +57,41 @@ export function Studio() {
         if (!video || currentCamera.current.status !== 'active') throw new Error('Kamera belum aktif. Kembali ke pengaturan kamera atau lanjutkan sesi unggahanmu.')
         const current = latest.current
         const index = replaceIndex ?? useSessionStore.getState().photos.length
+        ringBufferRef.current?.stop()
         const preRollFrames = current.liveEnabled ? (ringBufferRef.current?.flush() ?? []) : []
         const pose = current.liveEnabled
           ? await captureLivePose(video, {
               mirror: current.mirror,
               filter: 'none',
               signal,
-              ...(preRollFrames.length > 0 ? { preRollFrames } : {}),
+              ...(preRollFrames.length > 0 ? { preRollFrames, durationMs: 0 } : {}),
             })
           : { photo: captureFrame(video, { mirror: current.mirror, filter: 'none' }), sequence: null }
         if (signal.aborted) throw new DOMException('Capture dibatalkan.', 'AbortError')
         useSessionStore.getState().commitCapturedPose(index, pose)
       },
-      onStateChange: setCaptureState,
+      onStateChange: (nextState) => {
+        if (nextState.status === 'countdown') {
+          if (nextState.remaining === 3) {
+            ringBufferRef.current?.clear()
+            if (latest.current.liveEnabled && currentCamera.current.status === 'active') {
+              ringBufferRef.current?.start()
+            }
+          } else if (nextState.remaining > 3) {
+            ringBufferRef.current?.stop()
+            ringBufferRef.current?.clear()
+          }
+        } else if (
+          nextState.status === 'ready' ||
+          nextState.status === 'captured' ||
+          nextState.status === 'complete' ||
+          nextState.status === 'error'
+        ) {
+          ringBufferRef.current?.stop()
+          ringBufferRef.current?.clear()
+        }
+        setCaptureState(nextState)
+      },
     })
   }
 
@@ -115,9 +137,7 @@ export function Studio() {
   useEffect(() => {
     const buffer = ringBufferRef.current
     if (!buffer) return
-    if (camera.status === 'active' && session.liveEnabled) {
-      buffer.start()
-    } else {
+    if (camera.status !== 'active' || !session.liveEnabled) {
       buffer.stop()
       buffer.clear()
     }

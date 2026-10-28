@@ -32,16 +32,19 @@ export interface ComposeBoomerangInput {
   adjustments?: Record<number, PhotoAdjustment>
 }
 
+export const LIVE_PHOTO_DURATION_SEC = 3
+
 export const livePhotoOrder = (
   frameCount: number,
   sourceFps = LIVE_PHOTO_FPS,
   targetFps = LIVE_PHOTO_FPS,
 ): number[] => {
   if (frameCount < 2) return [0]
-  const safeSourceFps = Math.max(1, sourceFps)
+  const safeSourceFps = Math.max(0.5, sourceFps)
   const safeTargetFps = Math.max(1, targetFps)
+  const maxTargetFrames = Math.round(LIVE_PHOTO_DURATION_SEC * safeTargetFps)
   const rawOutputLength = Math.max(frameCount, Math.round((frameCount / safeSourceFps) * safeTargetFps))
-  const outputLength = rawOutputLength > frameCount ? Math.min(108, rawOutputLength) : rawOutputLength
+  const outputLength = rawOutputLength > frameCount ? Math.min(maxTargetFrames, rawOutputLength) : rawOutputLength
   return Array.from({ length: outputLength }, (_, tick) => (
     Math.min(frameCount - 1, Math.floor((tick * frameCount) / outputLength))
   ))
@@ -99,18 +102,28 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
     if (!context) throw new Error('Canvas Live Photo tidak tersedia.')
     const assets = await dependencies.prepareAssets(input.frame)
     const fps = input.fps ?? LIVE_PHOTO_FPS
-    const sourceFps = Math.max(1, Math.min(...requiredSequences.map((sequence) => sequence.fps || fps)))
     const maxFrames = Math.max(...decoded.map((frames) => frames.length))
+    const longestSequence = requiredSequences.reduce((best, current) => (
+      current.frames.length >= best.frames.length ? current : best
+    ), requiredSequences[0])
+    const sourceFps = Math.max(0.5, longestSequence.fps || fps)
     const order = livePhotoOrder(maxFrames, sourceFps, fps)
+    const isUpsampled = order.length > maxFrames
     return await dependencies.record(canvas, async (signal) => {
-      for (const frameIndex of order) {
+      for (let tick = 0; tick < order.length; tick += 1) {
+        const frameIndex = order[tick]
         throwIfAborted(signal)
+        const drawStart = performance.now()
         dependencies.draw({
           context,
           canvas,
           frame: input.frame,
           assets,
-          slots: decoded.map((frames) => frames[Math.min(frameIndex, frames.length - 1)]),
+          slots: decoded.map((frames) => {
+            if (!isUpsampled) return frames[Math.min(frameIndex, frames.length - 1)]
+            const proportionalIndex = Math.min(frames.length - 1, Math.floor((tick * frames.length) / order.length))
+            return frames[proportionalIndex]
+          }),
           filter: input.filter,
           intensity: input.intensity,
           caption: input.caption,
@@ -118,7 +131,8 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
           date: input.date ?? new Date(),
           adjustments: input.adjustments,
         })
-        await dependencies.wait(1_000 / fps, signal)
+        const drawElapsed = performance.now() - drawStart
+        await dependencies.wait(Math.max(1, (1_000 / fps) - drawElapsed), signal)
       }
     }, { fps, signal: input.signal, videoBitsPerSecond: input.capability === 'low' ? 1_800_000 : 2_500_000 })
   } finally {

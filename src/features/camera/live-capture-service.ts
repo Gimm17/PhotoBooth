@@ -71,7 +71,7 @@ const renderToBlob = (
   context.drawImage(video, 0, 0, options.width, options.height)
   context.restore()
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Frame Live tidak dapat dienkode.')), 'image/webp', 0.78)
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Frame Live tidak dapat dienkode.')), 'image/jpeg', 0.82)
   })
 }
 
@@ -109,12 +109,15 @@ const captureDimensions = (video: HTMLVideoElement, maxLongEdge: number) => {
   return { width: Math.max(1, Math.round(video.videoWidth * scale)), height: Math.max(1, Math.round(video.videoHeight * scale)) }
 }
 
+export const LIVE_PHOTO_DURATION_SEC = 3
+export const LIVE_PHOTO_DURATION_MS = LIVE_PHOTO_DURATION_SEC * 1_000
+
 export function createLiveRingBuffer(
   getVideo: () => HTMLVideoElement | null,
   options: LiveRingBufferOptions,
 ): LiveRingBuffer {
   const fps = options.fps ?? 30
-  const maxDurationMs = options.maxDurationMs ?? 1_500
+  const maxDurationMs = options.maxDurationMs ?? LIVE_PHOTO_DURATION_MS
   const maxLongEdge = options.maxLongEdge ?? 640
   const maxFrames = Math.max(2, Math.round((maxDurationMs / 1_000) * fps))
   const encode = options.dependencies?.encodeSequenceFrame
@@ -184,11 +187,11 @@ export function createLiveRingBuffer(
 
 export async function captureLivePose(video: HTMLVideoElement, options: LiveCaptureOptions): Promise<CapturedPose> {
   const preRoll = options.preRollFrames ?? []
-  const durationMs = options.durationMs ?? (preRoll.length > 0 ? 850 : 1_200)
+  const durationMs = options.durationMs ?? (preRoll.length > 0 ? 0 : LIVE_PHOTO_DURATION_MS)
   const fps = options.fps ?? 30
   const dimensions = captureDimensions(video, options.maxLongEdge ?? 640)
   const dependencies = options.dependencies ?? defaultDependencies
-  const frameCount = Math.max(2, Math.round((durationMs / 1_000) * fps))
+  const frameCount = durationMs <= 0 ? 1 : Math.max(2, Math.round((durationMs / 1_000) * fps))
   const postRollFrames: LiveFrameSample[] = []
 
   throwIfAborted(options.signal)
@@ -196,7 +199,6 @@ export async function captureLivePose(video: HTMLVideoElement, options: LiveCapt
   const instantPhoto = dependencies.captureStatic(video, { mirror: options.mirror, filter: options.filter })
 
   try {
-    const startTime = performance.now()
     for (let index = 0; index < frameCount; index += 1) {
       throwIfAborted(options.signal)
       const frameStart = performance.now()
@@ -215,12 +217,12 @@ export async function captureLivePose(video: HTMLVideoElement, options: LiveCapt
       }
     }
     throwIfAborted(options.signal)
-    const totalElapsedMs = performance.now() - startTime
-    const measuredFps = totalElapsedMs >= 50
-      ? Math.max(10, Math.min(60, Math.round((postRollFrames.length / totalElapsedMs) * 1_000)))
-      : fps
     const frames = [...preRoll, ...postRollFrames]
-    return { photo: instantPhoto, sequence: { frames, ...dimensions, fps: measuredFps } }
+    // When captured from the 3-second countdown (durationMs === 0) or 3000ms window, lock effective playback duration to 3.0s
+    const sequenceFps = (durationMs === 0 || durationMs === LIVE_PHOTO_DURATION_MS)
+      ? Math.max(1, Number((frames.length / LIVE_PHOTO_DURATION_SEC).toFixed(2)))
+      : fps
+    return { photo: instantPhoto, sequence: { frames, ...dimensions, fps: sequenceFps } }
   } catch (error) {
     if (options.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) throw abortError()
     return {
