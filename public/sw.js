@@ -1,7 +1,7 @@
 const CACHE_NAME = 'photobooth-app-shell-__PHOTOBOOTH_CACHE_REVISION__'
 const APP_SHELL = '/'
 const PRECACHE_URLS = /* __PHOTOBOOTH_PRECACHE__ */ []
-const KNOWN_APP_ROUTES = new Set(['/', '/setup', '/studio', '/editor', '/result', '/gallery'])
+const KNOWN_APP_ROUTES = new Set(['/', '/frames', '/setup', '/studio', '/editor', '/result', '/share', '/gallery'])
 const VERSIONED_VITE_ASSET = /^\/assets\/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$/
 
 self.addEventListener('install', (event) => {
