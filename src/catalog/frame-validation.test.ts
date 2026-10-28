@@ -44,12 +44,15 @@ const importedFrames = [
   ['denim-camera-film', 'Denim Camera Film', 'Cute & Pastel', 'classic-strip'],
   ['smiths-playlist-strip', 'Smiths Playlist Strip', 'Classic', 'three-postcard'],
   ['starry-night-polaroids', 'Starry Night Polaroids', 'Nature & Dreamy', 'three-postcard'],
+  ['expo-statistik-math', 'Pojok Statistik — Edu Math', 'Celebration', 'three-postcard'],
+  ['expo-statistik-retro', 'Pojok Statistik — Retro Newspaper', 'Celebration', 'three-postcard'],
+  ['expo-statistik-pastel', 'Pojok Statistik — Pastel Doodle', 'Celebration', 'three-postcard'],
 ]
 
 describe('curated frame catalog', () => {
-  it('offers exactly 41 unique frames and keeps the default first', () => {
-    expect(FRAME_TEMPLATES).toHaveLength(41)
-    expect(new Set(FRAME_TEMPLATES.map(({ id }) => id)).size).toBe(41)
+  it('offers exactly 44 unique frames and keeps the default first', () => {
+    expect(FRAME_TEMPLATES).toHaveLength(44)
+    expect(new Set(FRAME_TEMPLATES.map(({ id }) => id)).size).toBe(44)
     expect(FRAME_TEMPLATES[0].id).toBe('classic-polaroid')
     expect(FRAME_TEMPLATES.map(({ id }) => id).sort()).toEqual([...retainedIds, ...newFrames.map(([id]) => id), ...importedFrames.map(([id]) => id)].sort())
   })
@@ -85,7 +88,7 @@ describe('curated frame catalog', () => {
   it('covers the promised new-frame shot counts and category totals', () => {
     const added = FRAME_TEMPLATES.filter(({ id }) => newFrames.some(([newId]) => newId === id))
     expect([1, 2, 3, 4].map((shots) => added.filter((frame) => layoutById(frame.layoutId)?.requiredShots === shots).length)).toEqual([4, 6, 6, 4])
-    expect(['Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal'].map((category) => FRAME_TEMPLATES.filter((frame) => frame.category === category).length)).toEqual([11, 4, 7, 9, 8, 2])
+    expect(['Classic', 'Coquette', 'Cute & Pastel', 'Nature & Dreamy', 'Celebration', 'Seasonal'].map((category) => FRAME_TEMPLATES.filter((frame) => frame.category === category).length)).toEqual([11, 4, 7, 9, 11, 2])
   })
   it('validates every catalog frame against its layout', () => {
     expect(FRAME_TEMPLATES.flatMap((frame) => validateFrameTemplate(frame, layoutById(frame.layoutId)!))).toEqual([])

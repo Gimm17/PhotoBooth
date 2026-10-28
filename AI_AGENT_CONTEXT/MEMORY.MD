@@ -4,7 +4,7 @@
 > **Aplikasi:** PhotoBooth Web Application (Client-Side PWA)  
 > **Repository:** `https://github.com/Gimm17/PhotoBooth.git`  
 > **Live URL:** `https://photobooth-neon-alpha.vercel.app` / `https://photobooth-gimm17s-projects.vercel.app`  
-> **Terakhir Diperbarui:** 28 Oktober 2026
+> **Terakhir Diperbarui:** 29 Oktober 2026
 
 ---
 
@@ -19,9 +19,14 @@ PhotoBooth adalah aplikasi web photobooth modern, berkinerja tinggi, dan **100% 
 2. **Privasi 100% di Perangkat Pengguna:**
    - Seluruh aliran video kamera, foto yang diambil, foto yang diunggah, cropping, filter, komposisi canvas, perekaman video Boomerang, dan penyimpanan galeri berjalan murni di memori browser dan IndexedDB lokal.
    - Tidak ada pengiriman foto ke server pihak ketiga, cloud, atau telemetry analitik.
-3. **Katalog Frame Kaya (41 Template):**
-   - Mendukung 41 template bingkai beragam kategori (Classic, Celebration, Minimal, Retro, Playful, Cute, Seasonal) dengan 8 layout pose.
-   - Aset dekorasi frame (31 file SVG dan 17 file PNG) tersimpan di `public/assets/` dan wajib terdaftar di Service Worker precache.
+3. **Katalog Frame Kaya (44 Template, Termasuk Koleksi Resmi Expo Pojok Statistik):**
+   - Mendukung 44 template bingkai beragam kategori (Classic, Celebration, Coquette, Cute & Pastel, Nature & Dreamy, Seasonal) dengan 8 layout pose.
+   - Memiliki 3 template resmi bertema **Expo Pojok Statistik** (Universitas Tadulako & BPS Sulawesi Tengah) dengan format 3-pose postcard/strip portrait:
+     1. `expo-statistik-math` (*Pojok Statistik — Edu Math*)
+     2. `expo-statistik-retro` (*Pojok Statistik — Retro Newspaper*)
+     3. `expo-statistik-pastel` (*Pojok Statistik — Pastel Doodle*)
+   - Menggunakan format **PNG Transparan (NO BG CANVAS)** sebagai overlay layer di atas slot foto canvas, sehingga stiker/dekorasi yang tumpang-tindih (pensil, kalkulator, gramofon, kupu-kupu) ter-render pixel-perfect tanpa artefak greenscreen.
+   - Aset dekorasi frame (31 file SVG dan 20 file PNG) tersimpan di `src/assets/frames/` dan wajib terdaftar di Service Worker precache.
 
 ---
 

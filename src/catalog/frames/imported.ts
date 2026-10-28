@@ -32,6 +32,12 @@ import smithsPlaylistStrip from '../../assets/frames/imported/smiths-playlist-st
 import smithsPlaylistStripThumbnail from '../../assets/frames/imported/smiths-playlist-strip-thumb.webp?no-inline'
 import starryNightPolaroids from '../../assets/frames/imported/starry-night-polaroids.png?no-inline'
 import starryNightPolaroidsThumbnail from '../../assets/frames/imported/starry-night-polaroids-thumb.webp?no-inline'
+import expoStatistikMath from '../../assets/frames/imported/expo-statistik-math.png?no-inline'
+import expoStatistikMathThumbnail from '../../assets/frames/imported/expo-statistik-math-thumb.png?no-inline'
+import expoStatistikRetro from '../../assets/frames/imported/expo-statistik-retro.png?no-inline'
+import expoStatistikRetroThumbnail from '../../assets/frames/imported/expo-statistik-retro-thumb.png?no-inline'
+import expoStatistikPastel from '../../assets/frames/imported/expo-statistik-pastel.png?no-inline'
+import expoStatistikPastelThumbnail from '../../assets/frames/imported/expo-statistik-pastel-thumb.png?no-inline'
 
 const overlay = (src: string): FrameAssetLayer[] => [{
   src,
@@ -216,5 +222,59 @@ export const IMPORTED_FRAMES = [
       { x: .3548, y: .6413, width: .3098, height: .1865, rotation: .9769 },
     ]),
     background: '#050505', border, caption: hiddenCaption, thumbnail: starryNightPolaroidsThumbnail, assets: overlay(starryNightPolaroids),
+  },
+  {
+    id: 'expo-statistik-math',
+    name: 'Pojok Statistik — Edu Math',
+    category: 'Celebration',
+    layoutId: 'three-postcard',
+    orientation: 'portrait',
+    output: { width: 1063, height: 1890 },
+    slots: [
+      { x: 0.0913, y: 0.1175, width: 0.8213, height: 0.2508 },
+      { x: 0.0875, y: 0.3794, width: 0.8213, height: 0.2508 },
+      { x: 0.0875, y: 0.6418, width: 0.8213, height: 0.2513 },
+    ],
+    background: '#faf8ee',
+    border,
+    caption: hiddenCaption,
+    thumbnail: expoStatistikMathThumbnail,
+    assets: overlay(expoStatistikMath),
+  },
+  {
+    id: 'expo-statistik-retro',
+    name: 'Pojok Statistik — Retro Newspaper',
+    category: 'Celebration',
+    layoutId: 'three-postcard',
+    orientation: 'portrait',
+    output: { width: 1063, height: 1890 },
+    slots: [
+      { x: 0.0941, y: 0.1190, width: 0.8147, height: 0.2476 },
+      { x: 0.0913, y: 0.3810, width: 0.8147, height: 0.2476 },
+      { x: 0.0913, y: 0.6434, width: 0.8147, height: 0.2481 },
+    ],
+    background: '#2c2b2a',
+    border,
+    caption: hiddenCaption,
+    thumbnail: expoStatistikRetroThumbnail,
+    assets: overlay(expoStatistikRetro),
+  },
+  {
+    id: 'expo-statistik-pastel',
+    name: 'Pojok Statistik — Pastel Doodle',
+    category: 'Celebration',
+    layoutId: 'three-postcard',
+    orientation: 'portrait',
+    output: { width: 1063, height: 1890 },
+    slots: [
+      { x: 0.0922, y: 0.1180, width: 0.8194, height: 0.2497 },
+      { x: 0.0894, y: 0.3804, width: 0.8175, height: 0.2487 },
+      { x: 0.0894, y: 0.6429, width: 0.8175, height: 0.2492 },
+    ],
+    background: '#fff7bd',
+    border,
+    caption: hiddenCaption,
+    thumbnail: expoStatistikPastelThumbnail,
+    assets: overlay(expoStatistikPastel),
   },
 ] satisfies FrameTemplate[]

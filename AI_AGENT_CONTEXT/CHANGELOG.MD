@@ -5,6 +5,42 @@
 
 ---
 
+## [Unreleased / Production Candidate] - 2026-10-29
+
+### 🎨 Template Baru Resmi: Event Expo Pojok Statistik (Added)
+
+#### Integrasi 3 Template Baru Expo Pojok Statistik (Untad & BPS Sulawesi Tengah)
+- **Sumber File**: `Photobooth_Template/event_expo_pojok_statistik/` (versi `NO BG CANVAS` PNG transparan).
+- **Lokasi Kode & Aset**:
+  - [`src/assets/frames/imported/expo-statistik-math.png`](../src/assets/frames/imported/expo-statistik-math.png) & `expo-statistik-math-thumb.png`
+  - [`src/assets/frames/imported/expo-statistik-retro.png`](../src/assets/frames/imported/expo-statistik-retro.png) & `expo-statistik-retro-thumb.png`
+  - [`src/assets/frames/imported/expo-statistik-pastel.png`](../src/assets/frames/imported/expo-statistik-pastel.png) & `expo-statistik-pastel-thumb.png`
+  - [`src/catalog/frames/imported.ts`](../src/catalog/frames/imported.ts)
+  - [`src/catalog/frame-validation.test.ts`](../src/catalog/frame-validation.test.ts)
+  - [`e2e/imported-frames.spec.ts`](../e2e/imported-frames.spec.ts)
+- **Rincian Template**:
+  1. **`expo-statistik-math` (*Pojok Statistik — Edu Math*)**:
+     - Resolusi: 1063 x 1890 (9:16 vertical postcard).
+     - Layout: `three-postcard` (3 pose).
+     - Slot Bounding Boxes: `px [97, 222, 873, 474]`, `px [93, 717, 873, 474]`, `px [93, 1213, 873, 475]`.
+     - Estetika: Kertas berpetak matematika, angka warna-warni, stiker pensil & kalkulator, logo resmi Untad & BPS Sulteng.
+  2. **`expo-statistik-retro` (*Pojok Statistik — Retro Newspaper*)**:
+     - Resolusi: 1063 x 1890 (9:16 vertical postcard).
+     - Layout: `three-postcard` (3 pose).
+     - Slot Bounding Boxes: `px [100, 225, 866, 468]`, `px [97, 720, 866, 468]`, `px [97, 1216, 866, 469]`.
+     - Estetika: Latar belakang garis bertekstur arang gelap, koran vintage kliping, jam weker, gramofon, megafon analog, smartphone.
+  3. **`expo-statistik-pastel` (*Pojok Statistik — Pastel Doodle*)**:
+     - Resolusi: 1063 x 1890 (9:16 vertical postcard).
+     - Layout: `three-postcard` (3 pose).
+     - Slot Bounding Boxes: `px [98, 223, 871, 472]`, `px [95, 719, 869, 470]`, `px [95, 1215, 869, 471]`.
+     - Estetika: Kuning pastel bintang ceria, doodle pesawat kertas, kupu-kupu, terompet pesta, logo Untad & BPS Sulteng.
+- **Mengapa Memilih Versi NO BG CANVAS (PNG Transparan)?**:
+  1. **Arsitektur Layering Superior**: Foto pengguna di-render di layer bawah (slot), sedangkan frame template di-render sebagai overlay di atasnya.
+  2. **Zero Color Bleeding & Anti-Fringe**: Tidak memerlukan algoritma chroma-keying greenscreen yang dapat merusak gradasi warna atau meninggalkan pinggiran hijau tipis (green fringing).
+  3. **Stiker Tumpang-Tindih Alami**: Elemen seperti ujung pensil, kupu-kupu, dan gramofon yang sedikit menimpa frame foto tampil dengan transparansi dan bayangan asli yang sangat halus.
+
+---
+
 ## [Current Production - Commit 693c48e] - 2026-10-28
 
 ### 🚀 Fitur Baru & Upgrade Besar (Added & Changed)

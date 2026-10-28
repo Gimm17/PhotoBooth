@@ -22,6 +22,9 @@ const importedFrames = [
   'Denim Camera Film',
   'Smiths Playlist Strip',
   'Starry Night Polaroids',
+  'Pojok Statistik — Edu Math',
+  'Pojok Statistik — Retro Newspaper',
+  'Pojok Statistik — Pastel Doodle',
 ]
 
 test('all imported transparent frames render a composed preview', async ({ page }) => {
