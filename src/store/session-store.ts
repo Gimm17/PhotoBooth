@@ -55,7 +55,7 @@ const createInitialSession = (): PhotoSession => ({
   showGrid: false,
   filterIntensity: 100,
   caption: '',
-  showDate: true,
+  showDate: false,
   composedResultUrl: null,
   composedResultBlob: null,
   liveEnabled: true,

@@ -104,6 +104,15 @@ const roundedPath = (context: CanvasRenderingContext2D, x: number, y: number, wi
 
 const formatDate = (date: Date) => [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, '0'), String(date.getUTCDate()).padStart(2, '0')].join('.')
 
+const isDarkBackground = (hex: string) => {
+  const clean = hex.replace('#', '').trim()
+  if (clean.length !== 6) return false
+  const r = parseInt(clean.slice(0, 2), 16) || 0
+  const g = parseInt(clean.slice(2, 4), 16) || 0
+  const b = parseInt(clean.slice(4, 6), 16) || 0
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 110
+}
+
 export async function prepareFrameAssets(frame: FrameTemplate): Promise<PreparedFrameAssets> {
   return Promise.all((frame.assets ?? []).map(async (layer) => {
     const image = await loadFrameAsset(layer.src)
@@ -152,11 +161,46 @@ export function drawFrameComposition(input: DrawFrameCompositionInput): void {
   }
 
   input.assets.filter(({ layer }) => layer.placement === 'overlay').forEach((asset) => drawAssetLayer(context, canvas, asset))
-  context.fillStyle = frame.caption.color
-  context.font = `${frame.caption.fontSize}px ${frame.caption.fontFamily}`
-  context.textAlign = frame.caption.align
+
+  const trimmedCaption = frame.caption.enabled ? input.caption.trim() : ''
+  const hasCaption = Boolean(trimmedCaption)
   const textX = frame.caption.x * canvas.width
-  const textY = frame.caption.y * canvas.height
-  if (frame.caption.enabled && input.caption.trim()) context.fillText(input.caption.trim(), textX, textY)
-  if (input.showDate) context.fillText(formatDate(input.date), textX, textY + frame.caption.fontSize * 1.25)
+  const maxSlotBottom = frame.slots.reduce((max, slot) => Math.max(max, slot.y + slot.height), 0)
+  const innerBottom = Math.max(0.92, 1 - (frame.border.width / Math.max(1, canvas.height)))
+  const captionSize = Math.max(16, Math.round(frame.caption.fontSize * 0.82))
+  const dateSize = Math.max(12, Math.round(Math.min(frame.caption.fontSize * 0.44, Math.min(canvas.width, canvas.height) * 0.0185)))
+
+  const footerAnchorRatio = maxSlotBottom >= 0.90
+    ? (maxSlotBottom + innerBottom) / 2
+    : Math.min(frame.caption.y, innerBottom - 0.045)
+  const footerAnchorY = footerAnchorRatio * canvas.height
+
+  context.textAlign = frame.caption.align
+  const letterSpacingCtx = context as CanvasRenderingContext2D & { letterSpacing?: string }
+
+  if (hasCaption) {
+    context.fillStyle = frame.caption.color
+    context.font = `500 ${captionSize}px ${frame.caption.fontFamily}`
+    if ('letterSpacing' in letterSpacingCtx) letterSpacingCtx.letterSpacing = '0.02em'
+    const captionY = input.showDate ? footerAnchorY - dateSize * 0.6 : footerAnchorY + captionSize * 0.28
+    context.fillText(trimmedCaption, textX, captionY)
+  }
+
+  if (input.showDate) {
+    const dateColor = frame.caption.enabled
+      ? frame.caption.color
+      : (isDarkBackground(frame.background) ? '#F4F0E4' : '#2C2B29')
+    context.fillStyle = dateColor
+    context.globalAlpha = 0.72
+    context.font = `500 ${dateSize}px "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace`
+    if ('letterSpacing' in letterSpacingCtx) letterSpacingCtx.letterSpacing = '0.2em'
+    const standaloneDateY = frame.caption.enabled
+      ? footerAnchorY + dateSize * 0.32
+      : canvas.height * 0.968
+    const dateY = hasCaption ? footerAnchorY + dateSize * 0.85 : standaloneDateY
+    context.fillText(formatDate(input.date), textX, dateY)
+    context.globalAlpha = 1
+  }
+
+  if ('letterSpacing' in letterSpacingCtx) letterSpacingCtx.letterSpacing = '0px'
 }
