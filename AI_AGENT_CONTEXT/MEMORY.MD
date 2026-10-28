@@ -277,6 +277,35 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
 
 ---
 
+---
+
+### 4.7. Kontrol Zoom Stage Frame & Koreksi Orientasi Kamera iPad (`Studio.tsx`, `CameraSetup.tsx`, `LiveFramePreview.tsx`, `session-store.ts`, `camera-service.ts`, `live-capture-service.ts`)
+
+1. **Zoom In & Zoom Out Frame Stage (`stageZoom` di `session-store.ts`)**:
+   - **Latar Belakang Masalah**: Pada perangkat tablet seperti iPad (misalnya iPad Pro 13 dengan resolusi 1032x1376 portrait), template bingkai 9:16 vertikal atau format strip 1:2 sebelumnya dirender dengan `--frame-stage-width: (w/h) * 120dvh` (~1651px tinggi), sehingga meluap vertikal dan mengharuskan pengguna melakukan scroll ke bawah untuk menjangkau tombol shutter dock.
+   - **Mekanisme Solusi**:
+     - State `stageZoom` ditambahkan ke session store (rentang nilai aman `0.4` hingga `1.5`, nilai awal `1.0`), tersimpan secara persisten di `localStorage` browser (`photobooth.studioStageZoom`).
+     - Di Topbar Studio (`Studio.tsx`), pengguna dapat menekan tombol `-` (Perkecil) dan `+` (Perbesar) secara presisi dengan kenaikan `0.1`.
+     - Tombol persentase tengah (`{stageZoomPercent}%`) berfungsi ganda sebagai *toggle 1-klik* cerdas antara ukuran **Pas Layar iPad (65%)** dan **Normal (100%)**.
+     - Di drawer Setelan Studio (`#studio-settings`), tersedia pilihan preset instan: **Pas iPad (65%)**, **Compact (80%)**, dan **Normal (100%)**.
+     - Rumus ukuran stage CSS diperbarui menjadi:
+       $\text{--frame-stage-width} = \left(\frac{\text{activeFrame.width}}{\text{activeFrame.height}} \times 120 \times \text{stageZoom}\right)\text{dvh}$
+       Pada zoom 65%, tinggi total frame di layar iPad menjadi pas ~78dvh sehingga seluruh frame dan dock shutter terlihat utuh tanpa scroll.
+
+2. **Koreksi Rotasi Orientasi Kamera (`cameraRotation: 0 | 90 | 180 | 270`)**:
+   - **Latar Belakang Masalah**: Pada perangkat iPad/tablet pameran, kamera depan/belakang kerap kali mengalami bug rotasi 90° atau terbalik karena fitur flip layar otomatis iOS, atau karena iPad dipasang dalam posisi horizontal/vertikal tertentu pada stand/tripod kiosk.
+   - **Mekanisme Solusi**:
+     - Mendukung 4 orientasi: `0°` (Normal), `90°` (Vertikal/Landscape-to-Portrait), `180°` (Terbalik), dan `270°` (Vertikal Terbalik).
+     - Tombol siklus cepat di Topbar Studio (`Putar 0°/90°/180°/270°`) yang langsung memutar orientasi kamera secara berurutan dengan satu klik (`0 -> 90 -> 180 -> 270 -> 0`).
+     - Tersedia juga di halaman **Camera Setup** (`/setup`) dan drawer Setelan Studio dengan opsi radio button yang jelas.
+     - Nilai rotasi tersimpan secara persisten di `localStorage` (`photobooth.cameraRotation`).
+     - **Integrasi Penuh Pipeline Rendering (Tanpa Distorsi Aspek Rasio)**:
+       1. **Viewfinder Real-Time (`LiveFramePreview.tsx`)**: Ketika rotasi non-nol aktif, frame video di-render ke offscreen rotation canvas dengan pertukaran dimensi lebar/tinggi (`width <-> height` saat 90°/270°), lalu diproyeksikan ke cover-crop viewfinder sehingga wajah pengguna tetap proporsional dan tegak lurus sempurna.
+       2. **Tangkapan Foto Statis (`camera-service.ts`)**: Fungsi `captureFrame` memusatkan canvas dan mengaplikasikan transformasi `context.rotate(deg * Math.PI / 180)` sebelum ekspor piksel data URL.
+       3. **Live Photo 60fps Recording (`live-capture-service.ts`)**: Perekaman burst ring buffer dan `captureLivePose` secara otomatis merekam setiap frame dengan rotasi yang sama, memastikan video Live Photo MP4/WebM konsisten tegak.
+
+---
+
 ## 5. PANDUAN LENGKAP MENAMBAHKAN FRAME TEMPLATE BARU
 
 Jika user ingin membuat template baru dari gambar:

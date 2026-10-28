@@ -47,6 +47,7 @@ export interface FrameAssetLayer {
 }
 
 export type FrameOrientation = 'portrait' | 'landscape' | 'square'
+export type CameraRotation = 0 | 90 | 180 | 270
 
 export interface FrameCaption {
   enabled: boolean

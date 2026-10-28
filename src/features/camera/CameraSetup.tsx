@@ -1,4 +1,4 @@
-import { Camera, CameraOff, ChevronDown, FlipHorizontal, FolderOpen, Upload } from 'lucide-react'
+import { Camera, CameraOff, ChevronDown, FlipHorizontal, FolderOpen, RotateCw, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSessionStore } from '../../store/session-store'
@@ -30,7 +30,7 @@ export function CameraSetup() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
-  const { setImportedPhotos, mirror, setMirror, setCameraDeviceId, cameraDeviceId } = useSessionStore()
+  const { setImportedPhotos, mirror, setMirror, setCameraDeviceId, cameraDeviceId, cameraRotation, rotateCamera } = useSessionStore()
   const camera = useCamera(videoRef)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
@@ -82,7 +82,7 @@ export function CameraSetup() {
       <div className="setup-grid">
         <div>
           <div className="camera-preview">
-            <video ref={videoRef} autoPlay muted playsInline style={{ transform: mirror ? 'scaleX(-1)' : undefined }} />
+            <video ref={videoRef} autoPlay muted playsInline style={{ transform: [mirror ? 'scaleX(-1)' : '', cameraRotation ? `rotate(${cameraRotation}deg)` : ''].filter(Boolean).join(' ') || undefined }} />
             {camera.status !== 'active' && <div className="camera-preview-empty"><CameraOff aria-hidden="true" size={36} /><strong>Pratinjau belum aktif</strong><span>Tekan tombol izin kamera untuk menghidupkan pratinjau lokal.</span></div>}
             <span className="camera-state">{camera.status === 'active' ? 'AKTIF' : 'STANDBY'}</span>
           </div>
@@ -97,6 +97,10 @@ export function CameraSetup() {
             {camera.devices.map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${index + 1}`}</option>)}
           </select>
           <label className="camera-toggle" htmlFor="mirror-toggle"><span><FlipHorizontal aria-hidden="true" size={19} /><strong>Cermin pratinjau</strong><small>Pembalikan orientasi selfie</small></span><input className="mirror-toggle-input" id="mirror-toggle" type="checkbox" checked={mirror} onChange={(event) => setMirror(event.target.checked)} /></label>
+          <button type="button" className="camera-rotate-setup-btn" onClick={rotateCamera} disabled={camera.status !== 'active'} aria-label="Putar orientasi kamera">
+            <RotateCw aria-hidden="true" size={19} />
+            <span><strong>Putar orientasi kamera</strong><small>Koreksi rotasi sensor iPad ({cameraRotation}°)</small></span>
+          </button>
           <div className="upload-panel">
             <strong>Atau unggah foto dari perangkat Anda</strong>
             <button className="upload-zone" type="button" onClick={() => fileInputRef.current?.click()}><Upload aria-hidden="true" size={28} />Pilih foto lokal (.jpg, .png, .heic)<small>Maksimal 12 foto</small></button>

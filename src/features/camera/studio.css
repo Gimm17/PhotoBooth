@@ -12,6 +12,18 @@
 .studio-camera-status span { background:#75cda1; border-radius:50%; height:.5rem; width:.5rem; }
 .studio-settings-trigger { border-radius:.75rem; }
 
+.studio-zoom-group { align-items:center; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); border-radius:.75rem; display:flex; height:44px; overflow:hidden; padding:2px; }
+.studio-zoom-btn { align-items:center; background:transparent; border:0; color:rgba(255,255,255,.82); cursor:pointer; display:grid; height:100%; min-width:32px; padding:0 .35rem; place-items:center; transition:background .15s,color .15s; }
+.studio-zoom-btn:hover:not(:disabled) { background:rgba(255,255,255,.12); color:white; }
+.studio-zoom-btn:disabled { opacity:.3; cursor:not-allowed; }
+.studio-zoom-value { align-items:center; background:rgba(255,255,255,.09); border:0; border-radius:.55rem; color:#ffd60a; cursor:pointer; display:flex; font:700 .66rem/1 var(--font-mono); height:calc(100% - 4px); justify-content:center; letter-spacing:.02em; min-width:3.2rem; padding:0 .45rem; transition:background .15s,transform .1s; }
+.studio-zoom-value:hover { background:rgba(255,214,10,.2); }
+.studio-zoom-value:active { transform:scale(.95); }
+
+.studio-rotate-trigger { align-items:center; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:.75rem; color:white; cursor:pointer; display:flex; font:.65rem/1 var(--font-mono); gap:.35rem; min-height:44px; padding:.65rem .75rem; transition:background .15s,border-color .15s; white-space:nowrap; }
+.studio-rotate-trigger:hover:not(:disabled) { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.3); }
+.studio-rotate-trigger.is-rotated { background:rgba(165,214,241,.18); border-color:var(--color-primary); color:var(--color-primary); }
+
 .studio-workspace { min-width:0; }
 .studio-main { margin-inline:auto; max-width:min(78rem,100%); padding:clamp(.65rem,1.6vw,1.35rem); }
 .viewfinder { display:grid; overflow:hidden; place-items:center; position:relative; }
@@ -69,6 +81,18 @@
 .studio-toggle svg { color:#32647B; }
 .studio-toggle input { accent-color:#32647B; height:22px; width:22px; }
 
+.rotation-options { display:grid; gap:.4rem; grid-template-columns:repeat(2,1fr); }
+.rotation-options label { cursor:pointer; min-width:0; }
+.rotation-options input { opacity:0; position:absolute; }
+.rotation-options span { align-items:center; background:var(--color-paper); border:1px solid var(--color-line); border-radius:.7rem; display:flex; font-size:.73rem; justify-content:center; min-height:44px; padding:.4rem; text-align:center; transition:background .15s,border-color .15s; }
+.rotation-options input:checked+span { background:var(--color-primary); border-color:transparent; font-weight:600; }
+.rotation-options input:focus-visible+span { outline:3px solid #32647B; outline-offset:2px; }
+
+.zoom-preset-options { display:grid; gap:.4rem; grid-template-columns:repeat(3,1fr); }
+.zoom-preset-options button { align-items:center; background:var(--color-paper); border:1px solid var(--color-line); border-radius:.7rem; color:var(--color-ink); cursor:pointer; display:flex; font-size:.72rem; justify-content:center; min-height:44px; padding:.4rem .25rem; text-align:center; transition:background .15s,border-color .15s; }
+.zoom-preset-options button.is-active { background:var(--color-primary); border-color:transparent; font-weight:600; }
+.zoom-preset-options button:focus-visible { outline:3px solid #32647B; outline-offset:2px; }
+
 @media(max-width:720px){
   .studio { padding-bottom:10rem; }
   .studio-topbar { grid-template-columns:44px minmax(0,1fr) auto; min-height:4rem; padding:max(.45rem,env(safe-area-inset-top)) .55rem .45rem; }
@@ -76,6 +100,10 @@
   .studio-subtitle { font-size:.55rem; }
   .studio-camera-status { display:none; }
   .studio-gallery-link { display:none; }
+  .studio-zoom-group { height:38px; }
+  .studio-zoom-btn { min-width:26px; padding:0 .15rem; }
+  .studio-zoom-value { font-size:.58rem; min-width:2.4rem; padding:0 .25rem; }
+  .studio-rotate-trigger { min-height:38px; padding:.4rem .5rem; font-size:.58rem; }
   .studio-settings-trigger { font-size:0; padding:.55rem; }
   .studio-settings-trigger span { display:none; }
   .studio-main { padding:.45rem; }

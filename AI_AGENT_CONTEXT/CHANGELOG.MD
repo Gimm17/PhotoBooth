@@ -7,6 +7,30 @@
 
 ## [Unreleased / Production Candidate] - 2026-10-29
 
+### 📱 Fitur Studio iPad & Kiosk: Zoom Stage Frame & Koreksi Rotasi Kamera (Added)
+- **Lokasi Kode**:
+  - [`src/catalog/types.ts`](../src/catalog/types.ts)
+  - [`src/store/session-store.ts`](../src/store/session-store.ts)
+  - [`src/features/camera/Studio.tsx`](../src/features/camera/Studio.tsx) & [`src/features/camera/studio.css`](../src/features/camera/studio.css)
+  - [`src/features/camera/CameraSetup.tsx`](../src/features/camera/CameraSetup.tsx)
+  - [`src/features/camera/LiveFramePreview.tsx`](../src/features/camera/LiveFramePreview.tsx)
+  - [`src/features/camera/camera-service.ts`](../src/features/camera/camera-service.ts)
+  - [`src/features/camera/live-capture-service.ts`](../src/features/camera/live-capture-service.ts)
+  - [`src/shared/styles/global.css`](../src/shared/styles/global.css)
+  - [`src/features/camera/Studio.test.tsx`](../src/features/camera/Studio.test.tsx)
+- **Perubahan & Manfaat Utama**:
+  1. **Zoom Frame Stage Viewport iPad (`-`, `[ 65% ]`, `+`)**:
+     - Mengatasi masalah frame 9:16 portrait yang sebelumnya terlalu tinggi (`120dvh`) pada layar iPad Pro 13 (1032x1376) sehingga memerlukan scroll ke bawah.
+     - Menyediakan tombol perkecil (`-`) dan perbesar (`+`) di Topbar Studio dengan rentang aman 40%–150%.
+     - Tombol persentase tengah berfungsi sebagai *toggle 1-klik* cerdas antara ukuran **Pas Layar iPad (65%)** dan **Normal (100%)**.
+     - Tombol preset instan di drawer Setelan: *Pas iPad (65%)*, *Compact (80%)*, *Normal (100%)*.
+     - Pengaturan zoom tersimpan secara persisten di `localStorage` (`photobooth.studioStageZoom`).
+  2. **Koreksi Rotasi Orientasi Kamera (`0° / 90° / 180° / 270°`)**:
+     - Mengatasi masalah kamera tablet/iPad yang terputar otomatis atau dipasang horizontal/vertikal pada tripod atau kiosk stand.
+     - Tombol siklus rotasi cepat di Topbar Studio (`Putar 0°/90°/180°/270°`) untuk memutar orientasi kamera secara instan.
+     - Opsi rotasi juga tersedia di halaman Camera Setup (`/setup`) dan drawer Setelan Studio.
+     - Terintegrasi penuh ke Live Viewfinder (`LiveFramePreview.tsx`), tangkapan foto resolusi penuh (`camera-service.ts`), dan rekaman Live Photo 60fps (`live-capture-service.ts`) dengan penyesuaian rasio aspek otomatis tanpa distorsi atau efek gepeng.
+
 ### 🎨 Template Baru Resmi: Event Expo Pojok Statistik (Added)
 
 #### Integrasi 3 Template Baru Expo Pojok Statistik (Untad & BPS Sulawesi Tengah)

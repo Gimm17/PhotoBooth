@@ -1,3 +1,5 @@
+import type { CameraRotation } from '../../catalog/types'
+
 export type CameraStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'unavailable' | 'failed'
 
 export interface CameraErrorDetails {
@@ -72,23 +74,35 @@ export async function listVideoInputs(): Promise<MediaDeviceInfo[]> {
 
 export function captureFrame(
   video: HTMLVideoElement,
-  options: { mirror: boolean; filter: string },
+  options: { mirror: boolean; filter: string; rotation?: CameraRotation },
 ): string {
   const width = video.videoWidth
   const height = video.videoHeight
   if (!width || !height) throw new Error('Video belum siap untuk diambil.')
 
+  const rotation = options.rotation ?? 0
+  const swapped = rotation === 90 || rotation === 270
   const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
+  canvas.width = swapped ? height : width
+  canvas.height = swapped ? width : height
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Canvas 2D tidak tersedia.')
 
   context.filter = options.filter
+  if (!rotation) {
+    if (options.mirror) {
+      context.translate(width, 0)
+      context.scale(-1, 1)
+    }
+    context.drawImage(video, 0, 0, width, height)
+    return canvas.toDataURL('image/jpeg', 0.92)
+  }
+
+  context.translate(canvas.width / 2, canvas.height / 2)
   if (options.mirror) {
-    context.translate(width, 0)
     context.scale(-1, 1)
   }
-  context.drawImage(video, 0, 0, width, height)
+  context.rotate((rotation * Math.PI) / 180)
+  context.drawImage(video, -width / 2, -height / 2, width, height)
   return canvas.toDataURL('image/jpeg', 0.92)
 }

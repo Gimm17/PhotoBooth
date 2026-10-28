@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { filterById } from '../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../catalog/frames'
-import type { BoomerangResult, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession } from '../catalog/types'
+import type { BoomerangResult, CameraRotation, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession } from '../catalog/types'
 
 export type EditorHistorySnapshot = Pick<
   PhotoSession,
@@ -11,6 +11,11 @@ export type EditorHistorySnapshot = Pick<
 interface SessionActions {
   cameraDeviceId: string | null
   setCameraDeviceId: (deviceId: string | null) => void
+  cameraRotation: CameraRotation
+  setCameraRotation: (rotation: CameraRotation) => void
+  rotateCamera: () => void
+  stageZoom: number
+  setStageZoom: (zoom: number) => void
   setLayout: (layoutId: LayoutId) => void
   addPhoto: (dataUrl: string) => void
   setImportedPhotos: (dataUrls: string[]) => void
@@ -86,10 +91,61 @@ const invalidateBoomerang = (state: PhotoSession) => {
   return { boomerangResult: null }
 }
 
+const CAMERA_ROTATION_KEY = 'photobooth.cameraRotation'
+const STAGE_ZOOM_KEY = 'photobooth.studioStageZoom'
+const ROTATION_STEPS: CameraRotation[] = [0, 90, 180, 270]
+
+const isTestEnv = () => typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'
+
+const readSavedCameraRotation = (): CameraRotation => {
+  if (isTestEnv() || typeof window === 'undefined') return 0
+  try {
+    const raw = Number(window.localStorage.getItem(CAMERA_ROTATION_KEY))
+    return (raw === 90 || raw === 180 || raw === 270) ? raw : 0
+  } catch {
+    return 0
+  }
+}
+
+const readSavedStageZoom = (): number => {
+  if (isTestEnv() || typeof window === 'undefined') return 1
+  try {
+    const raw = Number(window.localStorage.getItem(STAGE_ZOOM_KEY))
+    return Number.isFinite(raw) && raw >= 0.4 && raw <= 1.5 ? Number(raw.toFixed(2)) : 1
+  } catch {
+    return 1
+  }
+}
+
 export const useSessionStore = create<SessionStore>((set, get) => ({
   ...createInitialSession(),
   cameraDeviceId: null,
   setCameraDeviceId: (cameraDeviceId) => set({ cameraDeviceId }),
+  cameraRotation: readSavedCameraRotation(),
+  setCameraRotation: (rotation) => {
+    const valid: CameraRotation = (rotation === 90 || rotation === 180 || rotation === 270) ? rotation : 0
+    if (!isTestEnv() && typeof window !== 'undefined') {
+      try { window.localStorage.setItem(CAMERA_ROTATION_KEY, String(valid)) } catch { /* ignore */ }
+    }
+    set({ cameraRotation: valid })
+  },
+  rotateCamera: () => {
+    const current = get().cameraRotation
+    const nextIndex = (ROTATION_STEPS.indexOf(current) + 1) % ROTATION_STEPS.length
+    const next = ROTATION_STEPS[nextIndex]
+    if (!isTestEnv() && typeof window !== 'undefined') {
+      try { window.localStorage.setItem(CAMERA_ROTATION_KEY, String(next)) } catch { /* ignore */ }
+    }
+    set({ cameraRotation: next })
+  },
+  stageZoom: readSavedStageZoom(),
+  setStageZoom: (zoom) => {
+    const clamped = Number(Math.min(1.5, Math.max(0.4, zoom)).toFixed(2))
+    if (!isTestEnv() && typeof window !== 'undefined') {
+      try { window.localStorage.setItem(STAGE_ZOOM_KEY, String(clamped)) } catch { /* ignore */ }
+    }
+    set({ stageZoom: clamped })
+  },
   setLayout: (layoutId) => {
     const layout = layoutById(layoutId)
     if (!layout) return
@@ -299,6 +355,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   resetSession: () => {
     revokeObjectUrl(get().composedResultUrl)
     revokeObjectUrl(get().boomerangResult?.url ?? null)
-    set(createInitialSession())
+    set({
+      ...createInitialSession(),
+      ...(isTestEnv() ? { cameraRotation: 0, stageZoom: 1 } : {}),
+    })
   },
 }))

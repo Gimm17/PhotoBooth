@@ -1,4 +1,4 @@
-import type { CapturedPose, LiveFrameSample } from '../../catalog/types'
+import type { CameraRotation, CapturedPose, LiveFrameSample } from '../../catalog/types'
 import { captureFrame } from './camera-service'
 
 interface EncodeFrameOptions {
@@ -7,13 +7,14 @@ interface EncodeFrameOptions {
   height: number
   mirror: boolean
   filter: string
+  rotation?: CameraRotation
 }
 
 export interface LiveCaptureDependencies {
   encodeSequenceFrame: (video: HTMLVideoElement, options: EncodeFrameOptions) => Promise<Blob>
   sleep: (milliseconds: number, signal: AbortSignal) => Promise<void>
   blobToDataUrl: (blob: Blob) => Promise<string>
-  captureStatic: (video: HTMLVideoElement, options: { mirror: boolean; filter: string }) => string
+  captureStatic: (video: HTMLVideoElement, options: { mirror: boolean; filter: string; rotation?: CameraRotation }) => string
 }
 
 export interface LiveCaptureOptions {
@@ -21,6 +22,7 @@ export interface LiveCaptureOptions {
   fps?: number
   mirror: boolean
   filter: string
+  rotation?: CameraRotation
   maxLongEdge?: number
   signal: AbortSignal
   preRollFrames?: LiveFrameSample[]
@@ -35,7 +37,7 @@ export interface LiveRingBuffer {
 }
 
 export interface LiveRingBufferOptions {
-  getOptions: () => { mirror: boolean; filter: string; enabled: boolean }
+  getOptions: () => { mirror: boolean; filter: string; enabled: boolean; rotation?: CameraRotation }
   fps?: number
   maxDurationMs?: number
   maxLongEdge?: number
@@ -62,13 +64,26 @@ const renderToBlob = (
   canvas.height = options.height
   const context = canvas.getContext('2d')
   if (!context) return Promise.reject(new Error('Canvas 2D tidak tersedia.'))
+  const rotation = options.rotation ?? 0
   context.save()
   context.filter = options.filter
-  if (options.mirror) {
-    context.translate(options.width, 0)
-    context.scale(-1, 1)
+  if (!rotation) {
+    if (options.mirror) {
+      context.translate(options.width, 0)
+      context.scale(-1, 1)
+    }
+    context.drawImage(video, 0, 0, options.width, options.height)
+  } else {
+    const swapped = rotation === 90 || rotation === 270
+    const drawW = swapped ? options.height : options.width
+    const drawH = swapped ? options.width : options.height
+    context.translate(options.width / 2, options.height / 2)
+    if (options.mirror) {
+      context.scale(-1, 1)
+    }
+    context.rotate((rotation * Math.PI) / 180)
+    context.drawImage(video, -drawW / 2, -drawH / 2, drawW, drawH)
   }
-  context.drawImage(video, 0, 0, options.width, options.height)
   context.restore()
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Frame Live tidak dapat dienkode.')), 'image/jpeg', 0.82)
@@ -103,10 +118,13 @@ const defaultDependencies: LiveCaptureDependencies = {
 
 export const middleFrameIndex = (length: number) => Math.max(0, Math.floor(length / 2))
 
-const captureDimensions = (video: HTMLVideoElement, maxLongEdge: number) => {
+const captureDimensions = (video: HTMLVideoElement, maxLongEdge: number, rotation?: CameraRotation) => {
   if (!video.videoWidth || !video.videoHeight) throw new Error('Video belum siap untuk diambil.')
   const scale = Math.min(1, maxLongEdge / Math.max(video.videoWidth, video.videoHeight))
-  return { width: Math.max(1, Math.round(video.videoWidth * scale)), height: Math.max(1, Math.round(video.videoHeight * scale)) }
+  const rawW = Math.max(1, Math.round(video.videoWidth * scale))
+  const rawH = Math.max(1, Math.round(video.videoHeight * scale))
+  const swapped = rotation === 90 || rotation === 270
+  return swapped ? { width: rawH, height: rawW } : { width: rawW, height: rawH }
 }
 
 export const LIVE_PHOTO_DURATION_SEC = 3
@@ -139,13 +157,14 @@ export function createLiveRingBuffer(
     const video = getVideo()
     if (current.enabled && video && video.videoWidth > 0 && video.videoHeight > 0) {
       try {
-        const dims = captureDimensions(video, maxLongEdge)
+        const dims = captureDimensions(video, maxLongEdge, current.rotation)
         const blob = await encode(video, {
           index: frameCounter++,
           width: dims.width,
           height: dims.height,
           mirror: current.mirror,
           filter: current.filter,
+          ...(current.rotation ? { rotation: current.rotation } : {}),
         })
         if (active) {
           samples.push({ blob })
@@ -189,14 +208,18 @@ export async function captureLivePose(video: HTMLVideoElement, options: LiveCapt
   const preRoll = options.preRollFrames ?? []
   const durationMs = options.durationMs ?? (preRoll.length > 0 ? 0 : LIVE_PHOTO_DURATION_MS)
   const fps = options.fps ?? 30
-  const dimensions = captureDimensions(video, options.maxLongEdge ?? 640)
+  const dimensions = captureDimensions(video, options.maxLongEdge ?? 640, options.rotation)
   const dependencies = options.dependencies ?? defaultDependencies
   const frameCount = durationMs <= 0 ? 1 : Math.max(2, Math.round((durationMs / 1_000) * fps))
   const postRollFrames: LiveFrameSample[] = []
 
   throwIfAborted(options.signal)
   // Capture full-resolution key photo immediately at t=0 (shutter instant) to prevent motion blur & capture lag
-  const instantPhoto = dependencies.captureStatic(video, { mirror: options.mirror, filter: options.filter })
+  const instantPhoto = dependencies.captureStatic(video, {
+    mirror: options.mirror,
+    filter: options.filter,
+    ...(options.rotation ? { rotation: options.rotation } : {}),
+  })
 
   try {
     for (let index = 0; index < frameCount; index += 1) {
@@ -207,6 +230,7 @@ export async function captureLivePose(video: HTMLVideoElement, options: LiveCapt
         ...dimensions,
         mirror: options.mirror,
         filter: options.filter,
+        ...(options.rotation ? { rotation: options.rotation } : {}),
       })
       throwIfAborted(options.signal)
       postRollFrames.push({ blob })

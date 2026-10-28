@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useRef } from 'react'
 import type { ForwardedRef } from 'react'
-import type { FilterPreset, FrameTemplate } from '../../catalog/types'
+import type { CameraRotation, FilterPreset, FrameTemplate } from '../../catalog/types'
 import type { CameraStatus } from './camera-service'
 import { drawFrameComposition, prepareFrameAssets, type RenderSource } from '../export/frame-renderer'
 
@@ -12,6 +12,7 @@ interface LiveFramePreviewProps {
   cameraStatus: CameraStatus
   intensity: number
   mirror: boolean
+  cameraRotation?: CameraRotation
   showGrid?: boolean
   onError?: (message: string) => void
 }
@@ -34,6 +35,7 @@ const loadPhoto = async (source: string): Promise<RenderSource> => {
 
 export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewProps>(function LiveFramePreview(props, forwardedRef) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rotationCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
     videoRef.current = node
@@ -68,7 +70,29 @@ export const LiveFramePreview = forwardRef<HTMLVideoElement, LiveFramePreviewPro
         const current = propsRef.current
         const slots = current.frame.slots.map((_, index): RenderSource | null => {
           if (index === current.activeSlot && current.cameraStatus === 'active') {
-            return { source: video, width: video.videoWidth || 1280, height: video.videoHeight || 720, mirror: current.mirror }
+            const rawW = video.videoWidth || 1280
+            const rawH = video.videoHeight || 720
+            const rot = current.cameraRotation ?? 0
+            if (!rot) {
+              return { source: video, width: rawW, height: rawH, mirror: current.mirror }
+            }
+            const rotCanvas = rotationCanvasRef.current ?? document.createElement('canvas')
+            rotationCanvasRef.current = rotCanvas
+            const swapped = rot === 90 || rot === 270
+            const outW = swapped ? rawH : rawW
+            const outH = swapped ? rawW : rawH
+            if (rotCanvas.width !== outW) rotCanvas.width = outW
+            if (rotCanvas.height !== outH) rotCanvas.height = outH
+            const rotCtx = rotCanvas.getContext('2d')
+            if (rotCtx && typeof rotCtx.translate === 'function') {
+              rotCtx.save?.()
+              rotCtx.clearRect?.(0, 0, outW, outH)
+              rotCtx.translate(outW / 2, outH / 2)
+              rotCtx.rotate((rot * Math.PI) / 180)
+              rotCtx.drawImage(video, -rawW / 2, -rawH / 2, rawW, rawH)
+              rotCtx.restore?.()
+            }
+            return { source: rotCanvas, width: outW, height: outH, mirror: current.mirror }
           }
           if (index === current.activeSlot && current.cameraStatus !== 'active') {
             return null

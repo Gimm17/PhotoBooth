@@ -246,4 +246,50 @@ describe('Studio', () => {
     expect(useSessionStore.getState().photos).toEqual(['data:image/jpeg;base64,fallback'])
     expect(screen.getByRole('status')).toHaveTextContent('Live tidak tersedia.')
   })
-})
+
+
+  it('allows adjusting frame preview zoom with zoom controls and presets', () => {
+    act(() => useSessionStore.getState().setLayout('classic-strip'))
+    renderStudio()
+
+    const stage = screen.getByLabelText('Area pratinjau foto')
+    expect(stage).toHaveStyle({ '--frame-stage-width': '60dvh' })
+
+    const zoomOut = screen.getByRole('button', { name: 'Perkecil ukuran frame' })
+    const zoomIn = screen.getByRole('button', { name: 'Perbesar ukuran frame' })
+    const zoomToggle = screen.getByRole('button', { name: 'Reset ukuran frame' })
+
+    fireEvent.click(zoomOut)
+    expect(useSessionStore.getState().stageZoom).toBe(0.9)
+    expect(stage).toHaveStyle({ '--frame-stage-width': '54dvh' })
+
+    fireEvent.click(zoomIn)
+    expect(useSessionStore.getState().stageZoom).toBe(1)
+    expect(stage).toHaveStyle({ '--frame-stage-width': '60dvh' })
+
+    fireEvent.click(zoomToggle)
+    expect(useSessionStore.getState().stageZoom).toBe(0.65)
+    expect(stage).toHaveStyle({ '--frame-stage-width': '39dvh' })
+  })
+
+  it('allows rotating camera orientation through topbar trigger and settings drawer', () => {
+    renderStudio()
+
+    const rotateBtn = screen.getByRole('button', { name: 'Putar orientasi kamera' })
+    expect(rotateBtn).toHaveTextContent('0°')
+    expect(useSessionStore.getState().cameraRotation).toBe(0)
+
+    fireEvent.click(rotateBtn)
+    expect(useSessionStore.getState().cameraRotation).toBe(90)
+    expect(rotateBtn).toHaveTextContent('90°')
+
+    fireEvent.click(rotateBtn)
+    expect(useSessionStore.getState().cameraRotation).toBe(180)
+
+    fireEvent.click(rotateBtn)
+    expect(useSessionStore.getState().cameraRotation).toBe(270)
+
+    fireEvent.click(rotateBtn)
+    expect(useSessionStore.getState().cameraRotation).toBe(0)
+  })
+});

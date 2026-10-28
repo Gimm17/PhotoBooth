@@ -1,4 +1,4 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
@@ -44,6 +44,7 @@ export function Studio() {
         mirror: latest.current.mirror,
         filter: 'none',
         enabled: latest.current.liveEnabled && currentCamera.current.status === 'active',
+        ...(latest.current.cameraRotation ? { rotation: latest.current.cameraRotation } : {}),
       }),
       fps: 30,
       maxDurationMs: 3_000,
@@ -67,9 +68,17 @@ export function Studio() {
               mirror: current.mirror,
               filter: 'none',
               signal,
+              ...(current.cameraRotation ? { rotation: current.cameraRotation } : {}),
               ...(preRollFrames.length > 0 ? { preRollFrames, durationMs: 0 } : {}),
             })
-          : { photo: captureFrame(video, { mirror: current.mirror, filter: 'none' }), sequence: null }
+          : {
+              photo: captureFrame(video, {
+                mirror: current.mirror,
+                filter: 'none',
+                ...(current.cameraRotation ? { rotation: current.cameraRotation } : {}),
+              }),
+              sequence: null,
+            }
         if (signal.aborted) throw new DOMException('Capture dibatalkan.', 'AbortError')
         useSessionStore.getState().commitCapturedPose(index, pose)
       },
@@ -102,8 +111,10 @@ export function Studio() {
   const complete = session.photos.length >= session.requiredShots
   const activeSlot = captureState.retakeIndex ?? (complete ? -1 : Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0)))
   const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
+  const stageZoom = session.stageZoom ?? 1
+  const stageZoomPercent = Math.round(stageZoom * 100)
   const stageStyle = {
-    '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120).toFixed(3))}dvh`,
+    '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
   } as CSSProperties
   const activeFilter = filterById(session.selectedFilter) ?? FILTER_PRESETS[0]
   const captureBusy = captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing'
@@ -189,7 +200,7 @@ export function Studio() {
 
   useEffect(() => {
     ringBufferRef.current?.clear()
-  }, [session.mirror])
+  }, [session.mirror, session.cameraRotation])
 
   useEffect(() => () => {
     ringBufferRef.current?.stop()
@@ -250,6 +261,12 @@ export function Studio() {
         <p className="studio-subtitle">{layoutById(session.selectedLayout)?.name} · {progressLabel}</p>
       </div>
       <div className="studio-topbar-actions">
+        <div className="studio-zoom-group" role="group" aria-label="Ukuran frame">
+          <button className="studio-zoom-btn" type="button" onClick={() => session.setStageZoom(stageZoom - 0.1)} disabled={stageZoom <= 0.4} aria-label="Perkecil ukuran frame" title="Perkecil ukuran frame"><ZoomOut aria-hidden="true" size={16} /></button>
+          <button className="studio-zoom-value" type="button" onClick={() => session.setStageZoom(stageZoom === 1 ? 0.65 : 1)} aria-label="Reset ukuran frame" title="Ketuk untuk ganti antara Pas Layar iPad (65%) dan Normal (100%)">{stageZoomPercent}%</button>
+          <button className="studio-zoom-btn" type="button" onClick={() => session.setStageZoom(stageZoom + 0.1)} disabled={stageZoom >= 1.5} aria-label="Perbesar ukuran frame" title="Perbesar ukuran frame"><ZoomIn aria-hidden="true" size={16} /></button>
+        </div>
+        <button className={`studio-rotate-trigger ${session.cameraRotation ? 'is-rotated' : ''}`} type="button" disabled={captureBusy} onClick={() => session.rotateCamera()} aria-label="Putar orientasi kamera" title="Putar orientasi kamera (0° / 90° / 180° / 270°)"><RotateCw aria-hidden="true" size={17} /><span>{session.cameraRotation}°</span></button>
         <Link className="studio-gallery-link" to="/gallery">Galeri lokal</Link>
         <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
         <button ref={settingsTriggerRef} className="studio-settings-trigger" type="button" aria-label="Buka setelan tangkapan" aria-controls="studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={19} /><span>Setelan</span></button>
@@ -259,7 +276,7 @@ export function Studio() {
     <div className="studio-workspace">
       <div className="studio-main">
         <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} style={stageStyle} aria-label="Area pratinjau foto">
-          <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} showGrid={session.showGrid} onError={setPreviewError} />
+          <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} cameraRotation={session.cameraRotation} showGrid={session.showGrid} onError={setPreviewError} />
           {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
           {session.liveEnabled && <span className="studio-live-badge" aria-hidden="true"><span className="studio-live-dot" />LIVE</span>}
           <div className="viewfinder-corners" aria-hidden="true" />
@@ -307,6 +324,8 @@ export function Studio() {
         <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
         <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
         <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
+        <fieldset disabled={captureBusy}><legend>Orientasi kamera (Koreksi rotasi iPad)</legend><div className="rotation-options">{([0, 90, 180, 270] as const).map((deg) => <label key={deg}><input type="radio" name="camera-rotation" checked={session.cameraRotation === deg} onChange={() => session.setCameraRotation(deg)} /><span>{deg === 0 ? '0° Normal' : deg === 90 ? '90° Vertikal' : deg === 180 ? '180° Terbalik' : '270° Vertikal'}</span></label>)}</div></fieldset>
+        <fieldset><legend>Ukuran pratinjau frame ({stageZoomPercent}%)</legend><div className="zoom-preset-options">{([0.65, 0.8, 1] as const).map((preset) => <button key={preset} type="button" className={Math.abs(stageZoom - preset) < 0.03 ? 'is-active' : ''} onClick={() => session.setStageZoom(preset)}>{preset === 0.65 ? 'Pas iPad (65%)' : preset === 0.8 ? 'Compact (80%)' : 'Normal (100%)'}</button>)}</div></fieldset>
         <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
         <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
       </aside>
