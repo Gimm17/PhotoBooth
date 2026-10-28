@@ -7,6 +7,22 @@
 
 ## [Unreleased / Production Candidate] - 2026-10-29
 
+### 🎨 Penyelarasan Palet Warna Studio & Drawer Setelan dengan Tema Web Utama (Refactored)
+- **Lokasi Kode**:
+  - [`src/features/camera/studio.css`](../src/features/camera/studio.css)
+  - [`src/shared/styles/global.css`](../src/shared/styles/global.css)
+  - [`src/features/export/result.css`](../src/features/export/result.css)
+- **Perubahan & Manfaat Utama**:
+  1. **Harmonisasi Total dengan Tema Warm Scrapbook Studio**:
+     - Mengganti latar belakang hitam pekat (`#171716`) pada Studio dan App Shell Studio Mode (`.app-shell.is-studio-mode`) menjadi kanvas krem hangat (`var(--color-canvas)` / `#F4F0E4`), senada dengan halaman Beranda dan Editor.
+     - Mengubah topbar studio menjadi *warm paper blur* (`color-mix(in srgb, var(--color-surface) 92%, transparent)`) dengan border halus `var(--color-line)` dan teks tinta arang lembut (`var(--color-ink)` / `#2C2B29`).
+  2. **Pembersihan Warna Neon Kuning (#ffd60a) pada Drawer & Kontrol**:
+     - Mengganti aksen kuning terang pada Drawer Setelan, kartu bingkai terpilih, chip filter, tombol zoom, dan indikator rotasi menjadi palet resmi situs: **Powder Baby Blue** (`#A5D6F1`), **Deep Teal/Slate Blue** (`#32647B`), dan **Soft Blush Pink** (`#EFAAB9`).
+     - Latar belakang drawer kini menggunakan kartu kertas hangat (`var(--color-surface)` / `var(--color-paper)`), border `var(--color-line)`, dan header grup biru arang profesional (`#32647B`).
+  3. **Penyesuaian Visual Shutter Dock & Stage Easel**:
+     - Dock kontrol bawah dan samping diubah menggunakan latar belakang kertas hangat transparan dengan bayangan lembut, tombol shutter bermata tinta arang `#2C2B29` dan ring baby blue, tombol sekunder arang krem, serta tombol lanjut ke editor berwarna blush pink (`var(--color-secondary)`).
+     - Badge Live Photo diubah dari kuning neon menjadi soft blush rose (`#EFAAB9`) dengan teks merah bata elegan (`#814F5C`).
+
 ### 🎨 Redesain UI Drawer Setelan Studio & Visual Frame/Filter Selectors (Fixed & Changed)
 - **Lokasi Kode**:
   - [`src/features/camera/Studio.tsx`](../src/features/camera/Studio.tsx)

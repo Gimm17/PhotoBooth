@@ -330,12 +330,15 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
 
 ---
 
-3. **Redesain UI Drawer Setelan Studio & Penghapusan Popup Native Select yang Merusak Estetika**:
-   - **Latar Belakang Masalah**: Sebelumnya, pemilihan frame (`<select id="frame-select">`) dan filter (`<select id="quick-filter">`) menggunakan tag `<select>` HTML bawaan browser. Saat diketuk di layar iPad atau touch emulation, dropdown native membuka jendela popup putih raksasa dengan 20 opsi teks polos yang meluap menutupi seluruh layar studio foto dan merusak estetika antarmuka.
+3. **Redesain UI Drawer Setelan Studio & Harmonisasi Palet Warna Scrapbook Studio**:
+   - **Latar Belakang Masalah**: Sebelumnya, pemilihan frame (`<select id="frame-select">`) dan filter (`<select id="quick-filter">`) menggunakan tag `<select>` HTML bawaan browser yang membuka popup putih raksasa yang menutupi layar. Selain itu, Studio dan Drawer sebelumnya memakai palet gelap pekat (`#171716`) dengan aksen kuning neon (`#ffd60a`) yang bertolak belakang dengan palet utama situs web (**Warm Scrapbook Studio**).
    - **Mekanisme Solusi**:
-     - Drawer setelan dirombak total mengusung tema **Warm Scrapbook Darkroom Studio** (`background: rgba(22, 22, 21, 0.96); backdrop-filter: blur(32px); border-left: 1px solid rgba(255, 255, 255, 0.12); color: #f5f3ef;`) dengan kartu-kartu kontrol terkelompok rapi.
-     - **Visual Frame Picker**: Menampilkan kartu-kartu visual bergrid rapi dengan nama bingkai, badge khusus koleksi (`⭐ Expo Untad & BPS`), dan indikator centang emas aktif saat dipilih.
-     - **Visual Filter Swatches**: Menampilkan grid chip filter visual dengan lingkaran sampel warna asli (`filter.previewColor`) dan ring aktif bersinar emas (`#ffd60a`).
+     - **Penyelarasan Warna Penuh dengan Tema Web**:
+       - Seluruh antarmuka Studio (`.studio`, `.app-shell.is-studio-mode`) kini menggunakan kanvas krem hangat (`var(--color-canvas)` / `#F4F0E4`) dan tinta arang (`var(--color-ink)` / `#2C2B29`), senada dengan Beranda dan Editor.
+       - Drawer setelan (`.studio-settings`) menggunakan kartu kertas hangat (`var(--color-surface)` / `var(--color-paper)`), border halus `var(--color-line)`, bayangan lembut, dan header grup biru arang (`#32647B`).
+       - Menghilangkan warna kuning neon (`#ffd60a`) dan menggantikannya dengan palet resmi aplikasi: **Powder Baby Blue** (`#A5D6F1`), **Deep Slate/Teal Blue** (`#32647B`), dan **Soft Blush Pink** (`#EFAAB9`).
+     - **Visual Frame Picker**: Menampilkan kartu-kartu visual bergrid rapi dengan nama bingkai, badge khusus koleksi (`⭐ Expo Untad & BPS` berlatar blush pink), dan indikator centang biru aktif saat dipilih.
+     - **Visual Filter Swatches**: Menampilkan grid chip filter visual dengan lingkaran sampel warna asli (`filter.previewColor`) dan ring aktif biru baby blue (`#A5D6F1` & `#32647B`).
      - **Pengelompokan 3 Bagian Jelas**: Dibagi menjadi *Frame yang Kompatibel*, *Kamera & Layar (Kiosk iPad)*, dan *Filter Warna Visual*.
      - **Responsivitas Topbar & Drawer iPad**: Pada layar tablet (<= 1024px), label topbar sekunder disembunyikan secara otomatis agar tombol kontrol utama (Zoom, Rotasi, Dock Shutter, Setelan) tidak pernah terdesak atau berantakan.
      - Tag `<select id="quick-filter">` dan `<select id="frame-select">` tetap dipertahankan secara sinkron di DOM (`.visually-hidden-select`) untuk menjamin aksesibilitas dan kompatibilitas 100% dengan test harness Vitest.
