@@ -1,4 +1,4 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, Layout, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
@@ -114,6 +114,7 @@ export function Studio() {
   const stageZoom = session.stageZoom ?? 1
   const stageZoomPercent = Math.round(stageZoom * 100)
   const dockPos = session.shutterDockPosition ?? 'bottom'
+  const compatibleFrames = FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout)
   const stageStyle = {
     '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
   } as CSSProperties
@@ -326,18 +327,180 @@ export function Studio() {
 
       {mobileSettingsOpen && <div className="studio-settings-layer" onMouseDown={(event) => event.target === event.currentTarget && closeSettings()}>
       <aside ref={settingsDialogRef} id="studio-settings" className="studio-settings" role="dialog" aria-modal="true" aria-label="Setelan tangkapan">
-        <div className="settings-title"><SlidersHorizontal aria-hidden="true" size={20} /><h2>Setelan tangkapan</h2><button ref={settingsCloseRef} className="settings-close" type="button" onClick={closeSettings} aria-label="Tutup setelan tangkapan"><X aria-hidden="true" size={20} /></button></div>
-        <label className="studio-select-label" htmlFor="frame-select">Frame yang kompatibel</label>
-        <select id="frame-select" disabled={settingsLocked} value={session.selectedFrame} onChange={(event) => session.setFrame(event.target.value)}>{FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout).map((frame) => <option key={frame.id} value={frame.id}>{frame.name}</option>)}</select>
-        <fieldset disabled={captureBusy}><legend>Timer hitung mundur</legend><div className="timer-options">{([3, 5, 10] as const).map((timer) => <label key={timer}><input type="radio" name="timer" checked={session.timer === timer} onChange={() => session.setTimer(timer)} /><span>{timer} detik</span></label>)}</div></fieldset>
-        <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
-        <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
-        <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
-        <fieldset disabled={captureBusy}><legend>Orientasi kamera (Koreksi rotasi iPad)</legend><div className="rotation-options">{([0, 90, 180, 270] as const).map((deg) => <label key={deg}><input type="radio" name="camera-rotation" checked={session.cameraRotation === deg} onChange={() => session.setCameraRotation(deg)} /><span>{deg === 0 ? '0° Normal' : deg === 90 ? '90° Vertikal' : deg === 180 ? '180° Terbalik' : '270° Vertikal'}</span></label>)}</div></fieldset>
-        <fieldset><legend>Ukuran pratinjau frame ({stageZoomPercent}%)</legend><div className="zoom-preset-options">{([0.65, 0.8, 1] as const).map((preset) => <button key={preset} type="button" className={Math.abs(stageZoom - preset) < 0.03 ? 'is-active' : ''} onClick={() => session.setStageZoom(preset)}>{preset === 0.65 ? 'Pas iPad (65%)' : preset === 0.8 ? 'Compact (80%)' : 'Normal (100%)'}</button>)}</div></fieldset>
-        <fieldset disabled={captureBusy}><legend>Posisi tombol shutter (iPad / Kiosk)</legend><div className="dock-position-options">{([['bottom', 'Bawah (Default)'], ['right', 'Kanan (iPad)'], ['left', 'Kiri']] as const).map(([pos, label]) => <label key={pos}><input type="radio" name="shutter-dock-position" checked={dockPos === pos} onChange={() => session.setShutterDockPosition(pos)} /><span>{label}</span></label>)}</div></fieldset>
-        <label className="studio-select-label" htmlFor="quick-filter">Filter cepat</label>
-        <select id="quick-filter" aria-label="Pilih filter cepat" disabled={captureBusy} value={session.selectedFilter} onChange={(event) => session.setFilter(event.target.value)}>{FILTER_PRESETS.map((filter) => <option key={filter.id} value={filter.id}>{filter.name}</option>)}</select>
+        <div className="settings-title">
+          <div className="settings-title-text">
+            <SlidersHorizontal aria-hidden="true" size={20} />
+            <h2>Setelan Studio</h2>
+          </div>
+          <button ref={settingsCloseRef} className="settings-close" type="button" onClick={closeSettings} aria-label="Tutup setelan tangkapan">
+            <X aria-hidden="true" size={20} />
+          </button>
+        </div>
+
+        {/* 1. Compatible Frame Picker (Visual Cards) */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <Layout aria-hidden="true" size={16} />
+            <span>Frame yang kompatibel ({compatibleFrames.length})</span>
+          </div>
+          <div className="settings-frame-picker" role="radiogroup" aria-label="Pilihan frame yang kompatibel">
+            {compatibleFrames.map((frame) => {
+              const isSelected = frame.id === session.selectedFrame
+              const isExpo = frame.id.startsWith('expo-statistik')
+              return (
+                <button
+                  key={frame.id}
+                  type="button"
+                  disabled={settingsLocked}
+                  className={`settings-frame-card ${isSelected ? 'is-selected' : ''} ${isExpo ? 'is-expo' : ''}`}
+                  onClick={() => session.setFrame(frame.id)}
+                  role="radio"
+                  aria-checked={isSelected}
+                >
+                  <div className="settings-frame-info">
+                    <span className="settings-frame-name">{frame.name}</span>
+                    {isExpo && <span className="settings-frame-badge">⭐ Expo Untad &amp; BPS</span>}
+                  </div>
+                  {isSelected && <Check aria-hidden="true" size={15} className="settings-check" />}
+                </button>
+              )
+            })}
+          </div>
+          <select
+            id="frame-select"
+            aria-label="Frame yang kompatibel"
+            className="visually-hidden-select"
+            disabled={settingsLocked}
+            value={session.selectedFrame}
+            onChange={(event) => session.setFrame(event.target.value)}
+          >
+            {compatibleFrames.map((frame) => (
+              <option key={frame.id} value={frame.id}>{frame.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 2. Camera, Kiosk & Viewport Controls */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <Camera aria-hidden="true" size={16} />
+            <span>Kamera &amp; Layar (Kiosk iPad)</span>
+          </div>
+
+          <fieldset disabled={captureBusy}>
+            <legend>Posisi tombol shutter</legend>
+            <div className="dock-position-options">
+              {([['bottom', 'Bawah (Default)'], ['right', 'Kanan (iPad)'], ['left', 'Kiri']] as const).map(([pos, label]) => (
+                <label key={pos}>
+                  <input
+                    type="radio"
+                    name="shutter-dock-position"
+                    checked={dockPos === pos}
+                    onChange={() => session.setShutterDockPosition(pos)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset disabled={captureBusy}>
+            <legend>Orientasi kamera (Koreksi rotasi iPad)</legend>
+            <div className="rotation-options">
+              {([0, 90, 180, 270] as const).map((deg) => (
+                <label key={deg}>
+                  <input
+                    type="radio"
+                    name="camera-rotation"
+                    checked={session.cameraRotation === deg}
+                    onChange={() => session.setCameraRotation(deg)}
+                  />
+                  <span>{deg === 0 ? '0° Normal' : deg === 90 ? '90° Vertikal' : deg === 180 ? '180° Terbalik' : '270° Vertikal'}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Ukuran pratinjau frame ({stageZoomPercent}%)</legend>
+            <div className="zoom-preset-options">
+              {([0.65, 0.8, 1] as const).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={Math.abs(stageZoom - preset) < 0.03 ? 'is-active' : ''}
+                  onClick={() => session.setStageZoom(preset)}
+                >
+                  {preset === 0.65 ? 'Pas iPad (65%)' : preset === 0.8 ? 'Compact (80%)' : 'Normal (100%)'}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className="settings-toggles">
+            <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
+            <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
+            <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo 60fps</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
+          </div>
+
+          <fieldset disabled={captureBusy}>
+            <legend>Timer hitung mundur</legend>
+            <div className="timer-options">
+              {([3, 5, 10] as const).map((timer) => (
+                <label key={timer}>
+                  <input
+                    type="radio"
+                    name="timer"
+                    checked={session.timer === timer}
+                    onChange={() => session.setTimer(timer)}
+                  />
+                  <span>{timer} detik</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+
+        {/* 3. Visual Color Filters (Visual Swatches + Synchronized Native Select) */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <Sparkles aria-hidden="true" size={16} />
+            <span>Filter warna visual</span>
+          </div>
+          <div className="settings-filter-grid" role="radiogroup" aria-label="Pilihan filter visual">
+            {FILTER_PRESETS.map((filter) => {
+              const isSelected = filter.id === session.selectedFilter
+              return (
+                <button
+                  key={filter.id}
+                  type="button"
+                  disabled={captureBusy}
+                  className={`settings-filter-chip ${isSelected ? 'is-selected' : ''}`}
+                  onClick={() => session.setFilter(filter.id)}
+                  role="radio"
+                  aria-checked={isSelected}
+                >
+                  <span className="settings-filter-swatch" style={{ background: filter.previewColor }} />
+                  <span className="settings-filter-name">{filter.name}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <label className="studio-select-label" htmlFor="quick-filter">Pilih filter cepat</label>
+          <select
+            id="quick-filter"
+            aria-label="Pilih filter cepat"
+            disabled={captureBusy}
+            value={session.selectedFilter}
+            onChange={(event) => session.setFilter(event.target.value)}
+            className="visually-hidden-select"
+          >
+            {FILTER_PRESETS.map((filter) => (
+              <option key={filter.id} value={filter.id}>{filter.name}</option>
+            ))}
+          </select>
+        </div>
       </aside>
       </div>}
     </div>

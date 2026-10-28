@@ -7,6 +7,22 @@
 
 ## [Unreleased / Production Candidate] - 2026-10-29
 
+### 🎨 Redesain UI Drawer Setelan Studio & Visual Frame/Filter Selectors (Fixed & Changed)
+- **Lokasi Kode**:
+  - [`src/features/camera/Studio.tsx`](../src/features/camera/Studio.tsx)
+  - [`src/features/camera/studio.css`](../src/features/camera/studio.css)
+  - [`src/features/camera/Studio.test.tsx`](../src/features/camera/Studio.test.tsx)
+- **Perubahan & Manfaat Utama**:
+  1. **Penghapusan Popup Native Select Raksasa yang Meluap**:
+     - Mengganti tag `<select>` mentah yang sebelumnya memunculkan jendela popover putih raksasa 20 baris yang menutupi pratinjau studio foto di iPad.
+     - Menggantikannya dengan **Visual Frame Picker** (kartu-kartu bingkai interaktif dengan badge resmi *Expo Untad & BPS*) dan **Visual Filter Swatches** (grid chip warna dengan sampel gradien asli).
+     - Mempertahankan tag `<select>` sinkron secara tersembunyi (`.visually-hidden-select`) untuk kompatibilitas aksesibilitas dan testing otomatis.
+  2. **Tema Darkroom Studio & Pengelompokan Kartu Kontrol**:
+     - Mengubah latar belakang drawer dari putih polos menjadi tema analog studio gelap (*graphite glassmorphism* `rgba(22, 22, 21, 0.96)` dengan blur 32px dan aksen emas `#ffd60a`).
+     - Membagi setelan menjadi 3 grup terstruktur: *Frame yang Kompatibel*, *Kamera & Layar (Kiosk iPad)*, dan *Filter Warna Visual*.
+  3. **Responsivitas Topbar Tablet / iPad**:
+     - Menghindari tombol topbar bertumpuk atau terpotong pada resolusi tablet (<= 1024px) dengan menyederhanakan ikon tombol dan menyembunyikan label sekunder secara otomatis.
+
 ### 🎛️ Posisi Tombol Shutter Fleksibel (Bawah / Kanan / Kiri) & Zero-Delay Viewfinder Studio (Added & Fixed)
 - **Lokasi Kode**:
   - [`src/catalog/types.ts`](../src/catalog/types.ts)
