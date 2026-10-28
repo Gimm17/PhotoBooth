@@ -32,9 +32,12 @@
    Setiap kali melakukan perubahan kode atau menambahkan fitur baru, AI Agent **WAJIB** menjalankan 3 tahapan verifikasi berikut dan memastikan semuanya lulus 100%:
    ```powershell
    npm.cmd run typecheck      # Memastikan tidak ada error tipe TypeScript
-   npm.cmd run test:unit       # Menjalankan 26+ file unit test (262+ tests)
+   npm.cmd run test:unit       # Menjalankan 28+ file unit test (270+ tests)
    npm.cmd run test:release    # Menjalankan build Vite + verifikasi service worker precache
    ```
+
+6. **WAJIB UPDATE DOKUMENTASI `AI_AGENT_CONTEXT/` SETIAP SELESAI TASK:**
+   - Setiap kali selesai menambahkan fitur, memperbaiki bug, atau mengubah arsitektur kode, AI Agent **WAJIB** langsung memperbarui [`AI_AGENT_CONTEXT/MEMORY.MD`](./MEMORY.MD) dan [`AI_AGENT_CONTEXT/CHANGELOG.MD`](./CHANGELOG.MD) agar selalu sinkron dengan kondisi produksi terbaru.
 
 ---
 

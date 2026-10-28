@@ -5,26 +5,29 @@
 
 ---
 
-## [Current Production - Commit cdd8876] - 2026-10-28
+## [Current Production - Commit 693c48e] - 2026-10-28
 
 ### 🚀 Fitur Baru & Upgrade Besar (Added & Changed)
 
-#### 0A. Fitur Expo QR Code Share + Google Drive Auto-Bundle & Halaman Unduh Pengunjung (`/share`)
+#### 0A. Fitur Expo QR Code Share + Cross-Page Background Pre-Upload (`/editor` -> `/result`) & Halaman Unduh (`/share`)
 - **Lokasi Kode**:
+  - [`src/features/export/qr-preupload-manager.ts`](../src/features/export/qr-preupload-manager.ts)
   - [`src/features/export/qr-code.ts`](../src/features/export/qr-code.ts)
   - [`src/features/export/gdrive-share-service.ts`](../src/features/export/gdrive-share-service.ts)
   - [`src/features/export/QrShareModal.tsx`](../src/features/export/QrShareModal.tsx)
   - [`src/features/share/ShareLandingPage.tsx`](../src/features/share/ShareLandingPage.tsx) & [`src/features/share/share.css`](../src/features/share/share.css)
+  - [`src/features/editor/Editor.tsx`](../src/features/editor/Editor.tsx)
   - [`src/features/export/ResultPanel.tsx`](../src/features/export/ResultPanel.tsx)
   - [`vercel.json`](../vercel.json) & [`public/sw.js`](../public/sw.js)
   - [`AI_AGENT_CONTEXT/GOOGLE_DRIVE_EXPO_SETUP.MD`](./GOOGLE_DRIVE_EXPO_SETUP.MD)
 - **Perubahan & Perbaikan Utama**:
   1. **Generator QR Code Mandiri (Zero-Dependency ISO/IEC 18004)**:
      - Mengimplementasikan encoder QR Code murni di `qr-code.ts` (Byte mode, Reed-Solomon EC Level L, Version 1–10) dengan perbaikan orientasi koordinat format bits (`modules[row][col]`) dan rendering SVG single `<path>` yang tajam untuk kamera HP iOS/Android.
-  2. **Integrasi Google Apps Script Web App & Background Pre-Upload**:
-     - Menyimpan URL Web App Google Drive default (`DEFAULT_GDRIVE_WEBAPP_URL`) di kode sumber sehingga siap pakai di setiap perangkat tanpa konfigurasi ulang.
-     - Menjalankan *background pre-upload* otomatis `300ms` setelah halaman `/result` terbuka agar saat pengunjung menekan tombol **"Scan QR Code (Foto + Live Photo)"**, QR Code sudah langsung siap.
-     - Mengompresi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.88`, maks `1600px`) secara otomatis khusus untuk payload unggahan cloud (~90% lebih ringan & cepat), sementara unduhan lokal di tablet tetap PNG asli.
+  2. **Cross-Page Background Pre-Upload Sejak dari Editor (`qr-preupload-manager.ts`)**:
+     - Memulai proses pembuatan Live Photo 60fps (Step 1) dan unggah ke Google Drive (Step 2) di latar belakang **sejak pratinjau di `/editor` siap** dan **saat tombol `"Lanjut ke unduh dan cetak"` diklik**, tanpa terputus saat navigasi ke `/result`.
+     - Jika pengguna mengubah bingkai/filter/caption di Editor, proses lama otomatis dibatalkan dan diperbarui sesuai *signature* sesi terbaru.
+     - Saat pengguna mengklik **"Scan QR Code (Foto + Live Photo)"** di `/result`, QR Code langsung siap tampil instan (atau tinggal melanjutkan sisa beberapa detik terakhir dari proses yang sudah jalan sejak di Editor).
+     - Mengompresi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.84`, maks `1350px`) khusus untuk payload unggahan cloud (~90% lebih ringan), men-decode seluruh frame Live Photo secara paralel (`Promise.all`), dan mengoptimalkan bitrate video 3 detik 60fps ke `1.35 Mbps` (~450 KB).
   3. **Halaman Unduh Mobile Pengunjung (`/share`)**:
      - Menyediakan halaman `/share` khusus pengunjung yang memindai QR Code untuk melihat pratinjau Foto Strip, memutar Live Photo 60fps, dan mengunduh keduanya langsung ke HP mereka.
      - Memperbarui CSP di `vercel.json` (`connect-src`, `img-src`, `media-src`) serta SPA rewrites untuk `/share` dan `/frames`.

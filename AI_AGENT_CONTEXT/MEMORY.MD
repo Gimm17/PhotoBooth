@@ -97,6 +97,7 @@ PhotoBooth/
 │   │   │   ├── frame-asset-loader.ts # Async image loader untuk aset dekorasi frame
 │   │   │   ├── qr-code.ts        # Generator matriks QR Code ISO/IEC 18004 mandiri (zero-dependency)
 │   │   │   ├── gdrive-share-service.ts # Klien unggah paralel Foto (JPEG terkompresi) + Live Photo ke Google Drive
+│   │   │   ├── qr-preupload-manager.ts # Singleton manager background pre-upload lintas halaman (/editor -> /result)
 │   │   │   ├── QrShareModal.tsx  # Modal interaktif QR Code Expo di halaman hasil
 │   │   │   └── ResultPanel.tsx   # Panel unduh foto, Live Photo, QR Code, cetak, simpan galeri
 │   │   ├── share/                # Fitur Halaman Unduh Pengunjung Expo (/share)
@@ -250,15 +251,18 @@ Urutan penggambaran canvas beresolusi tinggi mengikuti urutan layering berikut:
    - Begitu countdown mencapai `0`, `captureLivePose` langsung mengambil foto statis beresolusi penuh (`JPEG 0.92` via `captureStatic`) + 1 frame penutup pada `t=0` dengan `durationMs: 0` (tanpa perlu menahan gaya setelah lampu kilat menyala).
 3. **Ekspor Video Linear 60fps Berdurasi Pas 3.0 Detik (`180 Frame @ 60fps`)**:
    - `captureLivePose` menetapkan `sequence.fps = frames.length / 3` sehingga durasi efektif rekaman selalu terkunci di **3.0 detik**.
-   - `livePhotoOrder` dan `composeBoomerang` memetakan setiap slot foto secara proporsional ke **180 frame @ 60fps** (`LIVE_PHOTO_DURATION_SEC = 3`, bitrate `2.5 Mbps`, prioritas `video/mp4` lalu `video/webm`) dengan sinkronisasi *wall-clock* `performance.now()`.
+   - Seluruh frame dari semua slot foto di-decode secara paralel menggunakan `Promise.all` bersamaan dengan aset frame (~120ms).
+   - `livePhotoOrder` dan `composeBoomerang` memetakan setiap slot foto secara proporsional ke **180 frame @ 60fps** (`LIVE_PHOTO_DURATION_SEC = 3`, bitrate `1.35 Mbps` / `1.0 Mbps`, prioritas `video/mp4` lalu `video/webm`) dengan sinkronisasi *wall-clock* `performance.now()`.
 
 ---
 
-### 4.6. Arsitektur Expo QR Code & Google Drive Share (`gdrive-share-service.ts`, `qr-code.ts`, `ShareLandingPage.tsx`)
+### 4.6. Arsitektur Expo QR Code & Google Drive Share (`qr-preupload-manager.ts`, `gdrive-share-service.ts`, `qr-code.ts`, `ShareLandingPage.tsx`)
 
-1. **Alur Berbagi Mandiri untuk Pengunjung Expo**:
-   - Saat halaman `/result` terbuka, `ResultPanel.tsx` otomatis menjalankan **Background Pre-Upload** setelah `300ms`: merender video Live Photo 60fps dan mengunggah bundel **Foto Strip + Live Photo 60fps** ke Google Apps Script Web App (`DEFAULT_GDRIVE_WEBAPP_URL`).
-   - Untuk mempercepat unggahan hingga ~90%, `compressPhotoForUpload` mengonversi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.88`, maks `1600px`, ~250 KB) khusus untuk payload cloud, sementara unduhan lokal di tablet tetap PNG asli.
+1. **Cross-Page Background Pre-Upload (`/editor` -> `/result` via `qr-preupload-manager.ts`)**:
+   - Begitu pratinjau cetakan di halaman **Editor (`/editor`)** selesai dirender (dan juga tepat saat tombol **"Lanjut ke unduh dan cetak"** diklik), `startQrPreupload({ isBackground: true })` langsung menjalankan Step 1 (render Live Photo 60fps 3 detik) dan Step 2 (upload ke Google Drive) di latar belakang menggunakan *signature* konfigurasi sesi.
+   - Karena dikelola oleh singleton `qr-preupload-manager.ts` di luar siklus unmount komponen, perpindahan rute dari `/editor` ke `/result` **tidak membatalkan** proses unggahan yang sedang berjalan.
+   - Saat pengguna mengklik **"Scan QR Code (Foto + Live Photo)"** di `/result`, QR Code langsung tampil instan (0 detik) jika sudah selesai, atau melanjutkan sisa progres yang sudah berjalan dari Editor. Jika pengguna tidak mengklik tombol QR, proses tetap selesai diam-diam di latar belakang.
+   - Untuk mempercepat unggahan hingga ~90%, `compressPhotoForUpload` mengonversi foto PNG besar (`> 300 KB`) menjadi JPEG berkualitas tinggi (`0.84`, maks `1350px`, ~160 KB) khusus untuk payload cloud, sementara unduhan lokal di tablet tetap PNG asli.
 2. **QR Code Mandiri & Halaman Unduh Mobile (`/share`)**:
    - `qr-code.ts` menghasilkan matriks QR Code standar ISO/IEC 18004 (Byte mode, Reed-Solomon EC Level L, Version 1–10) secara murni di sisi klien tanpa library eksternal, dirender sebagai single `<path>` SVG tajam di `QrShareModal.tsx`.
    - Ketika pengunjung memindai QR Code dengan kamera HP, mereka diarahkan ke `/share?p=<photoId>&v=<videoId>&d=<folderId>` (`ShareLandingPage.tsx`) yang menampilkan pratinjau foto, pemutar Live Photo 60fps, serta tombol **Unduh Foto** dan **Unduh Live Photo 60fps** langsung ke HP pengunjung.
