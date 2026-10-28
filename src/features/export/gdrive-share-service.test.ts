@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildShareUrl, getGDriveEndpoint, setGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
+import { buildShareUrl, DEFAULT_GDRIVE_WEBAPP_URL, getGDriveEndpoint, setGDriveEndpoint, uploadBundleToGDrive } from './gdrive-share-service'
 
 describe('gdrive-share-service', () => {
   afterEach(() => {
@@ -7,8 +7,8 @@ describe('gdrive-share-service', () => {
     vi.restoreAllMocks()
   })
 
-  it('stores and retrieves the Google Drive Web App endpoint in localStorage', () => {
-    expect(getGDriveEndpoint()).toBe('')
+  it('stores and retrieves the Google Drive Web App endpoint in localStorage with built-in default fallback', () => {
+    expect(getGDriveEndpoint()).toBe(DEFAULT_GDRIVE_WEBAPP_URL)
     setGDriveEndpoint('  https://script.google.com/macros/s/abc/exec  ')
     expect(getGDriveEndpoint()).toBe('https://script.google.com/macros/s/abc/exec')
   })

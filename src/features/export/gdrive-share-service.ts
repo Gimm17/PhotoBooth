@@ -1,4 +1,5 @@
 export const GDRIVE_STORAGE_KEY = 'photobooth.gdriveWebAppUrl'
+export const DEFAULT_GDRIVE_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzE7aPnZBGC7t21B_I-nvZ2SeJQZKLff7nZr9rTmww4JUjDhTE6LGg5OrlriThYOMVEXQ/exec'
 
 export interface GDriveUploadInput {
   photoBlob: Blob
@@ -35,7 +36,7 @@ export const getGDriveEndpoint = (): string => {
     // Ignore storage access errors
   }
   const envUrl = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_GDRIVE_WEBAPP_URL?.trim()
-  return envUrl || ''
+  return envUrl || DEFAULT_GDRIVE_WEBAPP_URL
 }
 
 export const setGDriveEndpoint = (url: string): void => {
