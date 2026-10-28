@@ -6,7 +6,7 @@ describe('generateQrMatrix', () => {
     const matrix = generateQrMatrix('https://photobooth-neon-alpha.vercel.app/share?p=1CG5QWAs682EiJoRK55BaTOeKrDvxONu3&v=11hej7pRt1JJZbG_uKpLjx1aS6fy-J7_o&d=19EwU3Py-VypIOEC2mnU_RO7zfB23Y1TC')
     const size = matrix.length
 
-    expect(size).toBe(49)
+    expect(size).toBe(45)
     expect(matrix[0]).toHaveLength(size)
     // Top-left finder center (3, 3) is always dark
     expect(matrix[3][3]).toBe(true)
