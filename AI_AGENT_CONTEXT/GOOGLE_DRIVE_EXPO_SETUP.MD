@@ -29,10 +29,16 @@ function doPost(e) {
     // Gunakan folder sesi yang sudah dibuat jika folderId dikirim, atau buat folder baru
     let sessionFolder = null;
     if (payload.folderId) {
-      try {
-        sessionFolder = DriveApp.getFolderById(payload.folderId);
-      } catch (errFolder) {
-        sessionFolder = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          sessionFolder = DriveApp.getFolderById(payload.folderId);
+          if (sessionFolder) break;
+        } catch (errFolder) {
+          Utilities.sleep(1000);
+        }
+      }
+      if (!sessionFolder) {
+        throw new Error('Folder sesi dengan ID ' + payload.folderId + ' belum terindeks atau tidak ditemukan di Google Drive.');
       }
     }
 

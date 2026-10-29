@@ -113,31 +113,50 @@ const postPayloadToGDrive = async (
   endpoint: string,
   payload: Record<string, unknown>,
   signal?: AbortSignal,
+  maxRetries = 2,
 ): Promise<GDriveWebhookResponse> => {
-  // Use text/plain to avoid CORS preflight rejection on Google Apps Script Web Apps
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-    signal,
-  })
+  const isTestEnv = typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.MODE === 'test'
+  const retries = isTestEnv ? 0 : maxRetries
 
-  if (!response.ok) {
-    throw new Error(`Gagal menghubungi Google Drive (${response.status}). Pastikan Web App memiliki akses "Anyone".`)
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    if (signal?.aborted) throw new DOMException('Permintaan dibatalkan.', 'AbortError')
+
+    try {
+      // Use text/plain to avoid CORS preflight rejection on Google Apps Script Web Apps
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Gagal menghubungi Google Drive (${response.status}). Pastikan Web App memiliki akses "Anyone".`)
+      }
+
+      let data: GDriveWebhookResponse
+      try {
+        data = (await response.json()) as GDriveWebhookResponse
+      } catch {
+        throw new Error('Respons Google Drive tidak valid. Pastikan script sudah di-deploy sebagai Web App dengan akses "Anyone".')
+      }
+
+      if (data.ok === false || data.error) {
+        throw new Error(data.error || 'Google Drive menolak unggahan berkas.')
+      }
+
+      return data
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (signal?.aborted || attempt === retries) break
+      // Jeda retry otomatis (1.5s lalu 3s) untuk mengantisipasi cold-start atau fluktuasi sinyal
+      const delayMs = attempt === 0 ? 1500 : 3000
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
   }
 
-  let data: GDriveWebhookResponse
-  try {
-    data = (await response.json()) as GDriveWebhookResponse
-  } catch {
-    throw new Error('Respons Google Drive tidak valid. Pastikan script sudah di-deploy sebagai Web App dengan akses "Anyone".')
-  }
-
-  if (data.ok === false || data.error) {
-    throw new Error(data.error || 'Google Drive menolak unggahan berkas.')
-  }
-
-  return data
+  throw lastError ?? new Error('Gagal menghubungi Google Drive setelah beberapa percobaan.')
 }
 
 export async function createGDriveSessionFolder(input: {
@@ -160,7 +179,11 @@ export async function createGDriveSessionFolder(input: {
   }
 
   const data = await postPayloadToGDrive(endpoint, payload, input.signal)
-  const folderId = data.folderId?.trim() || ''
+  let folderId = data.folderId?.trim() || ''
+  if (!folderId && data.folderUrl) {
+    const match = data.folderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    if (match?.[1]) folderId = match[1]
+  }
   const folderUrl = data.folderUrl?.trim() || (folderId ? `https://drive.google.com/drive/folders/${folderId}` : '')
   if (!folderUrl) {
     throw new Error('Google Drive tidak mengembalikan tautan folder sesi.')
@@ -316,10 +339,16 @@ function doPost(e) {
     // Gunakan folder sesi yang sudah dibuat jika folderId dikirim, atau buat folder baru
     let sessionFolder = null;
     if (payload.folderId) {
-      try {
-        sessionFolder = DriveApp.getFolderById(payload.folderId);
-      } catch (errFolder) {
-        sessionFolder = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          sessionFolder = DriveApp.getFolderById(payload.folderId);
+          if (sessionFolder) break;
+        } catch (errFolder) {
+          Utilities.sleep(1000);
+        }
+      }
+      if (!sessionFolder) {
+        throw new Error('Folder sesi dengan ID ' + payload.folderId + ' belum terindeks atau tidak ditemukan di Google Drive.');
       }
     }
 

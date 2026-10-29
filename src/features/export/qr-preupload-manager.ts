@@ -7,6 +7,8 @@ import {
   createGDriveSessionFolder,
   getGDriveEndpoint,
   uploadBundleToGDrive,
+  uploadPhotoOnlyToGDrive,
+  uploadVideoOnlyToGDrive,
   warmUpGDriveConnection,
   type GDriveUploadResult,
 } from './gdrive-share-service'
@@ -313,8 +315,9 @@ export async function startQrPreupload(options?: {
     }
     notify()
 
-    // 2. Launch a DETACHED background upload of the 100% original Photo + high-clarity 60fps Live Photo
-    // into `folder.result.folderId`. Even if the next visitor resets the session, this finishes uploading!
+    // 2. Launch DETACHED background upload pipeline:
+    // STEP 1: Upload Photo IMMEDIATELY (Photo-First, unblocked, lightweight ~1-3MB payload)
+    // STEP 2: Asynchronously compose and upload Live Photo Video (MP4) into the SAME folder
     const snapshotAdjustments = { ...session.photoAdjustments }
     const snapshotSequences = [...session.liveSequences]
     const snapshotIntensity = session.filterIntensity
@@ -324,58 +327,81 @@ export async function startQrPreupload(options?: {
     const targetFolderId = folder.result.folderId
 
     void (async () => {
+      let photoUploaded = false
+      let videoUploaded = false
+
+      // STEP 1: Upload Photo IMMEDIATELY so it is available in Google Drive within seconds!
       try {
-        const bgAbort = new AbortController()
-        let videoBlob: Blob | null = null
-        let videoMime = 'video/mp4'
-
-        if (snapshotBoomerang) {
-          videoBlob = snapshotBoomerang.blob
-          videoMime = snapshotBoomerang.mimeType
-        } else if (hasAllLiveSequences) {
-          try {
-            const recorded = await composeBoomerang({
-              frame,
-              filter,
-              intensity: snapshotIntensity,
-              caption: snapshotCaption,
-              showDate: snapshotShowDate,
-              sequences: snapshotSequences,
-              signal: bgAbort.signal,
-              capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
-              adjustments: snapshotAdjustments,
-            })
-            if (computeSessionQrSignature(endpoint) === signature) {
-              const url = URL.createObjectURL(recorded.blob)
-              useSessionStore.getState().setBoomerangResult({ ...recorded, url })
-            }
-            videoBlob = recorded.blob
-            videoMime = recorded.mimeType
-          } catch {
-            videoBlob = null
-          }
-        }
-
-        const now = new Date()
-        await uploadBundleToGDrive({
+        await uploadPhotoOnlyToGDrive({
           endpointUrl: endpoint,
           folderId: targetFolderId,
           photoBlob: blob,
           photoFilename: `${folder.sessionName}.png`,
-          videoBlob,
-          videoFilename: videoBlob ? createBoomerangFilename(videoMime, now) : undefined,
           frameName: frame.name,
         })
+        photoUploaded = true
+      } catch (errPhoto) {
+        console.warn('Gagal mengunggah foto utama ke Google Drive:', errPhoto)
+      }
 
-        if (currentEntry.uploadedSignature === signature && currentEntry.state.status === 'ready') {
-          currentEntry.state = {
-            ...currentEntry.state,
-            backgroundSync: 'completed',
+      // STEP 2: Compose & Upload Live Photo 60fps Video in background
+      if (includeLive) {
+        try {
+          const bgAbort = new AbortController()
+          let videoBlob: Blob | null = null
+          let videoMime = 'video/mp4'
+
+          if (snapshotBoomerang) {
+            videoBlob = snapshotBoomerang.blob
+            videoMime = snapshotBoomerang.mimeType
+          } else if (hasAllLiveSequences) {
+            try {
+              const recorded = await composeBoomerang({
+                frame,
+                filter,
+                intensity: snapshotIntensity,
+                caption: snapshotCaption,
+                showDate: snapshotShowDate,
+                sequences: snapshotSequences,
+                signal: bgAbort.signal,
+                capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
+                adjustments: snapshotAdjustments,
+              })
+              if (computeSessionQrSignature(endpoint) === signature) {
+                const url = URL.createObjectURL(recorded.blob)
+                useSessionStore.getState().setBoomerangResult({ ...recorded, url })
+              }
+              videoBlob = recorded.blob
+              videoMime = recorded.mimeType
+            } catch (errCompose) {
+              console.warn('Gagal me-render video Live Photo:', errCompose)
+              videoBlob = null
+            }
           }
-          notify()
+
+          if (videoBlob) {
+            const now = new Date()
+            await uploadVideoOnlyToGDrive({
+              endpointUrl: endpoint,
+              folderId: targetFolderId,
+              sessionName: folder.sessionName,
+              frameName: frame.name,
+              videoBlob,
+              videoFilename: createBoomerangFilename(videoMime, now),
+            })
+            videoUploaded = true
+          }
+        } catch (errVideo) {
+          console.warn('Gagal mengunggah video Live Photo ke Google Drive:', errVideo)
         }
-      } catch {
-        // Background upload errors do not hide the already-displayed Drive Folder QR Code
+      }
+
+      if (currentEntry.uploadedSignature === signature && currentEntry.state.status === 'ready') {
+        currentEntry.state = {
+          ...currentEntry.state,
+          backgroundSync: (photoUploaded || videoUploaded) ? 'completed' : 'syncing',
+        }
+        notify()
       }
     })()
   } catch (error) {

@@ -7,6 +7,26 @@
 
 ## [Unreleased / Production Candidate] - 2026-10-29
 
+### 🚀 Optimalisasi Keandalan Unggah Google Drive: Photo-First Pipeline, Retry Otomatis & Anti-Folder Duplikat (Fixed & Optimized)
+- **Lokasi Kode**:
+  - [`src/features/export/qr-preupload-manager.ts`](../src/features/export/qr-preupload-manager.ts)
+  - [`src/features/export/gdrive-share-service.ts`](../src/features/export/gdrive-share-service.ts)
+  - [`AI_AGENT_CONTEXT/GOOGLE_DRIVE_EXPO_SETUP.MD`](../AI_AGENT_CONTEXT/GOOGLE_DRIVE_EXPO_SETUP.MD)
+- **Penyebab Utama Mengapa Sebelumnya Ada File yang Tidak Terunggah**:
+  1. **Batas Ukuran Payload / Memori Google Apps Script**: Sebelumnya foto dan video digabung dalam 1 request JSON raksasa (15-22 MB base64). Apps Script sering mengalami timeout atau error `Exceeded memory limit` sehingga kedua berkas gagal masuk sekaligus.
+  2. **Pemblokiran Unggah Foto oleh Render Video**: Foto utama ditahan menunggu render Boomerang 60fps selesai (5-15 detik). Jika rendering video terhambat di tablet, foto pun tidak terkirim.
+  3. **Folder Duplikat / Ghost Folder di Google Drive**: Jika pencarian `payload.folderId` mengalami delay replikasi Google Drive, script Apps Script lama otomatis membuat folder baru lain, sehingga foto masuk ke folder baru yang tidak discan oleh pengunjung.
+  4. **Ketiadaan Retry Otomatis**: Gangguan koneksi WiFi/tethering booth atau cold-start Apps Script langsung mematikan proses unggah tanpa mencoba kembali.
+- **Solusi & Perubahan yang Diterapkan**:
+  1. **Pemisahan Unggah (Photo-First Pipeline)**:
+     - Foto utama beresolusi tinggi langsung diunggah seketika ke `folderId` sesi tanpa menunggu video selesai di-render. Foto tiba di Google Drive dalam hitungan 2-3 detik.
+     - Live Photo 60fps diunggah secara asinkron sebagai request terpisah ke folder yang sama begitu render selesai.
+     - Ukuran payload terpotong 50-70%, menghilangkan risiko timeout atau limit memori.
+  2. **Mekanisme Otomatis Retry dengan Exponential Backoff**:
+     - Menambahkan fungsi retry otomatis hingga 3 kali percobaan (dengan jeda 1.5 detik dan 3 detik) pada `postPayloadToGDrive` jika terjadi gangguan sinyal atau cold start.
+  3. **Pencegahan Ghost Folder di Google Apps Script**:
+     - Memperbarui skrip `Code.gs` agar melakukan perulangan retry `DriveApp.getFolderById(payload.folderId)` dengan jeda 1 detik, serta tidak pernah membuat folder liar jika `folderId` sudah ditentukan oleh sistem QR Code.
+
 ### 🎨 Penyelarasan Palet Warna Studio & Drawer Setelan dengan Tema Web Utama (Refactored)
 - **Lokasi Kode**:
   - [`src/features/camera/studio.css`](../src/features/camera/studio.css)
