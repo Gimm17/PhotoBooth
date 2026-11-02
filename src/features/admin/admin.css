@@ -673,3 +673,58 @@
   opacity: 1;
   background: rgba(248, 113, 113, 0.15);
 }
+
+/* Add Custom Frame Card in Grid */
+.frame-card.frame-add-card {
+  border: 2px dashed rgba(229, 169, 59, 0.5) !important;
+  background: rgba(229, 169, 59, 0.05) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.frame-card.frame-add-card:hover {
+  background: rgba(229, 169, 59, 0.12) !important;
+  border-color: #e5a93b !important;
+  box-shadow: 0 8px 24px rgba(229, 169, 59, 0.22) !important;
+  transform: translateY(-3px);
+}
+
+.frame-add-placeholder {
+  width: 68px;
+  height: 68px;
+  border: 2px dashed rgba(229, 169, 59, 0.6);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e5a93b;
+  background: rgba(229, 169, 59, 0.12);
+  transition: all 0.2s ease;
+  margin: 0 auto;
+}
+
+.frame-card.frame-add-card:hover .frame-add-placeholder {
+  background: #e5a93b;
+  color: #1a1714;
+  border-color: #e5a93b;
+  transform: scale(1.08);
+}
+
+.frame-add-label {
+  font-weight: 700;
+  color: #a87216;
+  font-size: 0.84rem;
+}
+
+.frame-add-sub {
+  color: #8c827a;
+  font: 0.58rem/1.2 var(--font-mono);
+  letter-spacing: 0.03em;
+}
+

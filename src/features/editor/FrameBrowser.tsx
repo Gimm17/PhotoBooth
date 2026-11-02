@@ -1,5 +1,8 @@
-import { useEffect, useMemo } from 'react'
-import { Check, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, Plus, Search } from 'lucide-react'
+import { useAdminAuthStore } from '../admin/admin-auth-store'
+import { AdminPinModal } from '../admin/AdminPinModal'
+import { GreenscreenUploadModal } from '../admin/GreenscreenUploadModal'
 import { FRAME_TEMPLATES, layoutById } from '../../catalog/frames'
 import { useCustomFramesStore } from '../../catalog/custom-frame-store'
 import type { FrameCategory, FrameOrientation } from '../../catalog/types'
@@ -25,6 +28,18 @@ interface FrameBrowserProps {
 }
 
 export function FrameBrowser({ category, orientation, query, selectedFrame, onCategoryChange, onOrientationChange, onQueryChange, onSelect }: FrameBrowserProps) {
+  const isAdmin = useAdminAuthStore((s) => s.isAdmin)
+  const [adminPinModalOpen, setAdminPinModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+
+  const handleAddFrameClick = () => {
+    if (!isAdmin) {
+      setAdminPinModalOpen(true)
+    } else {
+      setUploadModalOpen(true)
+    }
+  }
+
   const customFrames = useCustomFramesStore((s) => s.customFrames)
   const initCustomFrames = useCustomFramesStore((s) => s.init)
 
@@ -52,7 +67,35 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
         <small className="frame-card-pose-count">{layoutById(frame.layoutId)?.requiredShots ?? frame.slots.length} pose</small>
         {selectedFrame === frame.id && <Check aria-label="Dipilih" size={16} />}
       </button>)}
+      <button
+        type="button"
+        className="frame-card frame-add-card"
+        onClick={handleAddFrameClick}
+        aria-label="Tambah template kustom greenscreen"
+      >
+        <div className="frame-thumbnail">
+          <div className="frame-add-placeholder">
+            <Plus aria-hidden="true" size={30} />
+          </div>
+        </div>
+        <span className="frame-add-label">+ Tambah Frame</span>
+        <small className="frame-card-pose-count">Greenscreen · Admin</small>
+      </button>
     </div>
     {frames.length === 0 && <p className="editor-empty">Tidak ada bingkai yang cocok.</p>}
+    <AdminPinModal
+      isOpen={adminPinModalOpen}
+      onClose={() => setAdminPinModalOpen(false)}
+      onSuccess={() => {
+        setUploadModalOpen(true)
+      }}
+    />
+    <GreenscreenUploadModal
+      isOpen={uploadModalOpen}
+      onClose={() => setUploadModalOpen(false)}
+      onSuccess={(newFrame) => {
+        onSelect(newFrame.id)
+      }}
+    />
   </section>
 }
