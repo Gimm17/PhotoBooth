@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './app/App'
 import './shared/styles/tokens.css'
 import './shared/styles/global.css'
+import './features/admin/admin.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

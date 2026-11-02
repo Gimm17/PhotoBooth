@@ -1,5 +1,7 @@
+import { useEffect, useMemo } from 'react'
 import { Check, Search } from 'lucide-react'
 import { FRAME_TEMPLATES, layoutById } from '../../catalog/frames'
+import { useCustomFramesStore } from '../../catalog/custom-frame-store'
 import type { FrameCategory, FrameOrientation } from '../../catalog/types'
 import { FrameThumbnail } from './FrameThumbnail'
 
@@ -23,8 +25,16 @@ interface FrameBrowserProps {
 }
 
 export function FrameBrowser({ category, orientation, query, selectedFrame, onCategoryChange, onOrientationChange, onQueryChange, onSelect }: FrameBrowserProps) {
+  const customFrames = useCustomFramesStore((s) => s.customFrames)
+  const initCustomFrames = useCustomFramesStore((s) => s.init)
+
+  useEffect(() => {
+    void initCustomFrames()
+  }, [initCustomFrames])
+
+  const allFrames = useMemo(() => [...customFrames, ...FRAME_TEMPLATES], [customFrames])
   const normalizedQuery = query.trim().toLocaleLowerCase('id-ID')
-  const frames = FRAME_TEMPLATES.filter((frame) => (
+  const frames = allFrames.filter((frame) => (
     (category === 'Semua' || frame.category === category)
     && (orientation === 'all' || frame.orientation === orientation)
     && (!normalizedQuery || frame.name.toLocaleLowerCase('id-ID').includes(normalizedQuery))

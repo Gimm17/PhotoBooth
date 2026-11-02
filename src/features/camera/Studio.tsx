@@ -1,9 +1,13 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, Layout, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, SlidersHorizontal, Sparkles, X, ZoomIn, ZoomOut } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, Layout, Lock, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../../catalog/frames'
 import { useSessionStore } from '../../store/session-store'
+import { useAdminAuthStore } from '../admin/admin-auth-store'
+import { AdminPinModal } from '../admin/AdminPinModal'
+import { GreenscreenUploadModal } from '../admin/GreenscreenUploadModal'
+import { useCustomFramesStore } from '../../catalog/custom-frame-store'
 import { captureFrame } from './camera-service'
 import { createCaptureMachine, type CaptureState } from './capture-machine'
 import { captureLivePose, createLiveRingBuffer, type LiveRingBuffer } from './live-capture-service'
@@ -107,14 +111,31 @@ export function Studio() {
     })
   }
 
+  const isAdmin = useAdminAuthStore((s) => s.isAdmin)
+  const logoutAdmin = useAdminAuthStore((s) => s.logout)
+  const [adminPinModalOpen, setAdminPinModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+
+  const customFrames = useCustomFramesStore((s) => s.customFrames)
+  const initCustomFrames = useCustomFramesStore((s) => s.init)
+  const deleteCustomFrame = useCustomFramesStore((s) => s.deleteFrame)
+
+  useEffect(() => {
+    void initCustomFrames()
+  }, [initCustomFrames])
+
+  const allAvailableFrames = useMemo(() => {
+    return [...customFrames, ...FRAME_TEMPLATES]
+  }, [customFrames])
+
   const machine = machineRef.current
   const complete = session.photos.length >= session.requiredShots
   const activeSlot = captureState.retakeIndex ?? (complete ? -1 : Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0)))
-  const activeFrame = frameById(session.selectedFrame) ?? FRAME_TEMPLATES.find((frame) => frame.layoutId === session.selectedLayout)!
+  const activeFrame = frameById(session.selectedFrame) ?? allAvailableFrames.find((frame) => frame.layoutId === session.selectedLayout) ?? FRAME_TEMPLATES[0]
   const stageZoom = session.stageZoom ?? 1
   const stageZoomPercent = Math.round(stageZoom * 100)
   const dockPos = session.shutterDockPosition ?? 'bottom'
-  const compatibleFrames = FRAME_TEMPLATES.filter((frame) => frame.layoutId === session.selectedLayout)
+  const compatibleFrames = allAvailableFrames.filter((frame) => frame.layoutId === session.selectedLayout)
   const stageStyle = {
     '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
   } as CSSProperties
@@ -273,6 +294,32 @@ export function Studio() {
           {dockPos === 'bottom' ? <PanelBottom aria-hidden="true" size={17} /> : dockPos === 'right' ? <PanelRight aria-hidden="true" size={17} /> : <PanelLeft aria-hidden="true" size={17} />}
           <span>{dockPos === 'bottom' ? 'Tombol: Bawah' : dockPos === 'right' ? 'Tombol: Kanan' : 'Tombol: Kiri'}</span>
         </button>
+        {isAdmin ? (
+          <button
+            className="studio-dock-trigger is-admin-active"
+            type="button"
+            onClick={() => {
+              if (window.confirm('Keluar dari Mode Admin?')) logoutAdmin()
+            }}
+            aria-label="Mode Admin Aktif - Klik untuk keluar"
+            title="Mode Admin Aktif - Klik untuk keluar"
+            style={{ color: '#e5a93b', borderColor: 'rgba(229, 169, 59, 0.4)' }}
+          >
+            <ShieldCheck aria-hidden="true" size={16} />
+            <span>Admin</span>
+          </button>
+        ) : (
+          <button
+            className="studio-dock-trigger is-admin-lock"
+            type="button"
+            onClick={() => setAdminPinModalOpen(true)}
+            aria-label="Masuk Mode Admin"
+            title="Akses Khusus Admin (PIN: 1708)"
+          >
+            <Lock aria-hidden="true" size={15} />
+            <span>Admin</span>
+          </button>
+        )}
         <Link className="studio-gallery-link" to="/gallery">Galeri lokal</Link>
         <div className="studio-camera-status"><span aria-hidden="true" />{camera.status === 'active' ? 'Kamera aktif' : uploadContinuation ? 'Sesi unggahan' : 'Kamera belum aktif'}</div>
         <button ref={settingsTriggerRef} className="studio-settings-trigger" type="button" aria-label="Buka setelan tangkapan" aria-controls="studio-settings" aria-expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)}><SlidersHorizontal aria-hidden="true" size={19} /><span>Setelan</span></button>
@@ -342,27 +389,101 @@ export function Studio() {
           <div className="settings-group-header">
             <Layout aria-hidden="true" size={16} />
             <span>Frame yang kompatibel ({compatibleFrames.length})</span>
+            {isAdmin && <span className="admin-upload-badge" style={{ marginLeft: 'auto' }}>Admin</span>}
           </div>
+
+          {isAdmin ? (
+            <button
+              type="button"
+              className="admin-btn-upload-template"
+              onClick={() => setUploadModalOpen(true)}
+            >
+              <Sparkles aria-hidden="true" size={17} color="#e5a93b" />
+              <span>+ Upload Template Greenscreen</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px dashed rgba(255, 255, 255, 0.12)',
+                borderRadius: '10px',
+                color: '#a8a29e',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '10px 14px',
+                cursor: 'pointer',
+                width: '100%',
+                marginBottom: '8px',
+              }}
+              onClick={() => setAdminPinModalOpen(true)}
+            >
+              <Lock aria-hidden="true" size={14} color="#e5a93b" />
+              <span>Login Admin untuk Upload Template Kustom</span>
+            </button>
+          )}
+
           <div className="settings-frame-picker" role="radiogroup" aria-label="Pilihan frame yang kompatibel">
             {compatibleFrames.map((frame) => {
               const isSelected = frame.id === session.selectedFrame
               const isExpo = frame.id.startsWith('expo-statistik')
+              const isCustom = frame.id.startsWith('custom-')
               return (
-                <button
+                <div
                   key={frame.id}
-                  type="button"
-                  disabled={settingsLocked}
-                  className={`settings-frame-card ${isSelected ? 'is-selected' : ''} ${isExpo ? 'is-expo' : ''}`}
-                  onClick={() => session.setFrame(frame.id)}
-                  role="radio"
-                  aria-checked={isSelected}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}
                 >
-                  <div className="settings-frame-info">
-                    <span className="settings-frame-name">{frame.name}</span>
-                    {isExpo && <span className="settings-frame-badge">⭐ Expo Untad &amp; BPS</span>}
-                  </div>
-                  {isSelected && <Check aria-hidden="true" size={15} className="settings-check" />}
-                </button>
+                  <button
+                    type="button"
+                    disabled={settingsLocked}
+                    className={`settings-frame-card ${isSelected ? 'is-selected' : ''} ${isExpo ? 'is-expo' : ''}`}
+                    onClick={() => session.setFrame(frame.id)}
+                    role="radio"
+                    aria-checked={isSelected}
+                    style={{ flex: 1 }}
+                  >
+                    <div className="settings-frame-info">
+                      <span className="settings-frame-name">{frame.name}</span>
+                      {isExpo && <span className="settings-frame-badge">⭐ Expo Untad &amp; BPS</span>}
+                      {isCustom && (
+                        <span
+                          className="settings-frame-badge"
+                          style={{
+                            background: 'rgba(52, 211, 153, 0.15)',
+                            borderColor: 'rgba(52, 211, 153, 0.4)',
+                            color: '#34d399',
+                          }}
+                        >
+                          ✨ Kustom
+                        </span>
+                      )}
+                    </div>
+                    {isSelected && <Check aria-hidden="true" size={15} className="settings-check" />}
+                  </button>
+                  {isCustom && isAdmin && (
+                    <button
+                      type="button"
+                      className="admin-delete-frame-btn"
+                      title={`Hapus template "${frame.name}"`}
+                      aria-label={`Hapus template ${frame.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (window.confirm(`Hapus template kustom "${frame.name}"?`)) {
+                          void deleteCustomFrame(frame.id)
+                          if (session.selectedFrame === frame.id) {
+                            const fallback = FRAME_TEMPLATES.find((f) => f.layoutId === session.selectedLayout)
+                            if (fallback) session.setFrame(fallback.id)
+                          }
+                        }
+                      }}
+                    >
+                      <Trash2 aria-hidden="true" size={16} />
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -504,5 +625,21 @@ export function Studio() {
       </aside>
       </div>}
     </div>
+
+    <AdminPinModal
+      isOpen={adminPinModalOpen}
+      onClose={() => setAdminPinModalOpen(false)}
+      onSuccess={() => {
+        setUploadModalOpen(true)
+      }}
+    />
+
+    <GreenscreenUploadModal
+      isOpen={uploadModalOpen}
+      onClose={() => setUploadModalOpen(false)}
+      onSuccess={() => {
+        closeSettings()
+      }}
+    />
   </section>
 }

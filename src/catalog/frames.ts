@@ -7,6 +7,8 @@ import { CELEBRATION_FRAMES } from './frames/celebration'
 import { SEASONAL_FRAMES } from './frames/seasonal'
 import { IMPORTED_FRAMES } from './frames/imported'
 
+import { getInMemoryCustomFrames } from './custom-frame-store'
+
 export { caption, single, duo, postcard, strip, grid } from './frame-geometry'
 
 export const LAYOUTS = [
@@ -27,5 +29,8 @@ export const FRAME_TEMPLATES = [
   ...IMPORTED_FRAMES,
 ] satisfies FrameTemplate[]
 
-export const frameById = (id: string) => FRAME_TEMPLATES.find((frame) => frame.id === id)
+export const frameById = (id: string) => {
+  const custom = getInMemoryCustomFrames()
+  return custom.find((frame) => frame.id === id) || FRAME_TEMPLATES.find((frame) => frame.id === id)
+}
 export const layoutById = (id: string) => LAYOUTS.find((layout) => layout.id === id)

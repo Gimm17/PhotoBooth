@@ -19,7 +19,11 @@ PhotoBooth adalah aplikasi web photobooth modern, berkinerja tinggi, dan **100% 
 2. **Privasi 100% di Perangkat Pengguna:**
    - Seluruh aliran video kamera, foto yang diambil, foto yang diunggah, cropping, filter, komposisi canvas, perekaman video Boomerang, dan penyimpanan galeri berjalan murni di memori browser dan IndexedDB lokal.
    - Tidak ada pengiriman foto ke server pihak ketiga, cloud, atau telemetry analitik.
-3. **Katalog Frame Kaya (44 Template, Termasuk Koleksi Resmi Expo Pojok Statistik):**
+3. **Template Greenscreen Otomatis (Auto-Chroma Key) & Akses Login Admin:**
+   - End-user/admin dapat mengunggah template desain dengan slot greenscreen (#00FF00). Sistem secara otomatis mendeteksi slot foto, melubangi warna hijau menjadi transparan, dan memungkinkan penataan ulang urutan jepretan kamera (Pose 1, 2, 3).
+   - Akses upload dilindungi sistem autentikasi PIN Kiosk (default: `1708`) agar tidak disalahgunakan pengunjung umum saat event.
+   - Template tersimpan permanen di IndexedDB lokal perangkat booth.
+4. **Katalog Frame Kaya (44 Template Bawaan + Template Kustom):**
    - Mendukung 44 template bingkai beragam kategori (Classic, Celebration, Coquette, Cute & Pastel, Nature & Dreamy, Seasonal) dengan 8 layout pose.
    - Memiliki 3 template resmi bertema **Expo Pojok Statistik** (Universitas Tadulako & BPS Sulawesi Tengah) dengan format 3-pose postcard/strip portrait:
      1. `expo-statistik-math` (*Pojok Statistik — Edu Math*)

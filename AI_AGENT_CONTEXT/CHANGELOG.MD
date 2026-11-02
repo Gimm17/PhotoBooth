@@ -5,7 +5,38 @@
 
 ---
 
-## [Unreleased / Production Candidate] - 2026-10-29
+## [Unreleased / Production Candidate] - 2026-11-03
+
+### 🎨 Sistem Unggah Template Kustom Greenscreen Otomatis (Auto-Chroma Key) & Akses Login Admin
+- **Lokasi Kode**:
+  - [`src/features/admin/admin-auth-store.ts`](../src/features/admin/admin-auth-store.ts)
+  - [`src/features/admin/AdminPinModal.tsx`](../src/features/admin/AdminPinModal.tsx)
+  - [`src/features/admin/greenscreen-detector.ts`](../src/features/admin/greenscreen-detector.ts)
+  - [`src/features/admin/GreenscreenUploadModal.tsx`](../src/features/admin/GreenscreenUploadModal.tsx)
+  - [`src/features/admin/admin.css`](../src/features/admin/admin.css)
+  - [`src/catalog/custom-frame-store.ts`](../src/catalog/custom-frame-store.ts)
+  - [`src/features/camera/Studio.tsx`](../src/features/camera/Studio.tsx)
+  - [`src/features/editor/FrameBrowser.tsx`](../src/features/editor/FrameBrowser.tsx)
+- **Fitur Baru & Kemampuan**:
+  1. **Akses Login Khusus Admin (PIN Kiosk Protected)**:
+     - Tombol upload template hanya bisa diakses oleh admin yang telah login dengan memasukkan PIN.
+     - Disediakan modal PIN numerik khusus dengan tombol angka sentuh ramah iPad / kiosk maupun input keyboard fisik.
+     - Default Master PIN: `1708` (disimpan aman di `localStorage`).
+  2. **Deteksi Otomatis Kotak Greenscreen (#00FF00 / Chroma Key Auto-Detection)**:
+     - End-user / admin cukup mengunggah desain frame berlatar hijau neon di area fotonya.
+     - Algoritma *Computer Vision* berbasis Canvas langsung mendeteksi jumlah kotak foto, ukuran, dan koordinatnya secara akurat.
+     - Warna hijau otomatis dilubangi (*auto-punch hole*) menjadi transparansi murni dengan penghalusan tepian (*anti-aliasing de-spill*).
+  3. **Penyesuaian Urutan Pose Jepretan (Interactive Reorder)**:
+     - Menyediakan pratinjau interaktif dengan lencana urutan (`Pose #1`, `Pose #2`, `Pose #3`).
+     - Admin dapat menukar atau menaikkan/menurunkan urutan slot jepretan kamera sebelum template disimpan.
+  4. **Penyimpanan Lokal Offline-First (IndexedDB)**:
+     - Template kustom tersimpan permanen di IndexedDB browser perangkat (iPad/Laptop).
+     - Template langsung muncul di daftar pilihan frame Studio dan Editor tanpa memerlukan server backend.
+     - Admin dapat menghapus template kustom kapan saja melalui tombol hapus pada kartu frame.
+
+---
+
+## [2026-10-29]
 
 ### 🚀 Optimalisasi Keandalan Unggah Google Drive: Photo-First Pipeline, Retry Otomatis & Anti-Folder Duplikat (Fixed & Optimized)
 - **Lokasi Kode**:
