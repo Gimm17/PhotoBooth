@@ -78,6 +78,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewImgRef = useRef<HTMLImageElement>(null)
   const stageWrapperRef = useRef<HTMLDivElement>(null)
+  const touchSourceIdRef = useRef<string | null>(null)
   const addCustomFrame = useCustomFramesStore((s) => s.addFrame)
 
   // Auto-dismiss reordered notification
@@ -274,8 +275,6 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   }
 
   // Touch Drag-to-Swap for mobile & iPad
-  const touchSourceIdRef = useRef<string | null>(null)
-
   const handleTouchStart = (slotId: string) => {
     if (interactionMode !== 'swap') return
     touchSourceIdRef.current = slotId
