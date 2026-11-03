@@ -508,6 +508,109 @@
   object-fit: contain;
 }
 
+/* Canvas Action Toolbar */
+.admin-canvas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #FAF8F5;
+  border: 1px solid rgba(44, 43, 41, 0.1);
+  border-radius: 12px;
+}
+
+.admin-canvas-tool-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-canvas-btn {
+  background: #FFFFFF;
+  border: 1px solid rgba(44, 43, 41, 0.16);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #57534E;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.admin-canvas-btn:hover {
+  background: #FAF8F5;
+  border-color: #D97706;
+  color: #2C2B29;
+}
+
+.admin-canvas-btn.is-active {
+  background: #D97706;
+  border-color: #B45309;
+  color: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.25);
+}
+
+.admin-canvas-btn.admin-btn-sort {
+  background: #F4F0E4;
+  border-color: rgba(217, 119, 6, 0.3);
+  color: #92400E;
+}
+
+.admin-canvas-btn.admin-btn-sort:hover {
+  background: #D97706;
+  color: #FFFFFF;
+  border-color: #B45309;
+}
+
+.admin-click-number-banner {
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  color: #92400E;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  animation: adminFadeIn 0.2s ease-out;
+}
+
+.admin-toast-feedback {
+  background: #ECFDF5;
+  border: 1px solid #10B981;
+  color: #065F46;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: adminFadeIn 0.2s ease-out;
+}
+
+.admin-canvas-hint-bar {
+  font-size: 0.78rem;
+  color: #6C6A64;
+  background: rgba(44, 43, 41, 0.04);
+  padding: 6px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.admin-preview-stage.is-moving-mode {
+  cursor: move !important;
+}
+
 /* Interactive Slot Overlays on Preview */
 .admin-slot-box {
   position: absolute;
@@ -518,9 +621,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.15s ease;
   user-select: none;
+}
+
+.admin-slot-box:active {
+  cursor: grabbing;
+}
+
+.admin-slot-box.is-dragging {
+  opacity: 0.35;
+  border-style: dotted;
+  transform: scale(0.96);
+}
+
+.admin-slot-box.is-drop-target {
+  border-color: #D97706 !important;
+  background: rgba(217, 119, 6, 0.32) !important;
+  box-shadow: 0 0 20px rgba(217, 119, 6, 0.7) !important;
+  transform: scale(1.03);
+}
+
+.admin-slot-box.is-selected {
+  border-color: #D97706 !important;
+  background: rgba(217, 119, 6, 0.22) !important;
+  box-shadow: 0 0 14px rgba(217, 119, 6, 0.5) !important;
+}
+
+.admin-slot-box.is-clickable {
+  cursor: pointer;
+}
+
+.admin-slot-box.is-clickable:hover {
+  background: rgba(217, 119, 6, 0.38) !important;
+  border-color: #D97706 !important;
+  transform: scale(1.02);
 }
 
 .admin-slot-box:hover {
@@ -543,9 +679,22 @@
   gap: 4px;
 }
 
-.admin-slot-box:hover .admin-slot-badge {
+.admin-slot-box:hover .admin-slot-badge,
+.admin-slot-box.is-selected .admin-slot-badge,
+.admin-slot-box.is-drop-target .admin-slot-badge {
   border-color: #D97706;
   color: #D97706;
+}
+
+.admin-slot-item.is-active-item {
+  border-color: #D97706;
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.admin-slot-item.is-drop-target {
+  border-color: #D97706;
+  background: rgba(217, 119, 6, 0.18);
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.3);
 }
 
 /* Calibration Sidebar */

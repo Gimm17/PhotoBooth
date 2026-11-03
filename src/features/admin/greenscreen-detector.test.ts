@@ -7,6 +7,8 @@ import {
   slotsToPhotoSlots,
   detectBlobsInGrid,
   rgbToHex,
+  sortSlotsByColumn,
+  sortSlotsByRow,
 } from './greenscreen-detector'
 import type { DetectedSlot } from './greenscreen-detector'
 
@@ -99,5 +101,32 @@ describe('greenscreen-detector', () => {
     expect(rgbToHex(0, 255, 0)).toBe('#00FF00')
     expect(rgbToHex(0, 0, 0)).toBe('#000000')
     expect(rgbToHex(255, 255, 255)).toBe('#FFFFFF')
+  })
+
+  it('sorts 2-strip templates column-by-column (left strip top-to-bottom, right strip top-to-bottom)', () => {
+    // 4 slots on left (x=0.2), 4 slots on right (x=0.7)
+    const messySlots: DetectedSlot[] = [
+      { id: 's-r2', order: 1, x: 0.7, y: 0.3, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-l1', order: 2, x: 0.2, y: 0.1, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-l2', order: 3, x: 0.2, y: 0.3, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-r1', order: 4, x: 0.7, y: 0.1, width: 0.2, height: 0.2, pixelCount: 500 },
+    ]
+
+    const sorted = sortSlotsByColumn(messySlots)
+    expect(sorted.map((s) => s.id)).toEqual(['s-l1', 's-l2', 's-r1', 's-r2'])
+    expect(sorted.map((s) => s.order)).toEqual([1, 2, 3, 4])
+  })
+
+  it('sorts templates row-by-row (top-to-bottom, left-to-right)', () => {
+    const messySlots: DetectedSlot[] = [
+      { id: 's-r1', order: 1, x: 0.7, y: 0.1, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-l1', order: 2, x: 0.2, y: 0.1, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-l2', order: 3, x: 0.2, y: 0.3, width: 0.2, height: 0.2, pixelCount: 500 },
+      { id: 's-r2', order: 4, x: 0.7, y: 0.3, width: 0.2, height: 0.2, pixelCount: 500 },
+    ]
+
+    const sorted = sortSlotsByRow(messySlots)
+    expect(sorted.map((s) => s.id)).toEqual(['s-l1', 's-r1', 's-l2', 's-r2'])
+    expect(sorted.map((s) => s.order)).toEqual([1, 2, 3, 4])
   })
 })

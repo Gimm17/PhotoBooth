@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   UploadCloud,
   X,
@@ -8,13 +8,19 @@ import {
   CheckCircle2,
   AlertCircle,
   Pipette,
-  Check,
   RotateCcw,
+  GripVertical,
+  Move,
+  ArrowUpDown,
+  MousePointerClick,
+  Check,
 } from 'lucide-react'
 import {
   analyzeTemplateImage,
   slotsToPhotoSlots,
   rgbToHex,
+  sortSlotsByColumn,
+  sortSlotsByRow,
   type CanvasKeyMode,
   type CustomKeyColor,
   type DetectedSlot,
@@ -29,6 +35,8 @@ interface GreenscreenUploadModalProps {
   onClose: () => void
   onSuccess?: (frame: FrameTemplate) => void
 }
+
+type CanvasInteractionMode = 'swap' | 'move' | 'click-number'
 
 export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: GreenscreenUploadModalProps) {
   const [analyzing, setAnalyzing] = useState(false)
@@ -47,9 +55,37 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   const [isPickingColor, setIsPickingColor] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
 
+  // Interactive Canvas & Reordering state
+  const [interactionMode, setInteractionMode] = useState<CanvasInteractionMode>('swap')
+  const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null)
+  const [dropTargetSlotId, setDropTargetSlotId] = useState<string | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+  const [nextNumberToAssign, setNextNumberToAssign] = useState<number>(1)
+  const [reorderedMessage, setReorderedMessage] = useState<string | null>(null)
+
+  // Mouse Move dragging state for 'move' mode
+  const [isMovingSlot, setIsMovingSlot] = useState(false)
+  const movingSlotRef = useRef<{
+    slotId: string
+    startX: number
+    startY: number
+    initialX: number
+    initialY: number
+    stageWidth: number
+    stageHeight: number
+  } | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewImgRef = useRef<HTMLImageElement>(null)
+  const stageWrapperRef = useRef<HTMLDivElement>(null)
   const addCustomFrame = useCustomFramesStore((s) => s.addFrame)
+
+  // Auto-dismiss reordered notification
+  useEffect(() => {
+    if (!reorderedMessage) return
+    const t = setTimeout(() => setReorderedMessage(null), 2500)
+    return () => clearTimeout(t)
+  }, [reorderedMessage])
 
   if (!isOpen) return null
 
@@ -124,7 +160,6 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     const clickX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     const clickY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
 
-    // Sample RGB color at click coordinates from the original image
     try {
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -170,7 +205,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDropFile = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
     if (e.dataTransfer.files?.[0]) {
@@ -178,6 +213,208 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     }
   }
 
+  // --- REORDERING & CANVAS INTERACTION LOGIC ---
+
+  const handleSwapSlotOrders = (slotIdA: string, slotIdB: string) => {
+    if (slotIdA === slotIdB) return
+
+    setSlots((prev) => {
+      const slotA = prev.find((s) => s.id === slotIdA)
+      const slotB = prev.find((s) => s.id === slotIdB)
+      if (!slotA || !slotB) return prev
+
+      const orderA = slotA.order
+      const orderB = slotB.order
+
+      setReorderedMessage(`Pose #${orderA} ditukar dengan Pose #${orderB}`)
+
+      return prev.map((s) => {
+        if (s.id === slotIdA) return { ...s, order: orderB }
+        if (s.id === slotIdB) return { ...s, order: orderA }
+        return s
+      })
+    })
+  }
+
+  // Canvas Drag & Drop handlers
+  const handleSlotDragStart = (e: React.DragEvent, slotId: string) => {
+    if (interactionMode !== 'swap') return
+    e.stopPropagation()
+    setDraggedSlotId(slotId)
+    e.dataTransfer.setData('text/plain', slotId)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleSlotDragOver = (e: React.DragEvent, slotId: string) => {
+    if (interactionMode !== 'swap') return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    if (dropTargetSlotId !== slotId) {
+      setDropTargetSlotId(slotId)
+    }
+  }
+
+  const handleSlotDragLeave = (e: React.DragEvent, slotId: string) => {
+    e.stopPropagation()
+    if (dropTargetSlotId === slotId) {
+      setDropTargetSlotId(null)
+    }
+  }
+
+  const handleSlotDrop = (e: React.DragEvent, targetSlotId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const sourceId = draggedSlotId || e.dataTransfer.getData('text/plain')
+    if (sourceId && sourceId !== targetSlotId) {
+      handleSwapSlotOrders(sourceId, targetSlotId)
+    }
+    setDraggedSlotId(null)
+    setDropTargetSlotId(null)
+  }
+
+  // Touch Drag-to-Swap for mobile & iPad
+  const touchSourceIdRef = useRef<string | null>(null)
+
+  const handleTouchStart = (slotId: string) => {
+    if (interactionMode !== 'swap') return
+    touchSourceIdRef.current = slotId
+    setDraggedSlotId(slotId)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (interactionMode !== 'swap' || !touchSourceIdRef.current) return
+    const touch = e.touches[0]
+    const elem = document.elementFromPoint(touch.clientX, touch.clientY)
+    const slotElem = elem?.closest('[data-slot-id]')
+    const targetId = slotElem?.getAttribute('data-slot-id')
+    if (targetId && targetId !== touchSourceIdRef.current) {
+      setDropTargetSlotId(targetId)
+    } else {
+      setDropTargetSlotId(null)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (interactionMode === 'swap' && touchSourceIdRef.current && dropTargetSlotId) {
+      handleSwapSlotOrders(touchSourceIdRef.current, dropTargetSlotId)
+    }
+    touchSourceIdRef.current = null
+    setDraggedSlotId(null)
+    setDropTargetSlotId(null)
+  }
+
+  // Click-to-Number tool handler
+  const handleSlotClick = (slotId: string) => {
+    if (isPickingColor) return
+
+    if (interactionMode === 'click-number') {
+      setSlots((prev) => {
+        const target = prev.find((s) => s.id === slotId)
+        if (!target) return prev
+
+        const oldOrder = target.order
+        const newOrder = nextNumberToAssign
+
+        // If another slot already has newOrder, swap with oldOrder
+        const updated = prev.map((s) => {
+          if (s.id === slotId) return { ...s, order: newOrder }
+          if (s.order === newOrder) return { ...s, order: oldOrder }
+          return s
+        })
+
+        return updated
+      })
+
+      if (nextNumberToAssign < slots.length) {
+        setNextNumberToAssign((prev) => prev + 1)
+      } else {
+        setReorderedMessage('Semua nomor pose berhasil diurutkan!')
+        setInteractionMode('swap')
+      }
+      return
+    }
+
+    setSelectedSlotId(slotId)
+  }
+
+  // Move Box handler ('move' mode)
+  const handleSlotMouseDown = (e: React.MouseEvent, slotId: string) => {
+    if (interactionMode !== 'move') return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const wrapper = stageWrapperRef.current
+    if (!wrapper) return
+
+    const rect = wrapper.getBoundingClientRect()
+    const targetSlot = slots.find((s) => s.id === slotId)
+    if (!targetSlot) return
+
+    movingSlotRef.current = {
+      slotId,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: targetSlot.x,
+      initialY: targetSlot.y,
+      stageWidth: rect.width,
+      stageHeight: rect.height,
+    }
+
+    setIsMovingSlot(true)
+    setSelectedSlotId(slotId)
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!movingSlotRef.current) return
+      const { slotId: id, startX, startY, initialX, initialY, stageWidth, stageHeight } = movingSlotRef.current
+
+      const deltaX = (moveEvent.clientX - startX) / stageWidth
+      const deltaY = (moveEvent.clientY - startY) / stageHeight
+
+      setSlots((prev) =>
+        prev.map((s) => {
+          if (s.id !== id) return s
+          const newX = Math.max(0, Math.min(1 - s.width, initialX + deltaX))
+          const newY = Math.max(0, Math.min(1 - s.height, initialY + deltaY))
+          return {
+            ...s,
+            x: Number(newX.toFixed(4)),
+            y: Number(newY.toFixed(4)),
+          }
+        })
+      )
+    }
+
+    const handleMouseUp = () => {
+      movingSlotRef.current = null
+      setIsMovingSlot(false)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // Auto-sort presets
+  const handleSortColumns = () => {
+    const sorted = sortSlotsByColumn(slots)
+    setSlots(sorted)
+    setReorderedMessage('Diurutkan berdasarkan Kolom: Kiri lalu Kanan')
+  }
+
+  const handleSortRows = () => {
+    const sorted = sortSlotsByRow(slots)
+    setSlots(sorted)
+    setReorderedMessage('Diurutkan berdasarkan Baris: Atas ke Bawah')
+  }
+
+  const handleStartClickNumbering = () => {
+    setInteractionMode('click-number')
+    setNextNumberToAssign(1)
+  }
+
+  // Sidebar Up/Down buttons
   const handleMoveSlot = (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1
     if (targetIndex < 0 || targetIndex >= slots.length) return
@@ -187,7 +424,6 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     reordered[index] = reordered[targetIndex]
     reordered[targetIndex] = temp
 
-    // Re-assign order numbers 1, 2, 3...
     const updated = reordered.map((slot, i) => ({
       ...slot,
       order: i + 1,
@@ -206,7 +442,6 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     if (!analysis || slots.length === 0) return
 
     const shotCount = slots.length
-    // Map slot count to best layoutId
     let layoutId: LayoutId = 'three-postcard'
     if (shotCount === 1) layoutId = 'polaroid-single'
     else if (shotCount === 2) layoutId = 'wide-duo'
@@ -216,9 +451,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       layoutId = isSquare ? 'grid-2x2' : 'classic-strip'
     }
 
-    const orientation =
-      analysis.width > analysis.height ? 'landscape' : 'portrait'
-
+    const orientation = analysis.width > analysis.height ? 'landscape' : 'portrait'
     const newFrameId = `custom-frame-${Date.now()}`
     const finalSlots = slotsToPhotoSlots(slots)
 
@@ -254,12 +487,8 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       ],
     }
 
-    // Save to custom frame store (IndexedDB)
     await addCustomFrame(newFrame)
-
-    // Automatically activate in Studio
     useSessionStore.getState().startSessionWithFrame(newFrame.id)
-
     onSuccess?.(newFrame)
     onClose()
   }
@@ -274,6 +503,9 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     }
     return analysis.mode
   }
+
+  // Sorted list for sidebar rendering
+  const sortedSlots = [...slots].sort((a, b) => a.order - b.order)
 
   return (
     <div
@@ -387,7 +619,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                 setIsDragOver(true)
               }}
               onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
+              onDrop={handleDropFile}
               onClick={() => fileInputRef.current?.click()}
             >
               <input
@@ -424,16 +656,102 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
 
           {analysis && (
             <div className="admin-calib-grid">
-              {/* Left Column: Visual Preview with Detected Slot Overlays */}
+              {/* Left Column: Visual Canvas Preview with Direct Interactive Controls */}
               <div className="admin-preview-stage-container">
+                {/* Canvas Action Toolbar */}
+                <div className="admin-canvas-toolbar">
+                  <div className="admin-canvas-tool-group">
+                    <button
+                      type="button"
+                      className={`admin-canvas-btn ${interactionMode === 'swap' ? 'is-active' : ''}`}
+                      onClick={() => setInteractionMode('swap')}
+                      title="Tukar nomor pose dengan drag & drop kotak langsung di gambar"
+                    >
+                      <ArrowUpDown size={14} />
+                      <span>Drag &amp; Drop Nomor</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-canvas-btn ${interactionMode === 'move' ? 'is-active' : ''}`}
+                      onClick={() => setInteractionMode('move')}
+                      title="Geser posisi kotak foto di atas gambar"
+                    >
+                      <Move size={14} />
+                      <span>Geser Posisi</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-canvas-btn ${interactionMode === 'click-number' ? 'is-active' : ''}`}
+                      onClick={handleStartClickNumbering}
+                      title="Klik kotak satu per satu untuk menomori secara urut (1, 2, 3...)"
+                    >
+                      <MousePointerClick size={14} />
+                      <span>Klik Berurutan</span>
+                    </button>
+                  </div>
+
+                  <div className="admin-canvas-tool-group">
+                    <button
+                      type="button"
+                      className="admin-canvas-btn admin-btn-sort"
+                      onClick={handleSortColumns}
+                      title="Urutkan kolom dari kiri ke kanan (Sangat cocok untuk 2-strip photobooth!)"
+                    >
+                      <span>⬇️ Kolom Kiri ➔ Kanan</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-canvas-btn admin-btn-sort"
+                      onClick={handleSortRows}
+                      title="Urutkan baris per baris dari atas ke bawah"
+                    >
+                      <span>➡️ Baris per Baris</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Eyedropper Banner */}
                 {isPickingColor && (
                   <div className="admin-pipette-banner">
                     <Pipette size={16} />
                     <span>Klik pada area warna di gambar yang ingin dijadikan slot foto!</span>
                   </div>
                 )}
+
+                {/* Click-to-Number Banner */}
+                {interactionMode === 'click-number' && (
+                  <div className="admin-click-number-banner">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <MousePointerClick size={16} />
+                      <span>
+                        Klik kotak di gambar secara berurutan: <strong>Pose #{nextNumberToAssign}</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="admin-canvas-btn"
+                      onClick={() => setInteractionMode('swap')}
+                      style={{ padding: '2px 8px', fontSize: '0.74rem' }}
+                    >
+                      Selesai
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Feedback Toast */}
+                {reorderedMessage && (
+                  <div className="admin-toast-feedback">
+                    <Check size={14} />
+                    <span>{reorderedMessage}</span>
+                  </div>
+                )}
+
+                {/* Preview Canvas Stage */}
                 <div
-                  className={`admin-preview-stage ${isPickingColor ? 'is-eyedropper' : ''}`}
+                  ref={stageWrapperRef}
+                  className={`admin-preview-stage ${isPickingColor ? 'is-eyedropper' : ''} ${
+                    interactionMode === 'move' ? 'is-moving-mode' : ''
+                  }`}
                   onClick={handlePreviewClick}
                 >
                   <div className="admin-preview-wrapper">
@@ -443,27 +761,70 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                       alt="Pratinjau Frame Kustom"
                       className="admin-preview-img"
                     />
+
                     {!isPickingColor &&
-                      slots.map((slot) => (
-                        <div
-                          key={slot.id}
-                          className="admin-slot-box"
-                          style={{
-                            left: `${slot.x * 100}%`,
-                            top: `${slot.y * 100}%`,
-                            width: `${slot.width * 100}%`,
-                            height: `${slot.height * 100}%`,
-                          }}
-                          title={`Slot Foto #${slot.order} (${Math.round(slot.width * 100)}% x ${Math.round(slot.height * 100)}%)`}
-                        >
-                          <span className="admin-slot-badge">Pose #{slot.order}</span>
-                        </div>
-                      ))}
+                      slots.map((slot) => {
+                        const isDragging = draggedSlotId === slot.id
+                        const isDropTarget = dropTargetSlotId === slot.id
+                        const isSelected = selectedSlotId === slot.id
+
+                        return (
+                          <div
+                            key={slot.id}
+                            data-slot-id={slot.id}
+                            draggable={interactionMode === 'swap'}
+                            onDragStart={(e) => handleSlotDragStart(e, slot.id)}
+                            onDragOver={(e) => handleSlotDragOver(e, slot.id)}
+                            onDragLeave={(e) => handleSlotDragLeave(e, slot.id)}
+                            onDrop={(e) => handleSlotDrop(e, slot.id)}
+                            onTouchStart={() => handleTouchStart(slot.id)}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                            onMouseDown={(e) => handleSlotMouseDown(e, slot.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleSlotClick(slot.id)
+                            }}
+                            className={`admin-slot-box ${isDragging ? 'is-dragging' : ''} ${
+                              isDropTarget ? 'is-drop-target' : ''
+                            } ${isSelected ? 'is-selected' : ''} ${
+                              interactionMode === 'click-number' ? 'is-clickable' : ''
+                            }`}
+                            style={{
+                              left: `${slot.x * 100}%`,
+                              top: `${slot.y * 100}%`,
+                              width: `${slot.width * 100}%`,
+                              height: `${slot.height * 100}%`,
+                            }}
+                            title={`Drag untuk menukar nomor, atau geser posisi. (Pose #${slot.order})`}
+                          >
+                            <span className="admin-slot-badge">
+                              {interactionMode === 'swap' && (
+                                <GripVertical
+                                  size={13}
+                                  style={{ opacity: 0.6, marginRight: -2 }}
+                                />
+                              )}
+                              {interactionMode === 'move' && (
+                                <Move
+                                  size={13}
+                                  style={{ opacity: 0.6, marginRight: -2 }}
+                                />
+                              )}
+                              Pose #{slot.order}
+                            </span>
+                          </div>
+                        )
+                      })}
                   </div>
+                </div>
+
+                <div className="admin-canvas-hint-bar">
+                  💡 <strong>Tip Praktis:</strong> Klik <em>"⬇️ Kolom Kiri ➔ Kanan"</em> untuk langsung mengurutkan template 2-strip, atau seret (*drag &amp; drop*) nomor pose langsung di gambar untuk menukarnya!
                 </div>
               </div>
 
-              {/* Right Column: Calibration, Reordering, and Metadata */}
+              {/* Right Column: Calibration, Reordering List, and Metadata */}
               <div className="admin-calib-sidebar">
                 <div className="admin-sidebar-card">
                   <div className="admin-sidebar-header">
@@ -481,28 +842,63 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                     <span>{slots.length} Slot</span>
                   </div>
                   <p style={{ fontSize: '0.78rem', color: '#6C6A64', margin: 0 }}>
-                    Sesuaikan urutan jepretan kamera untuk tiap slot foto:
+                    Tarik (*drag*) di list atau klik panah untuk mengubah urutan:
                   </p>
+
                   <div className="admin-slots-list" role="list">
-                    {slots.map((slot, index) => (
-                      <div key={slot.id} className="admin-slot-item" role="listitem">
+                    {sortedSlots.map((slot, index) => (
+                      <div
+                        key={slot.id}
+                        className={`admin-slot-item ${selectedSlotId === slot.id ? 'is-active-item' : ''} ${
+                          draggedSlotId === slot.id ? 'is-dragging' : ''
+                        } ${dropTargetSlotId === slot.id ? 'is-drop-target' : ''}`}
+                        role="listitem"
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedSlotId(slot.id)
+                          e.dataTransfer.setData('text/plain', slot.id)
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          if (dropTargetSlotId !== slot.id) setDropTargetSlotId(slot.id)
+                        }}
+                        onDragLeave={() => {
+                          if (dropTargetSlotId === slot.id) setDropTargetSlotId(null)
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          const sourceId = draggedSlotId || e.dataTransfer.getData('text/plain')
+                          if (sourceId && sourceId !== slot.id) {
+                            handleSwapSlotOrders(sourceId, slot.id)
+                          }
+                          setDraggedSlotId(null)
+                          setDropTargetSlotId(null)
+                        }}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                      >
                         <div className="admin-slot-item-info">
+                          <GripVertical size={16} style={{ color: '#A8A29E', cursor: 'grab' }} />
                           <span className="admin-slot-order-pill">#{slot.order}</span>
                           <div>
                             <strong style={{ fontSize: '0.85rem', display: 'block' }}>
                               Pose ke-{slot.order}
                             </strong>
                             <span className="admin-slot-coords">
-                              Posisi: Y {Math.round(slot.y * 100)}%
+                              X: {Math.round(slot.x * 100)}% · Y: {Math.round(slot.y * 100)}%
                             </span>
                           </div>
                         </div>
+
                         <div className="admin-slot-reorder-btns">
                           <button
                             type="button"
                             className="admin-reorder-btn"
                             disabled={index === 0}
-                            onClick={() => handleMoveSlot(index, 'up')}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const prevSlot = sortedSlots[index - 1]
+                              if (prevSlot) handleSwapSlotOrders(slot.id, prevSlot.id)
+                            }}
                             aria-label={`Naikkan urutan slot ${slot.order}`}
                           >
                             <ArrowUp aria-hidden="true" size={15} />
@@ -510,8 +906,12 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                           <button
                             type="button"
                             className="admin-reorder-btn"
-                            disabled={index === slots.length - 1}
-                            onClick={() => handleMoveSlot(index, 'down')}
+                            disabled={index === sortedSlots.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const nextSlot = sortedSlots[index + 1]
+                              if (nextSlot) handleSwapSlotOrders(slot.id, nextSlot.id)
+                            }}
                             aria-label={`Turunkan urutan slot ${slot.order}`}
                           >
                             <ArrowDown aria-hidden="true" size={15} />
@@ -604,6 +1004,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                     setCurrentFile(null)
                     setCustomColor(null)
                     setIsPickingColor(false)
+                    setSelectedSlotId(null)
                   }}
                 >
                   <RotateCcw size={14} />

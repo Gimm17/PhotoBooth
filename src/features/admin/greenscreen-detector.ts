@@ -489,3 +489,67 @@ export const slotsToPhotoSlots = (slots: DetectedSlot[]): PhotoSlot[] => {
     height: s.height,
   }))
 }
+
+export const sortSlotsByColumn = (slots: DetectedSlot[]): DetectedSlot[] => {
+  if (slots.length <= 1) return [...slots]
+  const copy = [...slots]
+  copy.sort((a, b) => a.x - b.x)
+
+  const columns: DetectedSlot[][] = []
+  for (const slot of copy) {
+    const existingCol = columns.find((col) => Math.abs(col[0].x - slot.x) < 0.14)
+    if (existingCol) {
+      existingCol.push(slot)
+    } else {
+      columns.push([slot])
+    }
+  }
+
+  columns.sort((colA, colB) => {
+    const avgA = colA.reduce((sum, s) => sum + s.x, 0) / colA.length
+    const avgB = colB.reduce((sum, s) => sum + s.x, 0) / colB.length
+    return avgA - avgB
+  })
+
+  const result: DetectedSlot[] = []
+  let currentOrder = 1
+  for (const col of columns) {
+    col.sort((a, b) => a.y - b.y)
+    for (const slot of col) {
+      result.push({ ...slot, order: currentOrder++ })
+    }
+  }
+  return result
+}
+
+export const sortSlotsByRow = (slots: DetectedSlot[]): DetectedSlot[] => {
+  if (slots.length <= 1) return [...slots]
+  const copy = [...slots]
+  copy.sort((a, b) => a.y - b.y)
+
+  const rows: DetectedSlot[][] = []
+  for (const slot of copy) {
+    const existingRow = rows.find((row) => Math.abs(row[0].y - slot.y) < 0.08)
+    if (existingRow) {
+      existingRow.push(slot)
+    } else {
+      rows.push([slot])
+    }
+  }
+
+  rows.sort((rA, rB) => {
+    const avgA = rA.reduce((sum, s) => sum + s.y, 0) / rA.length
+    const avgB = rB.reduce((sum, s) => sum + s.y, 0) / rB.length
+    return avgA - avgB
+  })
+
+  const result: DetectedSlot[] = []
+  let currentOrder = 1
+  for (const row of rows) {
+    row.sort((a, b) => a.x - b.x)
+    for (const slot of row) {
+      result.push({ ...slot, order: currentOrder++ })
+    }
+  }
+  return result
+}
