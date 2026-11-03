@@ -165,7 +165,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       <div className="admin-upload-dialog">
         <header className="admin-upload-header">
           <div className="admin-upload-title">
-            <Sparkles aria-hidden="true" size={24} color="#e5a93b" />
+            <Sparkles aria-hidden="true" size={24} color="#D97706" />
             <h2 id="admin-upload-title">Upload Template Greenscreen</h2>
             <span className="admin-upload-badge">Admin Mode</span>
           </div>
@@ -186,11 +186,11 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                background: '#FEE2E2',
+                border: '1px solid #FCA5A5',
                 padding: '12px 16px',
                 borderRadius: 12,
-                color: '#fca5a5',
+                color: '#991B1B',
                 fontSize: '0.88rem',
               }}
               role="alert"
@@ -355,7 +355,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
 
                   <div className="admin-form-group">
                     <label>Resolusi Asli</label>
-                    <span style={{ fontSize: '0.85rem', color: '#a8a29e' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#6C6A64' }}>
                       {analysis.width} x {analysis.height} px ({analysis.width > analysis.height ? 'Landscape' : 'Portrait'})
                     </span>
                   </div>
@@ -364,11 +364,11 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                 <button
                   type="button"
                   style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(44, 43, 41, 0.16)',
                     borderRadius: 10,
                     padding: '8px 12px',
-                    color: '#a8a29e',
+                    color: '#57534E',
                     fontSize: '0.82rem',
                     cursor: 'pointer',
                   }}

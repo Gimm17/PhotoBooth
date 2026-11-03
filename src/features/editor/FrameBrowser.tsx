@@ -33,11 +33,7 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
   const handleAddFrameClick = () => {
-    if (!isAdmin) {
-      setAdminPinModalOpen(true)
-    } else {
-      setUploadModalOpen(true)
-    }
+    setAdminPinModalOpen(true)
   }
 
   const customFrames = useCustomFramesStore((s) => s.customFrames)
