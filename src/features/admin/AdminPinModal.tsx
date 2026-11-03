@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Lock, X, Delete } from 'lucide-react'
-import { useAdminAuthStore, DEFAULT_ADMIN_PIN } from './admin-auth-store'
+import { useAdminAuthStore } from './admin-auth-store'
 
 interface AdminPinModalProps {
   isOpen: boolean
@@ -36,7 +36,9 @@ export function AdminPinModal({ isOpen, onClose, onSuccess }: AdminPinModalProps
         handleBackspace()
       } else if (event.key === 'Enter') {
         event.preventDefault()
-        handleSubmit()
+        if (pinInput.length > 0) {
+          validateAndSubmit(pinInput)
+        }
       }
     }
 
@@ -46,35 +48,50 @@ export function AdminPinModal({ isOpen, onClose, onSuccess }: AdminPinModalProps
 
   if (!isOpen) return null
 
-  const handleDigit = (digit: string) => {
-    if (pinInput.length >= 8) return
-    setError(false)
-    const next = pinInput + digit
-    setPinInput(next)
-  }
-
-  const handleBackspace = () => {
-    setError(false)
-    setPinInput((prev) => prev.slice(0, -1))
-  }
-
-  const handleClear = () => {
-    setError(false)
-    setPinInput('')
-  }
-
-  const handleSubmit = () => {
-    if (!pinInput) return
-    const success = login(pinInput)
+  const validateAndSubmit = (code: string) => {
+    const success = login(code)
     if (success) {
       onClose()
       onSuccess?.()
     } else {
       setError(true)
       setIsShaking(true)
-      setTimeout(() => setIsShaking(false), 450)
-      setPinInput('')
+
+      // Hardware haptic vibration for mobile/iPad touchscreen devices
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate?.([60, 40, 60])
+        } catch { /* ignore */ }
+      }
+
+      setTimeout(() => {
+        setIsShaking(false)
+        setPinInput('')
+      }, 500)
     }
+  }
+
+  const handleDigit = (digit: string) => {
+    if (isShaking || pinInput.length >= 4) return
+    setError(false)
+    const next = pinInput + digit
+    setPinInput(next)
+
+    // Auto-enter saat mencapai 4 digit
+    if (next.length === 4) {
+      validateAndSubmit(next)
+    }
+  }
+
+  const handleBackspace = () => {
+    if (isShaking) return
+    setError(false)
+    setPinInput((prev) => prev.slice(0, -1))
+  }
+
+  const handleSubmit = () => {
+    if (!pinInput || isShaking) return
+    validateAndSubmit(pinInput)
   }
 
   return (
@@ -102,7 +119,7 @@ export function AdminPinModal({ isOpen, onClose, onSuccess }: AdminPinModalProps
         </div>
 
         <p className="admin-pin-desc">
-          Masukkan PIN Admin untuk mengunggah template greenscreen kustom dan mengelola sistem.
+          Masukkan 4 digit PIN Admin untuk mengunggah template greenscreen kustom dan mengelola sistem.
         </p>
 
         <div className="admin-pin-display" aria-label="Indikator PIN">
@@ -155,10 +172,6 @@ export function AdminPinModal({ isOpen, onClose, onSuccess }: AdminPinModalProps
             OK
           </button>
         </div>
-
-        <p className="admin-pin-hint">
-          (Default PIN: <code>{DEFAULT_ADMIN_PIN}</code>)
-        </p>
       </div>
     </div>
   )

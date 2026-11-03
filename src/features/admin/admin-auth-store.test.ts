@@ -10,8 +10,9 @@ describe('admin-auth-store', () => {
   })
 
   it('initializes in locked mode', () => {
+    expect(DEFAULT_ADMIN_PIN).toBe('0417')
     expect(useAdminAuthStore.getState().isAdmin).toBe(false)
-    expect(useAdminAuthStore.getState().pin).toBe(DEFAULT_ADMIN_PIN)
+    expect(useAdminAuthStore.getState().pin).toBe('0417')
   })
 
   it('rejects incorrect PIN', () => {

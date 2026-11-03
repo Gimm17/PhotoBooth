@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 const ADMIN_PIN_STORAGE_KEY = 'photobooth_admin_pin'
 const ADMIN_SESSION_STORAGE_KEY = 'photobooth_admin_logged_in'
-export const DEFAULT_ADMIN_PIN = '1708'
+export const DEFAULT_ADMIN_PIN = '0417'
 
 const isBrowser = () => typeof window !== 'undefined'
 const isTestEnv = () => typeof (globalThis as Record<string, unknown>).vi !== 'undefined' || import.meta.env?.MODE === 'test'

@@ -122,13 +122,28 @@ const postPayloadToGDrive = async (
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     if (signal?.aborted) throw new DOMException('Permintaan dibatalkan.', 'AbortError')
 
+    let attemptController: AbortController | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
     try {
+      if (!isTestEnv) {
+        attemptController = new AbortController()
+        const currentCtrl = attemptController
+        timeoutId = setTimeout(() => {
+          currentCtrl.abort(new DOMException('Batas waktu koneksi Google Drive terlampaui (timeout 35s).', 'TimeoutError'))
+        }, 35000)
+      }
+
+      const activeSignal = attemptController
+        ? (signal ? AbortSignal.any([signal, attemptController.signal]) : attemptController.signal)
+        : signal
+
       // Use text/plain to avoid CORS preflight rejection on Google Apps Script Web Apps
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
-        signal,
+        signal: activeSignal,
       })
 
       if (!response.ok) {
@@ -153,6 +168,8 @@ const postPayloadToGDrive = async (
       // Jeda retry otomatis (1.5s lalu 3s) untuk mengantisipasi cold-start atau fluktuasi sinyal
       const delayMs = attempt === 0 ? 1500 : 3000
       await new Promise((resolve) => setTimeout(resolve, delayMs))
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }
 

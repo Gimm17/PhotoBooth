@@ -314,7 +314,7 @@ export function Studio() {
             type="button"
             onClick={() => setAdminPinModalOpen(true)}
             aria-label="Masuk Mode Admin"
-            title="Akses Khusus Admin (PIN: 1708)"
+            title="Akses Khusus Admin"
           >
             <Lock aria-hidden="true" size={15} />
             <span>Admin</span>
