@@ -634,12 +634,14 @@ export function Studio() {
       }}
     />
 
-    <GreenscreenUploadModal
-      isOpen={uploadModalOpen}
-      onClose={() => setUploadModalOpen(false)}
-      onSuccess={() => {
-        closeSettings()
-      }}
-    />
+    {uploadModalOpen && (
+      <GreenscreenUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onSuccess={() => {
+          closeSettings()
+        }}
+      />
+    )}
   </section>
 }

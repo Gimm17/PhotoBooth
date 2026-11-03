@@ -86,12 +86,14 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
         setUploadModalOpen(true)
       }}
     />
-    <GreenscreenUploadModal
-      isOpen={uploadModalOpen}
-      onClose={() => setUploadModalOpen(false)}
-      onSuccess={(newFrame) => {
-        onSelect(newFrame.id)
-      }}
-    />
+    {uploadModalOpen && (
+      <GreenscreenUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onSuccess={(newFrame) => {
+          onSelect(newFrame.id)
+        }}
+      />
+    )}
   </section>
 }

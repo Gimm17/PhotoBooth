@@ -88,6 +88,44 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     return () => clearTimeout(t)
   }, [reorderedMessage])
 
+  const resetModalState = () => {
+    setAnalyzing(false)
+    setError(null)
+    setAnalysis(null)
+    setSlots([])
+    setFrameName('')
+    setCategory('Celebration')
+    setInset(0.003)
+    setIsDragOver(false)
+    setActiveMode('auto')
+    setSelectedMode('auto')
+    setCustomColor(null)
+    setIsPickingColor(false)
+    setCurrentFile(null)
+    setInteractionMode('swap')
+    setDraggedSlotId(null)
+    setDropTargetSlotId(null)
+    setSelectedSlotId(null)
+    setNextNumberToAssign(1)
+    setReorderedMessage(null)
+    setIsMovingSlot(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  // Reset all internal state whenever modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      resetModalState()
+    }
+  }, [isOpen])
+
+  const handleClose = () => {
+    resetModalState()
+    onClose()
+  }
+
   if (!isOpen) return null
 
   const processImage = async (
@@ -489,6 +527,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     await addCustomFrame(newFrame)
     useSessionStore.getState().startSessionWithFrame(newFrame.id)
     onSuccess?.(newFrame)
+    resetModalState()
     onClose()
   }
 
@@ -512,7 +551,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       role="dialog"
       aria-modal="true"
       aria-labelledby="admin-upload-title"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => e.target === e.currentTarget && handleClose()}
     >
       <div className="admin-upload-dialog">
         <header className="admin-upload-header">
@@ -524,7 +563,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
           <button
             type="button"
             className="admin-pin-close"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Tutup modal upload"
           >
             <X aria-hidden="true" size={20} />
@@ -1015,7 +1054,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
         </div>
 
         <footer className="admin-upload-footer">
-          <button type="button" className="admin-btn-secondary" onClick={onClose}>
+          <button type="button" className="admin-btn-secondary" onClick={handleClose}>
             Batal
           </button>
           {analysis && (
