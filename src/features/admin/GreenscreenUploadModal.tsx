@@ -14,6 +14,9 @@ import {
   ArrowUpDown,
   MousePointerClick,
   Check,
+  Crop,
+  Scissors,
+  Undo2,
 } from 'lucide-react'
 import {
   analyzeTemplateImage,
@@ -21,10 +24,13 @@ import {
   rgbToHex,
   sortSlotsByColumn,
   sortSlotsByRow,
+  detectOuterMarginCropFromFile,
+  cropImageFile,
   type CanvasKeyMode,
   type CustomKeyColor,
   type DetectedSlot,
   type GreenscreenAnalysisResult,
+  type NormalizedCropRect,
 } from './greenscreen-detector'
 import { useCustomFramesStore } from '../../catalog/custom-frame-store'
 import { useSessionStore } from '../../store/session-store'
@@ -37,6 +43,7 @@ interface GreenscreenUploadModalProps {
 }
 
 type CanvasInteractionMode = 'swap' | 'move' | 'click-number'
+type CropHandleType = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'w' | 'e'
 
 export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: GreenscreenUploadModalProps) {
   const [analyzing, setAnalyzing] = useState(false)
@@ -55,6 +62,18 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   const [isPickingColor, setIsPickingColor] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
 
+  // Crop (Auto & Manual) state
+  const [originalFile, setOriginalFile] = useState<File | null>(null)
+  const [hasCropped, setHasCropped] = useState(false)
+  const [isManualCropping, setIsManualCropping] = useState(false)
+  const [manualCropRect, setManualCropRect] = useState<NormalizedCropRect>({
+    x: 0.05,
+    y: 0.05,
+    width: 0.9,
+    height: 0.9,
+  })
+  const [cropProcessing, setCropProcessing] = useState(false)
+
   // Interactive Canvas & Reordering state
   const [interactionMode, setInteractionMode] = useState<CanvasInteractionMode>('swap')
   const [draggedSlotId, setDraggedSlotId] = useState<string | null>(null)
@@ -71,6 +90,16 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     startY: number
     initialX: number
     initialY: number
+    stageWidth: number
+    stageHeight: number
+  } | null>(null)
+
+  // Manual Crop pointer interaction ref
+  const cropInteractionRef = useRef<{
+    handle: CropHandleType
+    startX: number
+    startY: number
+    initialRect: NormalizedCropRect
     stageWidth: number
     stageHeight: number
   } | null>(null)
@@ -102,6 +131,11 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     setCustomColor(null)
     setIsPickingColor(false)
     setCurrentFile(null)
+    setOriginalFile(null)
+    setHasCropped(false)
+    setIsManualCropping(false)
+    setManualCropRect({ x: 0.05, y: 0.05, width: 0.9, height: 0.9 })
+    setCropProcessing(false)
     setInteractionMode('swap')
     setDraggedSlotId(null)
     setDropTargetSlotId(null)
@@ -169,8 +203,170 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       return
     }
 
+    setOriginalFile(file)
     setCurrentFile(file)
+    setHasCropped(false)
+    setIsManualCropping(false)
     await processImage(file, selectedMode, customColor, inset)
+  }
+
+  // --- CROP FUNCTIONALITY (AUTO & MANUAL) ---
+
+  const handleAutoCropMargin = async () => {
+    if (!currentFile) return
+    try {
+      setCropProcessing(true)
+      const detectedMargin = await detectOuterMarginCropFromFile(currentFile)
+      if (!detectedMargin) {
+        setReorderedMessage('Template sudah pas (tidak ada margin kosong di luar).')
+        return
+      }
+
+      const cropped = await cropImageFile(currentFile, detectedMargin)
+      setCurrentFile(cropped)
+      setHasCropped(true)
+      await processImage(cropped, selectedMode, customColor, inset)
+      setReorderedMessage('⚡ Auto-crop berhasil! Margin luar template telah dipotong.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memotong template secara otomatis.')
+    } finally {
+      setCropProcessing(false)
+    }
+  }
+
+  const handleStartManualCrop = async () => {
+    if (!currentFile) return
+    setIsManualCropping(true)
+    try {
+      const suggestion = await detectOuterMarginCropFromFile(currentFile)
+      if (suggestion) {
+        setManualCropRect(suggestion)
+      } else {
+        setManualCropRect({ x: 0.05, y: 0.05, width: 0.9, height: 0.9 })
+      }
+    } catch {
+      setManualCropRect({ x: 0.05, y: 0.05, width: 0.9, height: 0.9 })
+    }
+  }
+
+  const handleCancelManualCrop = () => {
+    setIsManualCropping(false)
+  }
+
+  const handleApplyManualCrop = async () => {
+    if (!currentFile) return
+    try {
+      setCropProcessing(true)
+      const cropped = await cropImageFile(currentFile, manualCropRect)
+      setCurrentFile(cropped)
+      setHasCropped(true)
+      setIsManualCropping(false)
+      await processImage(cropped, selectedMode, customColor, inset)
+      setReorderedMessage('✂️ Crop manual berhasil diterapkan!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menerapkan crop gambar.')
+    } finally {
+      setCropProcessing(false)
+    }
+  }
+
+  const handleResetToOriginal = async () => {
+    if (!originalFile) return
+    setCurrentFile(originalFile)
+    setHasCropped(false)
+    setIsManualCropping(false)
+    await processImage(originalFile, selectedMode, customColor, inset)
+    setReorderedMessage('↺ Template dikembalikan ke ukuran gambar asli.')
+  }
+
+  const handleCropPointerDown = (
+    e: React.PointerEvent,
+    handle: CropHandleType
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const wrapper = previewImgRef.current
+    if (!wrapper) return
+
+    const rect = wrapper.getBoundingClientRect()
+    cropInteractionRef.current = {
+      handle,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialRect: { ...manualCropRect },
+      stageWidth: rect.width,
+      stageHeight: rect.height,
+    }
+
+    const targetEl = e.currentTarget
+    targetEl.setPointerCapture(e.pointerId)
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      if (!cropInteractionRef.current) return
+      const { handle: h, startX, startY, initialRect: init, stageWidth, stageHeight } = cropInteractionRef.current
+
+      const deltaX = (moveEvent.clientX - startX) / stageWidth
+      const deltaY = (moveEvent.clientY - startY) / stageHeight
+      const minSize = 0.05
+
+      let { x, y, width: w, height: hg } = init
+
+      if (h === 'move') {
+        x = Math.max(0, Math.min(1 - w, init.x + deltaX))
+        y = Math.max(0, Math.min(1 - hg, init.y + deltaY))
+      } else if (h === 'nw') {
+        const newX = Math.max(0, Math.min(init.x + init.width - minSize, init.x + deltaX))
+        const newY = Math.max(0, Math.min(init.y + init.height - minSize, init.y + deltaY))
+        w = init.width - (newX - init.x)
+        hg = init.height - (newY - init.y)
+        x = newX
+        y = newY
+      } else if (h === 'ne') {
+        const newY = Math.max(0, Math.min(init.y + init.height - minSize, init.y + deltaY))
+        w = Math.max(minSize, Math.min(1 - init.x, init.width + deltaX))
+        hg = init.height - (newY - init.y)
+        y = newY
+      } else if (h === 'se') {
+        w = Math.max(minSize, Math.min(1 - init.x, init.width + deltaX))
+        hg = Math.max(minSize, Math.min(1 - init.y, init.height + deltaY))
+      } else if (h === 'sw') {
+        const newX = Math.max(0, Math.min(init.x + init.width - minSize, init.x + deltaX))
+        w = init.width - (newX - init.x)
+        hg = Math.max(minSize, Math.min(1 - init.y, init.height + deltaY))
+        x = newX
+      } else if (h === 'n') {
+        const newY = Math.max(0, Math.min(init.y + init.height - minSize, init.y + deltaY))
+        hg = init.height - (newY - init.y)
+        y = newY
+      } else if (h === 's') {
+        hg = Math.max(minSize, Math.min(1 - init.y, init.height + deltaY))
+      } else if (h === 'w') {
+        const newX = Math.max(0, Math.min(init.x + init.width - minSize, init.x + deltaX))
+        w = init.width - (newX - init.x)
+        x = newX
+      } else if (h === 'e') {
+        w = Math.max(minSize, Math.min(1 - init.x, init.width + deltaX))
+      }
+
+      setManualCropRect({
+        x: Number(x.toFixed(4)),
+        y: Number(y.toFixed(4)),
+        width: Number(w.toFixed(4)),
+        height: Number(hg.toFixed(4)),
+      })
+    }
+
+    const onPointerUp = () => {
+      cropInteractionRef.current = null
+      targetEl.removeEventListener('pointermove', onPointerMove as EventListener)
+      targetEl.removeEventListener('pointerup', onPointerUp as EventListener)
+      targetEl.removeEventListener('pointercancel', onPointerUp as EventListener)
+    }
+
+    targetEl.addEventListener('pointermove', onPointerMove as EventListener)
+    targetEl.addEventListener('pointerup', onPointerUp as EventListener)
+    targetEl.addEventListener('pointercancel', onPointerUp as EventListener)
   }
 
   const handleModeSwitch = async (mode: CanvasKeyMode) => {
@@ -193,7 +389,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   }
 
   const handlePreviewClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isPickingColor || !currentFile) return
+    if (!isPickingColor || !currentFile || isManualCropping) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const clickX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
@@ -746,7 +942,72 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                       <span>➡️ Baris per Baris</span>
                     </button>
                   </div>
+
+                  <div className="admin-canvas-tool-group">
+                    <button
+                      type="button"
+                      className="admin-canvas-btn admin-btn-autocrop"
+                      onClick={handleAutoCropMargin}
+                      disabled={cropProcessing || analyzing}
+                      title="Deteksi dan potong margin/background kosong di sekeliling template secara otomatis"
+                    >
+                      <Crop size={14} />
+                      <span>⚡ Auto-Crop Margin</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`admin-canvas-btn ${isManualCropping ? 'is-active' : ''}`}
+                      onClick={handleStartManualCrop}
+                      disabled={cropProcessing || analyzing}
+                      title="Pilih area potong secara bebas menggunakan kotak seleksi"
+                    >
+                      <Scissors size={14} />
+                      <span>Crop Manual</span>
+                    </button>
+                    {(hasCropped || (originalFile && currentFile !== originalFile)) && (
+                      <button
+                        type="button"
+                        className="admin-canvas-btn admin-btn-reset-crop"
+                        onClick={handleResetToOriginal}
+                        title="Kembalikan gambar ke versi awal sebelum dipotong"
+                      >
+                        <Undo2 size={14} />
+                        <span>Reset Asli</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Manual Crop Action Bar */}
+                {isManualCropping && (
+                  <div className="admin-crop-action-bar">
+                    <div className="admin-crop-info">
+                      <Scissors size={16} />
+                      <span>
+                        <strong>Mode Crop Manual:</strong> Tarik tepi atau sudut kotak seleksi untuk memotong area template.
+                      </span>
+                    </div>
+                    <div className="admin-crop-action-btns">
+                      <button
+                        type="button"
+                        className="admin-crop-btn-cancel"
+                        onClick={handleCancelManualCrop}
+                      >
+                        <X size={14} />
+                        <span>Batal</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-crop-btn-apply"
+                        onClick={handleApplyManualCrop}
+                        disabled={cropProcessing}
+                      >
+                        <Check size={14} />
+                        <span>{cropProcessing ? 'Memotong...' : 'Terapkan Crop'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Eyedropper Banner */}
                 {isPickingColor && (
@@ -800,7 +1061,67 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                       className="admin-preview-img"
                     />
 
-                    {!isPickingColor &&
+                    {isManualCropping ? (
+                      <div
+                        className="admin-crop-box"
+                        style={{
+                          left: `${manualCropRect.x * 100}%`,
+                          top: `${manualCropRect.y * 100}%`,
+                          width: `${manualCropRect.width * 100}%`,
+                          height: `${manualCropRect.height * 100}%`,
+                        }}
+                        onPointerDown={(e) => handleCropPointerDown(e, 'move')}
+                      >
+                        {/* 3x3 Rule of thirds grid lines */}
+                        <div className="admin-crop-grid-h1" />
+                        <div className="admin-crop-grid-h2" />
+                        <div className="admin-crop-grid-v1" />
+                        <div className="admin-crop-grid-v2" />
+
+                        {/* Corner Handles */}
+                        <div
+                          className="admin-crop-handle handle-nw"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'nw')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-ne"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'ne')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-sw"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'sw')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-se"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'se')}
+                        />
+
+                        {/* Edge Handles */}
+                        <div
+                          className="admin-crop-handle handle-n"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'n')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-s"
+                          onPointerDown={(e) => handleCropPointerDown(e, 's')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-w"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'w')}
+                        />
+                        <div
+                          className="admin-crop-handle handle-e"
+                          onPointerDown={(e) => handleCropPointerDown(e, 'e')}
+                        />
+
+                        {/* Dimension Badge */}
+                        <div className="admin-crop-size-badge">
+                          {Math.round(manualCropRect.width * analysis.width)} ×{' '}
+                          {Math.round(manualCropRect.height * analysis.height)} px
+                        </div>
+                      </div>
+                    ) : (
+                      !isPickingColor &&
                       slots.map((slot) => {
                         const isDragging = draggedSlotId === slot.id
                         const isDropTarget = dropTargetSlotId === slot.id
@@ -853,12 +1174,21 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                             </span>
                           </div>
                         )
-                      })}
+                      })
+                    )}
                   </div>
                 </div>
 
                 <div className="admin-canvas-hint-bar">
-                  💡 <strong>Tip Praktis:</strong> Klik <em>"⬇️ Kolom Kiri ➔ Kanan"</em> untuk langsung mengurutkan template 2-strip, atau seret (*drag &amp; drop*) nomor pose langsung di gambar untuk menukarnya!
+                  {isManualCropping ? (
+                    <span>
+                      💡 <strong>Petunjuk Crop:</strong> Tarik 8 pegangan putih di sudut atau sisi untuk mengatur batas potong, atau seret tengah kotak untuk memindahkan area crop.
+                    </span>
+                  ) : (
+                    <span>
+                      💡 <strong>Tip Praktis:</strong> Klik <em>"⚡ Auto-Crop Margin"</em> untuk memotong background kosong di luar template, atau seret (*drag &amp; drop*) nomor pose langsung di gambar untuk menukarnya!
+                    </span>
+                  )}
                 </div>
               </div>
 

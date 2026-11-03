@@ -9,6 +9,7 @@ import {
   rgbToHex,
   sortSlotsByColumn,
   sortSlotsByRow,
+  detectOuterMarginCrop,
 } from './greenscreen-detector'
 import type { DetectedSlot } from './greenscreen-detector'
 
@@ -128,5 +129,58 @@ describe('greenscreen-detector', () => {
     const sorted = sortSlotsByRow(messySlots)
     expect(sorted.map((s) => s.id)).toEqual(['s-l1', 's-r1', 's-l2', 's-r2'])
     expect(sorted.map((s) => s.order)).toEqual([1, 2, 3, 4])
+  })
+
+  it('detects outer margin crop for solid background mockups', () => {
+    const width = 100
+    const height = 100
+    const pixels = new Uint8ClampedArray(width * height * 4)
+
+    // Fill all with solid gray #CCCCCC (204, 204, 204)
+    for (let i = 0; i < width * height; i++) {
+      const idx = i * 4
+      pixels[idx] = 204
+      pixels[idx + 1] = 204
+      pixels[idx + 2] = 204
+      pixels[idx + 3] = 255
+    }
+
+    // Draw card inside: x from 20 to 79, y from 10 to 89 with white (255, 255, 255)
+    for (let y = 10; y <= 89; y++) {
+      for (let x = 20; x <= 79; x++) {
+        const idx = (y * width + x) * 4
+        pixels[idx] = 255
+        pixels[idx + 1] = 255
+        pixels[idx + 2] = 255
+        pixels[idx + 3] = 255
+      }
+    }
+
+    const crop = detectOuterMarginCrop(pixels, width, height)
+    expect(crop).not.toBeNull()
+    expect(crop?.x).toBe(0.2)
+    expect(crop?.y).toBe(0.1)
+    expect(crop?.width).toBe(0.6)
+    expect(crop?.height).toBe(0.8)
+  })
+
+  it('returns null when image already fills canvas with no outer margins', () => {
+    const width = 100
+    const height = 100
+    const pixels = new Uint8ClampedArray(width * height * 4)
+
+    // Gradient or photo across entire canvas
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4
+        pixels[idx] = (x * 2) % 256
+        pixels[idx + 1] = (y * 2) % 256
+        pixels[idx + 2] = 120
+        pixels[idx + 3] = 255
+      }
+    }
+
+    const crop = detectOuterMarginCrop(pixels, width, height)
+    expect(crop).toBeNull()
   })
 })

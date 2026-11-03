@@ -611,7 +611,270 @@
   cursor: move !important;
 }
 
-/* Interactive Slot Overlays on Preview */
+/* Crop Features (Auto & Manual) */
+.admin-canvas-btn.admin-btn-autocrop {
+  background: #FEF3C7;
+  border-color: #F59E0B;
+  color: #B45309;
+}
+
+.admin-canvas-btn.admin-btn-autocrop:hover {
+  background: #F59E0B;
+  color: #FFFFFF;
+  border-color: #D97706;
+}
+
+.admin-canvas-btn.admin-btn-reset-crop {
+  background: #F3F4F6;
+  border-color: rgba(44, 43, 41, 0.2);
+  color: #4B5563;
+}
+
+.admin-canvas-btn.admin-btn-reset-crop:hover {
+  background: #E5E7EB;
+  color: #111827;
+  border-color: #9CA3AF;
+}
+
+/* Manual Crop Action Bar */
+.admin-crop-action-bar {
+  background: #2C2B29;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #FAF8F5;
+  padding: 8px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  animation: adminFadeIn 0.2s ease-out;
+}
+
+.admin-crop-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #E7E5E4;
+}
+
+.admin-crop-info svg {
+  color: #F59E0B;
+}
+
+.admin-crop-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-crop-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FAF8F5;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.admin-crop-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-crop-btn-apply {
+  background: #D97706;
+  border: 1px solid #B45309;
+  color: #FFFFFF;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4);
+  transition: all 0.15s ease;
+}
+
+.admin-crop-btn-apply:hover {
+  background: #B45309;
+}
+
+/* Crop Box & Overlays */
+.admin-crop-box {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(20, 20, 19, 0.65);
+  border: 2px solid #F59E0B;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* 3x3 Rule of thirds dashed lines */
+.admin-crop-grid-h1,
+.admin-crop-grid-h2,
+.admin-crop-grid-v1,
+.admin-crop-grid-v2 {
+  position: absolute;
+  pointer-events: none;
+}
+
+.admin-crop-grid-h1 {
+  top: 33.333%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.admin-crop-grid-h2 {
+  top: 66.666%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.admin-crop-grid-v1 {
+  left: 33.333%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.admin-crop-grid-v2 {
+  left: 66.666%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+/* Crop Handles */
+.admin-crop-handle {
+  position: absolute;
+  touch-action: none;
+  z-index: 20;
+}
+
+/* Corner Handles */
+.admin-crop-handle.handle-nw {
+  top: -6px;
+  left: -6px;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border: 2.5px solid #D97706;
+  border-radius: 3px;
+  cursor: nwse-resize;
+}
+
+.admin-crop-handle.handle-ne {
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border: 2.5px solid #D97706;
+  border-radius: 3px;
+  cursor: nesw-resize;
+}
+
+.admin-crop-handle.handle-sw {
+  bottom: -6px;
+  left: -6px;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border: 2.5px solid #D97706;
+  border-radius: 3px;
+  cursor: nesw-resize;
+}
+
+.admin-crop-handle.handle-se {
+  bottom: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border: 2.5px solid #D97706;
+  border-radius: 3px;
+  cursor: nwse-resize;
+}
+
+/* Edge Handles */
+.admin-crop-handle.handle-n {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 8px;
+  background: #FFFFFF;
+  border: 2px solid #D97706;
+  border-radius: 4px;
+  cursor: ns-resize;
+}
+
+.admin-crop-handle.handle-s {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 8px;
+  background: #FFFFFF;
+  border: 2px solid #D97706;
+  border-radius: 4px;
+  cursor: ns-resize;
+}
+
+.admin-crop-handle.handle-w {
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 24px;
+  background: #FFFFFF;
+  border: 2px solid #D97706;
+  border-radius: 4px;
+  cursor: ew-resize;
+}
+
+.admin-crop-handle.handle-e {
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 24px;
+  background: #FFFFFF;
+  border: 2px solid #D97706;
+  border-radius: 4px;
+  cursor: ew-resize;
+}
+
+.admin-crop-size-badge {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(44, 43, 41, 0.9);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .admin-slot-box {
   position: absolute;
   border: 2.5px dashed #16A34A;

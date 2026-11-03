@@ -36,6 +36,13 @@ export interface AnalyzeTemplateOptions {
   feather?: boolean
 }
 
+export interface NormalizedCropRect {
+  x: number // 0..1
+  y: number // 0..1
+  width: number // 0..1
+  height: number // 0..1
+}
+
 export const isTransparentPixel = (r: number, g: number, b: number, a: number): boolean => {
   return a < 25
 }
@@ -552,4 +559,260 @@ export const sortSlotsByRow = (slots: DetectedSlot[]): DetectedSlot[] => {
     }
   }
   return result
+}
+
+/**
+ * Detect outer margin / solid background border surrounding the template card.
+ * Returns normalized crop bounds { x, y, width, height } or null if no significant margin is detected.
+ */
+export const detectOuterMarginCrop = (
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  tolerance = 28
+): NormalizedCropRect | null => {
+  if (width < 20 || height < 20) return null
+
+  // 1. Sample 4 corners (offset slightly from extreme edge to avoid single-pixel noise)
+  const samplePoints = [
+    { x: Math.min(2, width - 1), y: Math.min(2, height - 1) },
+    { x: Math.max(0, width - 3), y: Math.min(2, height - 1) },
+    { x: Math.min(2, width - 1), y: Math.max(0, height - 3) },
+    { x: Math.max(0, width - 3), y: Math.max(0, height - 3) },
+  ]
+
+  const cornerSamples = samplePoints.map((pt) => {
+    const idx = (pt.y * width + pt.x) * 4
+    return {
+      r: pixels[idx],
+      g: pixels[idx + 1],
+      b: pixels[idx + 2],
+      a: pixels[idx + 3],
+    }
+  })
+
+  // Check if outer border is transparent
+  const transparentCorners = cornerSamples.filter((s) => s.a < 30).length
+  const isOuterTransparent = transparentCorners >= 3
+
+  let isOuterSolid = false
+  let bgR = 0
+  let bgG = 0
+  let bgB = 0
+
+  if (!isOuterTransparent) {
+    const first = cornerSamples[0]
+    let matchingCorners = 1
+    let sumR = first.r
+    let sumG = first.g
+    let sumB = first.b
+
+    for (let i = 1; i < cornerSamples.length; i++) {
+      const c = cornerSamples[i]
+      const dist = Math.hypot(c.r - first.r, c.g - first.g, c.b - first.b)
+      if (dist <= tolerance) {
+        matchingCorners++
+        sumR += c.r
+        sumG += c.g
+        sumB += c.b
+      }
+    }
+
+    if (matchingCorners >= 3) {
+      isOuterSolid = true
+      bgR = Math.round(sumR / matchingCorners)
+      bgG = Math.round(sumG / matchingCorners)
+      bgB = Math.round(sumB / matchingCorners)
+    }
+  }
+
+  if (!isOuterTransparent && !isOuterSolid) {
+    return null
+  }
+
+  const isBackgroundPixel = (r: number, g: number, b: number, a: number): boolean => {
+    if (isOuterTransparent) {
+      return a < 30
+    }
+    if (a < 30) return false
+    return Math.hypot(r - bgR, g - bgG, b - bgB) <= tolerance
+  }
+
+  // Content threshold: at least 1.5% of row/col pixels or min 3 pixels must deviate from background
+  const minPixelsRow = Math.max(3, Math.floor(width * 0.015))
+  const minPixelsCol = Math.max(3, Math.floor(height * 0.015))
+
+  // Scan Top to Bottom (minY)
+  let minY = 0
+  for (let y = 0; y < height; y++) {
+    let nonBgCount = 0
+    const rowOffset = y * width * 4
+    for (let x = 0; x < width; x++) {
+      const idx = rowOffset + x * 4
+      if (!isBackgroundPixel(pixels[idx], pixels[idx + 1], pixels[idx + 2], pixels[idx + 3])) {
+        nonBgCount++
+        if (nonBgCount >= minPixelsRow) break
+      }
+    }
+    if (nonBgCount >= minPixelsRow) {
+      minY = y
+      break
+    }
+  }
+
+  // Scan Bottom to Top (maxY)
+  let maxY = height - 1
+  for (let y = height - 1; y >= 0; y--) {
+    let nonBgCount = 0
+    const rowOffset = y * width * 4
+    for (let x = 0; x < width; x++) {
+      const idx = rowOffset + x * 4
+      if (!isBackgroundPixel(pixels[idx], pixels[idx + 1], pixels[idx + 2], pixels[idx + 3])) {
+        nonBgCount++
+        if (nonBgCount >= minPixelsRow) break
+      }
+    }
+    if (nonBgCount >= minPixelsRow) {
+      maxY = y
+      break
+    }
+  }
+
+  // Scan Left to Right (minX)
+  let minX = 0
+  for (let x = 0; x < width; x++) {
+    let nonBgCount = 0
+    for (let y = minY; y <= maxY; y++) {
+      const idx = (y * width + x) * 4
+      if (!isBackgroundPixel(pixels[idx], pixels[idx + 1], pixels[idx + 2], pixels[idx + 3])) {
+        nonBgCount++
+        if (nonBgCount >= minPixelsCol) break
+      }
+    }
+    if (nonBgCount >= minPixelsCol) {
+      minX = x
+      break
+    }
+  }
+
+  // Scan Right to Left (maxX)
+  let maxX = width - 1
+  for (let x = width - 1; x >= 0; x--) {
+    let nonBgCount = 0
+    for (let y = minY; y <= maxY; y++) {
+      const idx = (y * width + x) * 4
+      if (!isBackgroundPixel(pixels[idx], pixels[idx + 1], pixels[idx + 2], pixels[idx + 3])) {
+        nonBgCount++
+        if (nonBgCount >= minPixelsCol) break
+      }
+    }
+    if (nonBgCount >= minPixelsCol) {
+      maxX = x
+      break
+    }
+  }
+
+  if (minX >= maxX || minY >= maxY) return null
+
+  // Ensure there is a meaningful outer margin (at least 2% or 8px trimmed)
+  const leftMargin = minX
+  const rightMargin = width - 1 - maxX
+  const topMargin = minY
+  const bottomMargin = height - 1 - maxY
+
+  const minTrimPx = 6
+  const minTrimRatio = 0.02
+  const hasMeaningfulMargin =
+    (leftMargin >= minTrimPx && leftMargin / width >= minTrimRatio) ||
+    (rightMargin >= minTrimPx && rightMargin / width >= minTrimRatio) ||
+    (topMargin >= minTrimPx && topMargin / height >= minTrimRatio) ||
+    (bottomMargin >= minTrimPx && bottomMargin / height >= minTrimRatio)
+
+  if (!hasMeaningfulMargin) {
+    return null
+  }
+
+  const cropW = maxX - minX + 1
+  const cropH = maxY - minY + 1
+
+  return {
+    x: Number((minX / width).toFixed(4)),
+    y: Number((minY / height).toFixed(4)),
+    width: Number((cropW / width).toFixed(4)),
+    height: Number((cropH / height).toFixed(4)),
+  }
+}
+
+/**
+ * Sniffs outer margins from a File or Image URL.
+ */
+export const detectOuterMarginCropFromFile = async (
+  fileOrUrl: File | string,
+  tolerance = 28
+): Promise<NormalizedCropRect | null> => {
+  const img = await loadImageSource(fileOrUrl)
+  const w = img.naturalWidth || img.width
+  const h = img.naturalHeight || img.height
+  if (!w || !h) return null
+
+  const maxDim = 600
+  const scale = Math.min(1, maxDim / Math.max(w, h))
+  const scanW = Math.max(30, Math.round(w * scale))
+  const scanH = Math.max(30, Math.round(h * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = scanW
+  canvas.height = scanH
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return null
+
+  ctx.drawImage(img, 0, 0, scanW, scanH)
+  const imgData = ctx.getImageData(0, 0, scanW, scanH)
+  return detectOuterMarginCrop(imgData.data, scanW, scanH, tolerance)
+}
+
+/**
+ * Crops an image according to normalized crop coordinates and returns a new File object.
+ */
+export const cropImageFile = async (
+  fileOrUrl: File | string,
+  crop: NormalizedCropRect,
+  outputFileName = 'template-cropped.png'
+): Promise<File> => {
+  const img = await loadImageSource(fileOrUrl)
+  const origW = img.naturalWidth || img.width
+  const origH = img.naturalHeight || img.height
+
+  const sx = Math.max(0, Math.min(origW - 1, Math.round(crop.x * origW)))
+  const sy = Math.max(0, Math.min(origH - 1, Math.round(crop.y * origH)))
+  const sw = Math.max(1, Math.min(origW - sx, Math.round(crop.width * origW)))
+  const sh = Math.max(1, Math.min(origH - sy, Math.round(crop.height * origH)))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = sw
+  canvas.height = sh
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('Gagal menginisialisasi canvas untuk crop gambar.')
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh)
+
+  let mimeType = 'image/png'
+  let fileName = outputFileName
+  if (fileOrUrl instanceof File) {
+    fileName = fileOrUrl.name
+    if (fileOrUrl.type) mimeType = fileOrUrl.type
+  }
+
+  const dataUrl = canvas.toDataURL(mimeType, 0.95)
+  const [, base64] = dataUrl.split(',')
+  const binaryStr = atob(base64)
+  const bytes = new Uint8Array(binaryStr.length)
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i)
+  }
+  const blob = new Blob([bytes], { type: mimeType })
+
+  return new File([blob], fileName, { type: mimeType, lastModified: Date.now() })
 }
