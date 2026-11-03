@@ -67,7 +67,7 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
         type="button"
         className="frame-card frame-add-card"
         onClick={handleAddFrameClick}
-        aria-label="Tambah template kustom greenscreen"
+        aria-label="Tambah template kustom"
       >
         <div className="frame-thumbnail">
           <div className="frame-add-placeholder">
@@ -75,7 +75,7 @@ export function FrameBrowser({ category, orientation, query, selectedFrame, onCa
           </div>
         </div>
         <span className="frame-add-label">+ Tambah Frame</span>
-        <small className="frame-card-pose-count">Greenscreen · Admin</small>
+        <small className="frame-card-pose-count">Kustom · Admin</small>
       </button>
     </div>
     {frames.length === 0 && <p className="editor-empty">Tidak ada bingkai yang cocok.</p>}

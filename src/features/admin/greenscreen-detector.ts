@@ -1,5 +1,14 @@
 import type { PhotoSlot } from '../../catalog/types'
 
+export type CanvasKeyMode = 'auto' | 'greenscreen' | 'blackscreen' | 'transparent' | 'custom'
+
+export interface CustomKeyColor {
+  r: number
+  g: number
+  b: number
+  tolerance?: number
+}
+
 export interface DetectedSlot {
   id: string
   order: number // 1, 2, 3...
@@ -13,66 +22,79 @@ export interface DetectedSlot {
 export interface GreenscreenAnalysisResult {
   width: number
   height: number
+  mode: CanvasKeyMode
   slots: DetectedSlot[]
   cutoutDataUrl: string
   thumbnailDataUrl: string
+  detectedColorHex?: string
+}
+
+export interface AnalyzeTemplateOptions {
+  mode?: CanvasKeyMode
+  customColor?: CustomKeyColor
+  inset?: number // Normalized inset padding to apply to slots (e.g. 0.003)
+  feather?: boolean
+}
+
+export const isTransparentPixel = (r: number, g: number, b: number, a: number): boolean => {
+  return a < 25
 }
 
 export const isChromaGreenPixel = (
   r: number,
   g: number,
   b: number,
+  a = 255,
   thresholdMultiplier = 1.25
 ): boolean => {
-  // Green channel must have meaningful intensity
-  if (g < 100) return false
-  // Green must clearly surpass red and blue
-  if (g - r < 30 || g - b < 30) return false
-  // Dominance ratio
+  if (a < 128) return false
+  if (g < 90) return false
+  if (g - r < 25 || g - b < 25) return false
   const maxOther = Math.max(r, b)
   return g / (maxOther + 1) >= thresholdMultiplier
 }
 
-export const analyzeGreenscreenImage = async (
-  fileOrUrl: File | string,
-  options: {
-    inset?: number // Normalized inset padding to apply to slots (e.g. 0.003)
-    feather?: boolean
-  } = {}
-): Promise<GreenscreenAnalysisResult> => {
-  const img = await loadImageSource(fileOrUrl)
-  const originalWidth = img.naturalWidth || img.width
-  const originalHeight = img.naturalHeight || img.height
+export const isBlackscreenPixel = (
+  r: number,
+  g: number,
+  b: number,
+  a = 255,
+  threshold = 35
+): boolean => {
+  if (a < 128) return false
+  return r <= threshold && g <= threshold && b <= threshold
+}
 
-  if (!originalWidth || !originalHeight) {
-    throw new Error('Dimensi gambar tidak valid atau gambar tidak dapat dimuat.')
-  }
+export const isCustomColorPixel = (
+  r: number,
+  g: number,
+  b: number,
+  a = 255,
+  target: CustomKeyColor
+): boolean => {
+  if (a < 128) return false
+  const tol = target.tolerance ?? 42
+  const dr = r - target.r
+  const dg = g - target.g
+  const db = b - target.b
+  return Math.hypot(dr, dg, db) <= tol
+}
 
-  // 1. Scan for slots using downsampled grid for fast processing (<50ms)
-  const maxScanDim = 500
-  const scanScale = Math.min(1, maxScanDim / Math.max(originalWidth, originalHeight))
-  const scanW = Math.max(50, Math.round(originalWidth * scanScale))
-  const scanH = Math.max(50, Math.round(originalHeight * scanScale))
+export const rgbToHex = (r: number, g: number, b: number): string => {
+  const toHex = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase()
+}
 
-  const scanCanvas = document.createElement('canvas')
-  scanCanvas.width = scanW
-  scanCanvas.height = scanH
-  const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true })
-  if (!scanCtx) throw new Error('Gagal menginisialisasi Canvas Context.')
+interface PixelClassifier {
+  (r: number, g: number, b: number, a: number): boolean
+}
 
-  scanCtx.drawImage(img, 0, 0, scanW, scanH)
-  const scanImageData = scanCtx.getImageData(0, 0, scanW, scanH)
-  const scanPixels = scanImageData.data
-
-  const isGreenGrid = new Uint8Array(scanW * scanH)
-  for (let i = 0; i < scanW * scanH; i++) {
-    const pi = i * 4
-    if (isChromaGreenPixel(scanPixels[pi], scanPixels[pi + 1], scanPixels[pi + 2])) {
-      isGreenGrid[i] = 1
-    }
-  }
-
-  // 2. Connected Component Labeling (BFS Blob Detection)
+export const detectBlobsInGrid = (
+  grid: Uint8Array,
+  scanW: number,
+  scanH: number,
+  minFillRatio = 0.45
+): Array<{ minX: number; maxX: number; minY: number; maxY: number; count: number }> => {
   const visited = new Uint8Array(scanW * scanH)
   const detectedBlobs: Array<{
     minX: number
@@ -83,15 +105,15 @@ export const analyzeGreenscreenImage = async (
   }> = []
 
   const totalPixels = scanW * scanH
-  const minBlobPixels = Math.round(totalPixels * 0.015) // At least 1.5% of total area
-  const maxBlobPixels = Math.round(totalPixels * 0.90) // Reject canvas-wide green
+  const minBlobPixels = Math.round(totalPixels * 0.012) // At least 1.2% of total area
+  const maxBlobPixels = Math.round(totalPixels * 0.88) // Reject canvas-wide fills
 
   for (let y = 0; y < scanH; y++) {
     for (let x = 0; x < scanW; x++) {
       const idx = y * scanW + x
-      if (!isGreenGrid[idx] || visited[idx]) continue
+      if (!grid[idx] || visited[idx]) continue
 
-      // BFS to find all connected green pixels
+      // BFS to find connected component
       let minX = x
       let maxX = x
       let minY = y
@@ -121,7 +143,7 @@ export const analyzeGreenscreenImage = async (
         ]
 
         for (const n of neighbors) {
-          if (n >= 0 && isGreenGrid[n] && !visited[n]) {
+          if (n >= 0 && grid[n] && !visited[n]) {
             visited[n] = 1
             queue.push(n)
           }
@@ -129,18 +151,140 @@ export const analyzeGreenscreenImage = async (
       }
 
       if (count >= minBlobPixels && count <= maxBlobPixels) {
-        detectedBlobs.push({ minX, maxX, minY, maxY, count })
+        // Enforce rectangular fill ratio to filter out thin lines, text, or border outlines
+        const bWidth = maxX - minX + 1
+        const bHeight = maxY - minY + 1
+        const boundingArea = bWidth * bHeight
+        const fillRatio = count / boundingArea
+
+        if (fillRatio >= minFillRatio) {
+          detectedBlobs.push({ minX, maxX, minY, maxY, count })
+        }
+      }
+    }
+  }
+
+  return detectedBlobs
+}
+
+export const analyzeGreenscreenImage = async (
+  fileOrUrl: File | string,
+  options: AnalyzeTemplateOptions = {}
+): Promise<GreenscreenAnalysisResult> => {
+  return analyzeTemplateImage(fileOrUrl, options)
+}
+
+export const analyzeTemplateImage = async (
+  fileOrUrl: File | string,
+  options: AnalyzeTemplateOptions = {}
+): Promise<GreenscreenAnalysisResult> => {
+  const img = await loadImageSource(fileOrUrl)
+  const originalWidth = img.naturalWidth || img.width
+  const originalHeight = img.naturalHeight || img.height
+
+  if (!originalWidth || !originalHeight) {
+    throw new Error('Dimensi gambar tidak valid atau gambar tidak dapat dimuat.')
+  }
+
+  // 1. Scan for slots using downsampled grid for fast processing (<40ms)
+  const maxScanDim = 500
+  const scanScale = Math.min(1, maxScanDim / Math.max(originalWidth, originalHeight))
+  const scanW = Math.max(50, Math.round(originalWidth * scanScale))
+  const scanH = Math.max(50, Math.round(originalHeight * scanScale))
+
+  const scanCanvas = document.createElement('canvas')
+  scanCanvas.width = scanW
+  scanCanvas.height = scanH
+  const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true })
+  if (!scanCtx) throw new Error('Gagal menginisialisasi Canvas Context.')
+
+  scanCtx.drawImage(img, 0, 0, scanW, scanH)
+  const scanImageData = scanCtx.getImageData(0, 0, scanW, scanH)
+  const scanPixels = scanImageData.data
+
+  const requestedMode = options.mode ?? 'auto'
+  let resolvedMode: CanvasKeyMode = requestedMode
+  let classifier: PixelClassifier
+  let detectedBlobs: Array<{ minX: number; maxX: number; minY: number; maxY: number; count: number }> = []
+
+  // Helper to build grid for a classifier
+  const buildGrid = (fn: PixelClassifier): Uint8Array => {
+    const grid = new Uint8Array(scanW * scanH)
+    for (let i = 0; i < scanW * scanH; i++) {
+      const pi = i * 4
+      if (fn(scanPixels[pi], scanPixels[pi + 1], scanPixels[pi + 2], scanPixels[pi + 3])) {
+        grid[i] = 1
+      }
+    }
+    return grid
+  }
+
+  if (requestedMode === 'transparent') {
+    resolvedMode = 'transparent'
+    classifier = (r, g, b, a) => isTransparentPixel(r, g, b, a)
+    detectedBlobs = detectBlobsInGrid(buildGrid(classifier), scanW, scanH, 0.45)
+  } else if (requestedMode === 'greenscreen') {
+    resolvedMode = 'greenscreen'
+    classifier = (r, g, b, a) => isChromaGreenPixel(r, g, b, a)
+    detectedBlobs = detectBlobsInGrid(buildGrid(classifier), scanW, scanH, 0.45)
+  } else if (requestedMode === 'blackscreen') {
+    resolvedMode = 'blackscreen'
+    classifier = (r, g, b, a) => isBlackscreenPixel(r, g, b, a)
+    detectedBlobs = detectBlobsInGrid(buildGrid(classifier), scanW, scanH, 0.55)
+  } else if (requestedMode === 'custom' && options.customColor) {
+    resolvedMode = 'custom'
+    const target = options.customColor
+    classifier = (r, g, b, a) => isCustomColorPixel(r, g, b, a, target)
+    detectedBlobs = detectBlobsInGrid(buildGrid(classifier), scanW, scanH, 0.50)
+  } else {
+    // AUTO MODE: Smart detection cascade
+    // Step 1: Check for Transparent PNG slots
+    const transClassifier = (r: number, g: number, b: number, a: number) => isTransparentPixel(r, g, b, a)
+    const transBlobs = detectBlobsInGrid(buildGrid(transClassifier), scanW, scanH, 0.45)
+    if (transBlobs.length > 0) {
+      resolvedMode = 'transparent'
+      classifier = transClassifier
+      detectedBlobs = transBlobs
+    } else {
+      // Step 2: Check for Chroma Green slots
+      const greenClassifier = (r: number, g: number, b: number, a: number) => isChromaGreenPixel(r, g, b, a)
+      const greenBlobs = detectBlobsInGrid(buildGrid(greenClassifier), scanW, scanH, 0.45)
+      if (greenBlobs.length > 0) {
+        resolvedMode = 'greenscreen'
+        classifier = greenClassifier
+        detectedBlobs = greenBlobs
+      } else {
+        // Step 3: Check for Blackscreen slots
+        const blackClassifier = (r: number, g: number, b: number, a: number) => isBlackscreenPixel(r, g, b, a)
+        const blackBlobs = detectBlobsInGrid(buildGrid(blackClassifier), scanW, scanH, 0.55)
+        if (blackBlobs.length > 0) {
+          resolvedMode = 'blackscreen'
+          classifier = blackClassifier
+          detectedBlobs = blackBlobs
+        } else {
+          throw new Error(
+            'Tidak ada area slot foto yang terdeteksi otomatis (Transparan, Greenscreen, atau Blackscreen). Silakan pilih mode warna secara manual atau gunakan "Pipet Warna".'
+          )
+        }
       }
     }
   }
 
   if (detectedBlobs.length === 0) {
+    const modeLabel = resolvedMode === 'greenscreen'
+      ? 'Greenscreen (#00FF00)'
+      : resolvedMode === 'blackscreen'
+      ? 'Blackscreen (#000000)'
+      : resolvedMode === 'transparent'
+      ? 'Transparan (No BG)'
+      : 'Warna Kustom'
+
     throw new Error(
-      'Tidak ada area greenscreen (#00FF00) yang terdeteksi pada template ini. Pastikan area foto diberi warna hijau neon terang.'
+      `Tidak ada area slot foto yang cocok dengan mode ${modeLabel}. Coba ganti mode kanvas atau gunakan "Pipet Warna".`
     )
   }
 
-  // 3. Sort blobs: Primarily Top-to-Bottom, then Left-to-Right for same row
+  // Sort blobs: Primarily Top-to-Bottom, then Left-to-Right for same row
   const rowThreshold = 0.08 // 8% vertical distance considered same row
   detectedBlobs.sort((a, b) => {
     const aNormY = a.minY / scanH
@@ -173,7 +317,7 @@ export const analyzeGreenscreenImage = async (
     }
   })
 
-  // 4. Punch out Green Pixels on Full Resolution Canvas (Chroma Cutout)
+  // Full Resolution Canvas & Cutout Punching
   const fullCanvas = document.createElement('canvas')
   fullCanvas.width = originalWidth
   fullCanvas.height = originalHeight
@@ -181,30 +325,85 @@ export const analyzeGreenscreenImage = async (
   if (!fullCtx) throw new Error('Gagal menginisialisasi Full Canvas Context.')
 
   fullCtx.drawImage(img, 0, 0, originalWidth, originalHeight)
-  const fullImageData = fullCtx.getImageData(0, 0, originalWidth, originalHeight)
-  const fullPixels = fullImageData.data
 
-  for (let i = 0; i < fullPixels.length; i += 4) {
-    const r = fullPixels[i]
-    const g = fullPixels[i + 1]
-    const b = fullPixels[i + 2]
+  if (resolvedMode !== 'transparent') {
+    const fullImageData = fullCtx.getImageData(0, 0, originalWidth, originalHeight)
+    const fullPixels = fullImageData.data
 
-    if (isChromaGreenPixel(r, g, b)) {
-      // Make transparent
-      fullPixels[i + 3] = 0
-    } else {
-      // De-spill green fringe at boundary
-      const maxOther = Math.max(r, b)
-      if (g > maxOther && g - maxOther < 40) {
-        fullPixels[i + 1] = Math.round(maxOther + (g - maxOther) * 0.4)
+    if (resolvedMode === 'greenscreen') {
+      for (let i = 0; i < fullPixels.length; i += 4) {
+        const r = fullPixels[i]
+        const g = fullPixels[i + 1]
+        const b = fullPixels[i + 2]
+        const a = fullPixels[i + 3]
+
+        if (isChromaGreenPixel(r, g, b, a)) {
+          fullPixels[i + 3] = 0
+        } else {
+          // De-spill green fringe at boundary
+          const maxOther = Math.max(r, b)
+          if (g > maxOther && g - maxOther < 40) {
+            fullPixels[i + 1] = Math.round(maxOther + (g - maxOther) * 0.4)
+          }
+        }
+      }
+    } else if (resolvedMode === 'blackscreen') {
+      // Punch out black pixels specifically inside or slightly expanded around the detected slot bounding boxes
+      // to avoid punching black text or frame elements outside the photo slots!
+      const slotBoxes = detectedSlots.map((s) => ({
+        x1: Math.floor(s.x * originalWidth) - 2,
+        y1: Math.floor(s.y * originalHeight) - 2,
+        x2: Math.ceil((s.x + s.width) * originalWidth) + 2,
+        y2: Math.ceil((s.y + s.height) * originalHeight) + 2,
+      }))
+
+      for (const box of slotBoxes) {
+        const startX = Math.max(0, box.x1)
+        const endX = Math.min(originalWidth, box.x2)
+        const startY = Math.max(0, box.y1)
+        const endY = Math.min(originalHeight, box.y2)
+
+        for (let py = startY; py < endY; py++) {
+          for (let px = startX; px < endX; px++) {
+            const pi = (py * originalWidth + px) * 4
+            if (isBlackscreenPixel(fullPixels[pi], fullPixels[pi + 1], fullPixels[pi + 2], fullPixels[pi + 3], 45)) {
+              fullPixels[pi + 3] = 0
+            }
+          }
+        }
+      }
+    } else if (resolvedMode === 'custom' && options.customColor) {
+      const target = options.customColor
+      const slotBoxes = detectedSlots.map((s) => ({
+        x1: Math.floor(s.x * originalWidth) - 2,
+        y1: Math.floor(s.y * originalHeight) - 2,
+        x2: Math.ceil((s.x + s.width) * originalWidth) + 2,
+        y2: Math.ceil((s.y + s.height) * originalHeight) + 2,
+      }))
+
+      for (const box of slotBoxes) {
+        const startX = Math.max(0, box.x1)
+        const endX = Math.min(originalWidth, box.x2)
+        const startY = Math.max(0, box.y1)
+        const endY = Math.min(originalHeight, box.y2)
+
+        for (let py = startY; py < endY; py++) {
+          for (let px = startX; px < endX; px++) {
+            const pi = (py * originalWidth + px) * 4
+            if (isCustomColorPixel(fullPixels[pi], fullPixels[pi + 1], fullPixels[pi + 2], fullPixels[pi + 3], target)) {
+              fullPixels[pi + 3] = 0
+            }
+          }
+        }
       }
     }
+
+    fullCtx.putImageData(fullImageData, 0, 0)
   }
 
-  fullCtx.putImageData(fullImageData, 0, 0)
   const cutoutDataUrl = fullCanvas.toDataURL('image/png')
 
-  // 5. Generate Thumbnail with Photo Placeholders
+  // Generate Thumbnail with Photo Placeholders
   const thumbHeight = 320
   const thumbWidth = Math.round((originalWidth / originalHeight) * thumbHeight)
   const thumbCanvas = document.createElement('canvas')
@@ -213,11 +412,9 @@ export const analyzeGreenscreenImage = async (
   const thumbCtx = thumbCanvas.getContext('2d')
 
   if (thumbCtx) {
-    // Background
     thumbCtx.fillStyle = '#faf8ee'
     thumbCtx.fillRect(0, 0, thumbWidth, thumbHeight)
 
-    // Draw slot placeholders
     detectedSlots.forEach((slot) => {
       const sx = slot.x * thumbWidth
       const sy = slot.y * thumbHeight
@@ -227,7 +424,6 @@ export const analyzeGreenscreenImage = async (
       thumbCtx.fillStyle = '#e2dfd2'
       thumbCtx.fillRect(sx, sy, sw, sh)
 
-      // Slot badge number
       thumbCtx.fillStyle = '#6f6c64'
       thumbCtx.font = 'bold 14px sans-serif'
       thumbCtx.textAlign = 'center'
@@ -235,18 +431,26 @@ export const analyzeGreenscreenImage = async (
       thumbCtx.fillText(String(slot.order), sx + sw / 2, sy + sh / 2)
     })
 
-    // Draw cutout overlay on top
     thumbCtx.drawImage(fullCanvas, 0, 0, thumbWidth, thumbHeight)
   }
 
   const thumbnailDataUrl = thumbCanvas.toDataURL('image/png')
 
+  let detectedColorHex: string | undefined
+  if (resolvedMode === 'greenscreen') detectedColorHex = '#00FF00'
+  else if (resolvedMode === 'blackscreen') detectedColorHex = '#000000'
+  else if (resolvedMode === 'custom' && options.customColor) {
+    detectedColorHex = rgbToHex(options.customColor.r, options.customColor.g, options.customColor.b)
+  }
+
   return {
     width: originalWidth,
     height: originalHeight,
+    mode: resolvedMode,
     slots: detectedSlots,
     cutoutDataUrl,
     thumbnailDataUrl,
+    detectedColorHex,
   }
 }
 

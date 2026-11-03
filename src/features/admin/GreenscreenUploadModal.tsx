@@ -7,12 +7,16 @@ import {
   ArrowDown,
   CheckCircle2,
   AlertCircle,
-  Sliders,
-  Layers,
+  Pipette,
+  Check,
+  RotateCcw,
 } from 'lucide-react'
 import {
-  analyzeGreenscreenImage,
+  analyzeTemplateImage,
   slotsToPhotoSlots,
+  rgbToHex,
+  type CanvasKeyMode,
+  type CustomKeyColor,
   type DetectedSlot,
   type GreenscreenAnalysisResult,
 } from './greenscreen-detector'
@@ -36,10 +40,53 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
   const [inset, setInset] = useState(0.003)
   const [isDragOver, setIsDragOver] = useState(false)
 
+  // Multi-canvas mode state
+  const [activeMode, setActiveMode] = useState<CanvasKeyMode>('auto')
+  const [selectedMode, setSelectedMode] = useState<CanvasKeyMode>('auto')
+  const [customColor, setCustomColor] = useState<CustomKeyColor | null>(null)
+  const [isPickingColor, setIsPickingColor] = useState(false)
+  const [currentFile, setCurrentFile] = useState<File | null>(null)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewImgRef = useRef<HTMLImageElement>(null)
   const addCustomFrame = useCustomFramesStore((s) => s.addFrame)
 
   if (!isOpen) return null
+
+  const processImage = async (
+    file: File,
+    modeToUse: CanvasKeyMode,
+    colorToUse?: CustomKeyColor | null,
+    insetValue = inset
+  ) => {
+    try {
+      setAnalyzing(true)
+      setError(null)
+
+      const res = await analyzeTemplateImage(file, {
+        mode: modeToUse,
+        customColor: colorToUse ?? undefined,
+        inset: insetValue,
+      })
+
+      setAnalysis(res)
+      setSlots(res.slots)
+      setActiveMode(res.mode)
+
+      if (!frameName) {
+        const cleanName = file.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+        setFrameName(cleanName || 'Template Kustom')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memproses template.')
+      setAnalysis(null)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -47,23 +94,79 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
       return
     }
 
+    setCurrentFile(file)
+    await processImage(file, selectedMode, customColor, inset)
+  }
+
+  const handleModeSwitch = async (mode: CanvasKeyMode) => {
+    setSelectedMode(mode)
+    setIsPickingColor(false)
+
+    if (mode === 'custom' && !customColor) {
+      setIsPickingColor(true)
+      return
+    }
+
+    if (currentFile) {
+      await processImage(currentFile, mode, customColor, inset)
+    }
+  }
+
+  const handleStartPipette = () => {
+    setIsPickingColor(true)
+    setSelectedMode('custom')
+  }
+
+  const handlePreviewClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPickingColor || !currentFile) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const clickX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const clickY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+
+    // Sample RGB color at click coordinates from the original image
     try {
-      setAnalyzing(true)
-      setError(null)
-      const res = await analyzeGreenscreenImage(file, { inset })
-      setAnalysis(res)
-      setSlots(res.slots)
-      // Auto-generate clean title from filename
-      const cleanName = file.name
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-      setFrameName(cleanName || 'Template Kustom')
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      const objUrl = URL.createObjectURL(currentFile)
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('Gagal membaca gambar untuk sampling warna.'))
+        img.src = objUrl
+      })
+
+      const sampleCanvas = document.createElement('canvas')
+      sampleCanvas.width = img.naturalWidth || img.width
+      sampleCanvas.height = img.naturalHeight || img.height
+      const ctx = sampleCanvas.getContext('2d')
+      if (!ctx) {
+        URL.revokeObjectURL(objUrl)
+        return
+      }
+
+      ctx.drawImage(img, 0, 0)
+      URL.revokeObjectURL(objUrl)
+
+      const sampleX = Math.round(clickX * sampleCanvas.width)
+      const sampleY = Math.round(clickY * sampleCanvas.height)
+      const pixel = ctx.getImageData(sampleX, sampleY, 1, 1).data
+
+      const picked: CustomKeyColor = {
+        r: pixel[0],
+        g: pixel[1],
+        b: pixel[2],
+        tolerance: 40,
+      }
+
+      setCustomColor(picked)
+      setIsPickingColor(false)
+      setSelectedMode('custom')
+
+      await processImage(currentFile, 'custom', picked, inset)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memproses greenscreen.')
-      setAnalysis(null)
-    } finally {
-      setAnalyzing(false)
+      setError(err instanceof Error ? err.message : 'Gagal mengambil warna.')
+      setIsPickingColor(false)
     }
   }
 
@@ -92,6 +195,13 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     setSlots(updated)
   }
 
+  const handleInsetChange = async (newInset: number) => {
+    setInset(newInset)
+    if (currentFile) {
+      await processImage(currentFile, selectedMode, customColor, newInset)
+    }
+  }
+
   const handleSave = async () => {
     if (!analysis || slots.length === 0) return
 
@@ -109,12 +219,12 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     const orientation =
       analysis.width > analysis.height ? 'landscape' : 'portrait'
 
-    const newFrameId = `custom-gs-${Date.now()}`
+    const newFrameId = `custom-frame-${Date.now()}`
     const finalSlots = slotsToPhotoSlots(slots)
 
     const newFrame: FrameTemplate = {
       id: newFrameId,
-      name: frameName.trim() || 'Template Kustom Greenscreen',
+      name: frameName.trim() || 'Template Kustom',
       category,
       layoutId,
       orientation,
@@ -154,6 +264,17 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
     onClose()
   }
 
+  const modeBadgeText = () => {
+    if (!analysis) return null
+    if (analysis.mode === 'transparent') return 'Transparan (No BG)'
+    if (analysis.mode === 'greenscreen') return 'Greenscreen (#00FF00)'
+    if (analysis.mode === 'blackscreen') return 'Blackscreen (#000000)'
+    if (analysis.mode === 'custom') {
+      return `Warna Kustom ${analysis.detectedColorHex ?? ''}`
+    }
+    return analysis.mode
+  }
+
   return (
     <div
       className="admin-modal-overlay"
@@ -166,7 +287,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
         <header className="admin-upload-header">
           <div className="admin-upload-title">
             <Sparkles aria-hidden="true" size={24} color="#D97706" />
-            <h2 id="admin-upload-title">Upload Template Greenscreen</h2>
+            <h2 id="admin-upload-title">Upload Template Kustom</h2>
             <span className="admin-upload-badge">Admin Mode</span>
           </div>
           <button
@@ -200,6 +321,64 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
             </div>
           )}
 
+          {/* Mode Selector Pill Bar */}
+          <div className="admin-mode-selector-bar">
+            <span className="admin-mode-label">Pendeteksi Kanvas:</span>
+            <div className="admin-mode-tabs" role="tablist">
+              <button
+                type="button"
+                className={`admin-mode-tab ${selectedMode === 'auto' ? 'is-active' : ''}`}
+                onClick={() => handleModeSwitch('auto')}
+                title="Deteksi otomatis: Transparan, Greenscreen, atau Blackscreen"
+              >
+                <Sparkles size={14} />
+                <span>Otomatis</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-mode-tab ${selectedMode === 'greenscreen' ? 'is-active' : ''}`}
+                onClick={() => handleModeSwitch('greenscreen')}
+                title="Deteksi slot warna hijau neon (#00FF00)"
+              >
+                <span className="mode-dot dot-green" />
+                <span>Greenscreen</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-mode-tab ${selectedMode === 'blackscreen' ? 'is-active' : ''}`}
+                onClick={() => handleModeSwitch('blackscreen')}
+                title="Deteksi slot warna hitam pekat (#000000)"
+              >
+                <span className="mode-dot dot-black" />
+                <span>Blackscreen</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-mode-tab ${selectedMode === 'transparent' ? 'is-active' : ''}`}
+                onClick={() => handleModeSwitch('transparent')}
+                title="Deteksi slot pada PNG yang sudah transparan (No BG)"
+              >
+                <span className="mode-dot dot-trans" />
+                <span>Transparan PNG</span>
+              </button>
+              <button
+                type="button"
+                className={`admin-mode-tab ${selectedMode === 'custom' || isPickingColor ? 'is-active' : ''}`}
+                onClick={handleStartPipette}
+                title="Pilih warna apa saja dari preview menggunakan pipet"
+              >
+                <Pipette size={14} />
+                <span>Pipet Warna</span>
+                {customColor && (
+                  <span
+                    className="mode-dot dot-custom"
+                    style={{ background: rgbToHex(customColor.r, customColor.g, customColor.b) }}
+                  />
+                )}
+              </button>
+            </div>
+          </div>
+
           {!analysis && !analyzing && (
             <div
               className={`admin-dropzone ${isDragOver ? 'is-dragover' : ''}`}
@@ -224,12 +403,11 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                 <UploadCloud aria-hidden="true" size={32} />
               </div>
               <div className="admin-dropzone-prompt">
-                <strong>Klik atau Drag &amp; Drop Gambar Template Greenscreen</strong>
-                <span>Format PNG, JPG, atau WEBP resolusi tinggi</span>
+                <strong>Klik atau Drag &amp; Drop Template Frame Anda</strong>
+                <span>Mendukung PNG, JPG, atau WEBP resolusi tinggi</span>
               </div>
               <span className="admin-dropzone-hint">
-                💡 Area foto di dalam template harus diwarnai hijau neon (Chroma Green #00FF00).
-                Sistem akan otomatis melubangi frame dan mendeteksi kotak foto.
+                ✨ <strong>Multi-Canvas Support:</strong> Bisa pakai template <strong>Greenscreen</strong> (hijau neon), <strong>Blackscreen</strong> (kotak hitam), atau file <strong>PNG Transparan</strong> (No BG).
               </span>
             </div>
           )}
@@ -237,8 +415,8 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
           {analyzing && (
             <div className="admin-scan-loading">
               <div className="admin-scan-spinner" />
-              <strong>Menganalisis area greenscreen...</strong>
-              <span style={{ fontSize: '0.85rem', color: '#a8a29e' }}>
+              <strong>Menganalisis area kanvas foto...</strong>
+              <span style={{ fontSize: '0.85rem', color: '#6C6A64' }}>
                 Mendeteksi koordinat slot foto dan melubangi bingkai secara otomatis.
               </span>
             </div>
@@ -247,30 +425,41 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
           {analysis && (
             <div className="admin-calib-grid">
               {/* Left Column: Visual Preview with Detected Slot Overlays */}
-              <div className="admin-preview-stage">
-                <div className="admin-preview-wrapper">
-                  <img
-                    src={analysis.cutoutDataUrl}
-                    alt="Pratinjau Frame Kustom"
-                    className="admin-preview-img"
-                  />
-                  {slots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      className="admin-slot-box"
-                      style={{
-                        left: `${slot.x * 100}%`,
-                        top: `${slot.y * 100}%`,
-                        width: `${slot.width * 100}%`,
-                        height: `${slot.height * 100}%`,
-                      }}
-                      title={`Slot Foto #${slot.order} (${Math.round(slot.width * 100)}% x ${Math.round(slot.height * 100)}%)`}
-                    >
-                      <span className="admin-slot-badge">
-                        Pose #{slot.order}
-                      </span>
-                    </div>
-                  ))}
+              <div className="admin-preview-stage-container">
+                {isPickingColor && (
+                  <div className="admin-pipette-banner">
+                    <Pipette size={16} />
+                    <span>Klik pada area warna di gambar yang ingin dijadikan slot foto!</span>
+                  </div>
+                )}
+                <div
+                  className={`admin-preview-stage ${isPickingColor ? 'is-eyedropper' : ''}`}
+                  onClick={handlePreviewClick}
+                >
+                  <div className="admin-preview-wrapper">
+                    <img
+                      ref={previewImgRef}
+                      src={analysis.cutoutDataUrl}
+                      alt="Pratinjau Frame Kustom"
+                      className="admin-preview-img"
+                    />
+                    {!isPickingColor &&
+                      slots.map((slot) => (
+                        <div
+                          key={slot.id}
+                          className="admin-slot-box"
+                          style={{
+                            left: `${slot.x * 100}%`,
+                            top: `${slot.y * 100}%`,
+                            width: `${slot.width * 100}%`,
+                            height: `${slot.height * 100}%`,
+                          }}
+                          title={`Slot Foto #${slot.order} (${Math.round(slot.width * 100)}% x ${Math.round(slot.height * 100)}%)`}
+                        >
+                          <span className="admin-slot-badge">Pose #{slot.order}</span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
 
@@ -278,10 +467,20 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
               <div className="admin-calib-sidebar">
                 <div className="admin-sidebar-card">
                   <div className="admin-sidebar-header">
-                    <strong>Urutan Pose Foto</strong>
-                    <span>{slots.length} Slot Terdeteksi</span>
+                    <strong>Hasil Deteksi</strong>
+                    <span className="admin-detected-badge">{modeBadgeText()}</span>
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: '#a8a29e', margin: 0 }}>
+                  <p style={{ fontSize: '0.82rem', color: '#6C6A64', margin: 0 }}>
+                    {slots.length} kotak foto berhasil dideteksi dan dilubangi.
+                  </p>
+                </div>
+
+                <div className="admin-sidebar-card">
+                  <div className="admin-sidebar-header">
+                    <strong>Urutan Pose Foto</strong>
+                    <span>{slots.length} Slot</span>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#6C6A64', margin: 0 }}>
                     Sesuaikan urutan jepretan kamera untuk tiap slot foto:
                   </p>
                   <div className="admin-slots-list" role="list">
@@ -354,9 +553,32 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                   </div>
 
                   <div className="admin-form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <label htmlFor="custom-frame-inset">Inset Pinggiran</label>
+                      <span style={{ fontSize: '0.78rem', color: '#6C6A64' }}>
+                        {(inset * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <input
+                      id="custom-frame-inset"
+                      type="range"
+                      min="0"
+                      max="0.015"
+                      step="0.001"
+                      value={inset}
+                      onChange={(e) => void handleInsetChange(parseFloat(e.target.value))}
+                      style={{ width: '100%', accentColor: '#D97706' }}
+                    />
+                    <small style={{ fontSize: '0.72rem', color: '#8C827A' }}>
+                      Geser ke kanan agar foto masuk sedikit lebih dalam ke balik frame.
+                    </small>
+                  </div>
+
+                  <div className="admin-form-group">
                     <label>Resolusi Asli</label>
                     <span style={{ fontSize: '0.85rem', color: '#6C6A64' }}>
-                      {analysis.width} x {analysis.height} px ({analysis.width > analysis.height ? 'Landscape' : 'Portrait'})
+                      {analysis.width} x {analysis.height} px (
+                      {analysis.width > analysis.height ? 'Landscape' : 'Portrait'})
                     </span>
                   </div>
                 </div>
@@ -371,13 +593,21 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
                     color: '#57534E',
                     fontSize: '0.82rem',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
                   }}
                   onClick={() => {
                     setAnalysis(null)
                     setSlots([])
+                    setCurrentFile(null)
+                    setCustomColor(null)
+                    setIsPickingColor(false)
                   }}
                 >
-                  Ganti File Gambar Lain
+                  <RotateCcw size={14} />
+                  <span>Ganti File Gambar Lain</span>
                 </button>
               </div>
             </div>
@@ -389,11 +619,7 @@ export function GreenscreenUploadModal({ isOpen, onClose, onSuccess }: Greenscre
             Batal
           </button>
           {analysis && (
-            <button
-              type="button"
-              className="admin-btn-primary"
-              onClick={handleSave}
-            >
+            <button type="button" className="admin-btn-primary" onClick={handleSave}>
               <CheckCircle2 aria-hidden="true" size={18} />
               <span>Simpan &amp; Pasang di Studio</span>
             </button>
