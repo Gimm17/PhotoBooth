@@ -16,3 +16,12 @@ Thumbs.db
 
 Photobooth_Template/
 design_ui_ux/
+
+# Security: ignore environment, cPanel, and secret files
+!.env.example
+!.env.*.example
+cpanel.txt
+*cpanel*.txt
+*CPANEL*.txt
+*secret*.txt
+pwsupersecretcpanel.txt
