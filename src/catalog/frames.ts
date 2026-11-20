@@ -29,8 +29,11 @@ export const FRAME_TEMPLATES = [
   ...IMPORTED_FRAMES,
 ] satisfies FrameTemplate[]
 
-export const frameById = (id: string) => {
+export const frameById = (id: string): FrameTemplate | undefined => {
   const custom = getInMemoryCustomFrames()
   return custom.find((frame) => frame.id === id) || FRAME_TEMPLATES.find((frame) => frame.id === id)
 }
 export const layoutById = (id: string) => LAYOUTS.find((layout) => layout.id === id)
+
+export const isArtistFrame = (frame: FrameTemplate | undefined | null): boolean =>
+  Boolean(frame && (frame.artistMeta?.isArtistFrame || frame.assets?.some((a) => a.placement === 'slot-overlay')))

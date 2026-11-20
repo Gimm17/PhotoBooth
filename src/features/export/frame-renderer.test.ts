@@ -88,4 +88,98 @@ describe('frame renderer', () => {
   it('interpolates hue through the shortest signed turn', () => {
     expect(interpolateFilter('hue-rotate(340deg)', 50)).toBe('hue-rotate(-10deg)')
   })
+
+  it('draws slot-overlay inside the clipped slot after photo and before border/overlay, with flipX and filter harmony', () => {
+    const { context, order } = makeContext()
+    const filterAtDraw: Record<string, string> = {}
+    vi.mocked(context.drawImage).mockImplementation((source: unknown) => {
+      const id = (source as { id: string }).id
+      order.push(id)
+      filterAtDraw[id] = context.filter
+    })
+
+    const artistFrame: FrameTemplate = {
+      ...frame,
+      slots: [{ ...frame.slots[0], rotation: 0 }],
+      assets: [
+        { src: 'artist-0', placement: 'slot-overlay', slotIndex: 0, x: 0.3, y: 0, width: 0.7, height: 1, flipX: true },
+        { src: 'over', placement: 'overlay', x: 0, y: 0, width: 1, height: 1 },
+      ],
+    }
+
+    drawFrameComposition({
+      context,
+      canvas: { width: 400, height: 400 } as HTMLCanvasElement,
+      frame: artistFrame,
+      assets: [
+        {
+          layer: artistFrame.assets![0],
+          image: { id: 'artist-0' } as unknown as CanvasImageSource,
+          width: 200,
+          height: 400,
+        },
+        {
+          layer: artistFrame.assets![1],
+          image: { id: 'overlay' } as unknown as CanvasImageSource,
+          width: 400,
+          height: 400,
+        },
+      ],
+      slots: [{ source: { id: 'photo-0' } as unknown as CanvasImageSource, width: 400, height: 200, mirror: false }],
+      filter,
+      intensity: 50,
+      caption: '',
+      showDate: false,
+      date: new Date(),
+      applyArtistFilter: true,
+    })
+
+    expect(order).toEqual(['background', 'photo-0', 'artist-0', 'border', 'overlay'])
+    expect(context.clip).toHaveBeenCalledOnce()
+    expect(context.scale).toHaveBeenCalledWith(-1, 1)
+    expect(filterAtDraw['photo-0']).toBe('brightness(110%) sepia(10%) hue-rotate(20deg)')
+    expect(filterAtDraw['artist-0']).toBe('brightness(110%) sepia(10%) hue-rotate(20deg)')
+  })
+
+  it('keeps artist overlay unfiltered when applyArtistFilter is false while still filtering user photo', () => {
+    const { context } = makeContext()
+    const filterAtDraw: Record<string, string> = {}
+    vi.mocked(context.drawImage).mockImplementation((source: unknown) => {
+      const id = (source as { id: string }).id
+      filterAtDraw[id] = context.filter
+    })
+
+    const artistFrame: FrameTemplate = {
+      ...frame,
+      slots: [{ ...frame.slots[0], rotation: 0 }],
+      assets: [
+        { src: 'artist-0', placement: 'slot-overlay', slotIndex: 0, x: 0.3, y: 0, width: 0.7, height: 1 },
+      ],
+    }
+
+    drawFrameComposition({
+      context,
+      canvas: { width: 400, height: 400 } as HTMLCanvasElement,
+      frame: artistFrame,
+      assets: [
+        {
+          layer: artistFrame.assets![0],
+          image: { id: 'artist-0' } as unknown as CanvasImageSource,
+          width: 200,
+          height: 400,
+        },
+      ],
+      slots: [{ source: { id: 'photo-0' } as unknown as CanvasImageSource, width: 400, height: 200, mirror: true }],
+      filter,
+      intensity: 100,
+      caption: '',
+      showDate: false,
+      date: new Date(),
+      applyArtistFilter: false,
+    })
+
+    expect(filterAtDraw['photo-0']).toBe('brightness(120%) sepia(20%) hue-rotate(40deg)')
+    expect(filterAtDraw['artist-0']).toBe('none')
+    expect(context.scale).toHaveBeenCalledTimes(1)
+  })
 })

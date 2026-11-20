@@ -2,7 +2,7 @@ import { ArrowLeft, Image, Layers, Palette, Redo2, Undo2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { filterById } from '../../catalog/filters'
-import { frameById } from '../../catalog/frames'
+import { frameById, isArtistFrame } from '../../catalog/frames'
 import type { FilterCategory, FrameCategory, FrameOrientation } from '../../catalog/types'
 import { composePhotoStrip } from '../export/compositor'
 import { warmUpGDriveConnection } from '../export/gdrive-share-service'
@@ -29,6 +29,7 @@ const snapshot = (): EditorHistorySnapshot => {
     filterIntensity: state.filterIntensity,
     caption: state.caption,
     showDate: state.showDate,
+    applyArtistFilter: state.applyArtistFilter,
     photoAdjustments: { ...state.photoAdjustments },
   }
 }
@@ -51,7 +52,7 @@ export function Editor() {
   const frame = frameById(session.selectedFrame)
   const filter = filterById(session.selectedFilter)
   const isComplete = session.photos.length >= session.requiredShots
-  const editorKey = `${session.selectedFrame}|${session.selectedFilter}|${session.filterIntensity}|${session.caption}|${session.showDate}|${session.photos.join('|')}|${JSON.stringify(session.photoAdjustments)}`
+  const editorKey = `${session.selectedFrame}|${session.selectedFilter}|${session.filterIntensity}|${session.caption}|${session.showDate}|${session.applyArtistFilter}|${session.photos.join('|')}|${JSON.stringify(session.photoAdjustments)}`
 
   const markPreviewDirty = () => {
     useSessionStore.getState().setComposedResult(null, null)
@@ -93,6 +94,7 @@ export function Editor() {
         showDate: session.showDate,
         format: 'png',
         adjustments: session.photoAdjustments,
+        applyArtistFilter: session.applyArtistFilter,
       })
         .then((blob) => {
           if (generation.current !== request) return
@@ -110,7 +112,7 @@ export function Editor() {
       window.clearTimeout(timer)
       if (generation.current === request) generation.current++
     }
-  }, [editorKey, filter, frame, isComplete, session.caption, session.filterIntensity, session.photoAdjustments, session.photos, session.requiredShots, session.showDate])
+  }, [editorKey, filter, frame, isComplete, session.applyArtistFilter, session.caption, session.filterIntensity, session.photoAdjustments, session.photos, session.requiredShots, session.showDate])
 
   const activePanel = useMemo(() => {
     if (tool === 'frames') {
@@ -166,7 +168,7 @@ export function Editor() {
     <div className="editor-workspace">
       <aside className="editor-library" aria-label="Peralatan editor"><nav className="editor-tool-rail" aria-label="Kategori peralatan"><button className={tool === 'frames' ? 'is-active' : ''} type="button" onClick={() => setTool('frames')}><Image aria-hidden="true" size={20} /><span>Bingkai</span></button><button className={tool === 'filters' ? 'is-active' : ''} type="button" onClick={() => setTool('filters')}><Palette aria-hidden="true" size={20} /><span>Filter</span></button><button className={tool === 'photos' ? 'is-active' : ''} type="button" onClick={() => setTool('photos')}><Layers aria-hidden="true" size={20} /><span>Foto</span></button></nav><div className="editor-catalog">{activePanel}</div></aside>
       {frame && <PrintPreview frame={frame} resultUrl={session.composedResultUrl} status={previewStatus} />}
-      <aside className="editor-right"><Inspector caption={session.caption} intensity={session.filterIntensity} showDate={session.showDate} onCaptionChange={(value) => record(() => useSessionStore.getState().setCaption(value))} onIntensityChange={(value) => record(() => useSessionStore.getState().setFilterIntensity(value))} onShowDateChange={updateShowDate} />{previewError && <p className="editor-error" role="alert">{previewError}</p>}<button className="button primary-button editor-continue" type="button" disabled={previewStatus !== 'ready'} onClick={() => { void startQrPreupload({ isBackground: true }); navigate('/result') }}>Lanjut ke unduh dan cetak</button></aside>
+      <aside className="editor-right"><Inspector caption={session.caption} intensity={session.filterIntensity} showDate={session.showDate} isArtistFrame={isArtistFrame(frame)} applyArtistFilter={session.applyArtistFilter} onCaptionChange={(value) => record(() => useSessionStore.getState().setCaption(value))} onIntensityChange={(value) => record(() => useSessionStore.getState().setFilterIntensity(value))} onShowDateChange={updateShowDate} onApplyArtistFilterChange={(value) => record(() => useSessionStore.getState().setApplyArtistFilter(value))} />{previewError && <p className="editor-error" role="alert">{previewError}</p>}<button className="button primary-button editor-continue" type="button" disabled={previewStatus !== 'ready'} onClick={() => { void startQrPreupload({ isBackground: true }); navigate('/result') }}>Lanjut ke unduh dan cetak</button></aside>
     </div>
   </section>
 }

@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { filterById } from '../catalog/filters'
 import { FRAME_TEMPLATES, frameById, layoutById } from '../catalog/frames'
-import type { BoomerangResult, CameraRotation, CapturedPose, LayoutId, PhotoAdjustment, PhotoSession, ShutterDockPosition } from '../catalog/types'
+import type { BoomerangResult, CameraRotation, CapturedPose, FrameTemplate, LayoutId, PhotoAdjustment, PhotoSession, ShutterDockPosition } from '../catalog/types'
 
 export type EditorHistorySnapshot = Pick<
   PhotoSession,
   'selectedLayout' | 'selectedFrame' | 'selectedFilter' | 'requiredShots' | 'photos' | 'filterIntensity' | 'caption' | 'showDate' | 'photoAdjustments'
->
+> & { applyArtistFilter?: boolean }
 
 interface SessionActions {
   cameraDeviceId: string | null
@@ -37,6 +37,7 @@ interface SessionActions {
   setShowGrid: (showGrid: boolean) => void
   setCaption: (caption: string) => void
   setShowDate: (showDate: boolean) => void
+  setApplyArtistFilter: (apply: boolean) => void
   setLiveEnabled: (enabled: boolean) => void
   commitCapturedPose: (index: number, pose: CapturedPose) => void
   clearLiveSequences: () => void
@@ -64,6 +65,7 @@ const createInitialSession = (): PhotoSession => ({
   filterIntensity: 100,
   caption: '',
   showDate: false,
+  applyArtistFilter: true,
   composedResultUrl: null,
   composedResultBlob: null,
   liveEnabled: true,
@@ -307,6 +309,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       liveSequences: [],
       liveErrors: [],
       photoAdjustments: {},
+      applyArtistFilter: (frame as FrameTemplate).assets?.find((a) => a.placement === 'slot-overlay')?.applyFilter ?? true,
     }))
   },
   setFilterIntensity: (intensity) => set((state) => ({ ...invalidateGeneratedOutputs(state), filterIntensity: Math.min(100, Math.max(0, intensity)) })),
@@ -334,6 +337,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setShowGrid: (showGrid) => set({ showGrid }),
   setCaption: (caption) => set((state) => ({ ...invalidateGeneratedOutputs(state), caption })),
   setShowDate: (showDate) => set((state) => ({ ...invalidateGeneratedOutputs(state), showDate })),
+  setApplyArtistFilter: (applyArtistFilter) => set((state) => ({ ...invalidateGeneratedOutputs(state), applyArtistFilter })),
   setLiveEnabled: (liveEnabled) => set((state) => liveEnabled ? { liveEnabled } : {
     ...invalidateBoomerang(state),
     liveEnabled,
@@ -377,6 +381,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         filterIntensity: Math.min(100, Math.max(0, snapshot.filterIntensity)),
         caption: snapshot.caption,
         showDate: snapshot.showDate,
+        applyArtistFilter: snapshot.applyArtistFilter ?? true,
         photoAdjustments: snapshot.photoAdjustments ? { ...snapshot.photoAdjustments } : {},
       }
     })

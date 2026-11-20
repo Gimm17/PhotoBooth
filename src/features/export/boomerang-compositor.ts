@@ -30,6 +30,7 @@ export interface ComposeBoomerangInput {
   fps?: number
   dependencies?: BoomerangDependencies
   adjustments?: Record<number, PhotoAdjustment>
+  applyArtistFilter?: boolean
 }
 
 export const LIVE_PHOTO_DURATION_SEC = 3
@@ -137,6 +138,7 @@ export async function composeBoomerang(input: ComposeBoomerangInput): Promise<Re
           showDate: input.showDate,
           date: input.date ?? new Date(),
           adjustments: input.adjustments,
+          applyArtistFilter: input.applyArtistFilter,
         })
         const drawElapsed = performance.now() - drawStart
         await dependencies.wait(Math.max(1, (1_000 / fps) - drawElapsed), signal)

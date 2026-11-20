@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore } from '../../store/session-store'
+import { useCustomFramesStore } from '../../catalog/custom-frame-store'
+import type { FrameTemplate } from '../../catalog/types'
 import { Studio } from './Studio'
 
 const mocks = vi.hoisted(() => ({
@@ -317,5 +319,50 @@ describe('Studio', () => {
     expect(useSessionStore.getState().shutterDockPosition).toBe('bottom')
     expect(dock).toHaveClass('dock-bottom')
     expect(filmstrip).not.toHaveClass('dock-side')
+  })
+
+  it('activates Focus Mode by default for an Artist Frame and exposes the Artist Filter Harmony toggle', async () => {
+    const artistFrame: FrameTemplate = {
+      id: 'custom-artist-test',
+      name: 'Test Idol 4-Cut',
+      category: 'Artist',
+      layoutId: 'classic-strip',
+      orientation: 'portrait',
+      output: { width: 900, height: 1800 },
+      slots: [
+        { x: 0.13, y: 0.06, width: 0.74, height: 0.19 },
+        { x: 0.13, y: 0.285, width: 0.74, height: 0.19 },
+        { x: 0.13, y: 0.51, width: 0.74, height: 0.19 },
+        { x: 0.13, y: 0.735, width: 0.74, height: 0.19 },
+      ],
+      background: '#141416',
+      border: { color: '#2C2B29', width: 6, radius: 0 },
+      caption: { enabled: true, color: '#FFFFFF', fontFamily: 'Outfit, sans-serif', fontSize: 42, align: 'center', x: 0.5, y: 0.94 },
+      artistMeta: { artistName: 'IDOL TEST', isArtistFrame: true },
+      assets: [
+        { src: 'data:image/png;base64,artist', placement: 'slot-overlay', slotIndex: 0, x: 0.3, y: 0.05, width: 0.65, height: 0.95, applyFilter: true },
+      ],
+    }
+
+    await act(async () => {
+      await useCustomFramesStore.getState().addFrame(artistFrame)
+      useSessionStore.getState().startSessionWithFrame(artistFrame.id)
+    })
+
+    try {
+      renderStudio()
+      expect(screen.getByRole('complementary', { name: 'Mini strip artist frame' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Tampilkan seluruh strip frame' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Buka setelan tangkapan' }))
+      const artistFilterToggle = screen.getByLabelText('Samakan filter warna artis')
+      expect(artistFilterToggle).toBeChecked()
+      fireEvent.click(artistFilterToggle)
+      expect(useSessionStore.getState().applyArtistFilter).toBe(false)
+    } finally {
+      await act(async () => {
+        await useCustomFramesStore.getState().deleteFrame(artistFrame.id)
+      })
+    }
   })
 });

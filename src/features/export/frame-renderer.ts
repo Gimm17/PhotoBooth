@@ -33,6 +33,7 @@ export interface DrawFrameCompositionInput {
   showDate: boolean
   date: Date
   adjustments?: Record<number, PhotoAdjustment>
+  applyArtistFilter?: boolean
   placeholder?: (context: CanvasRenderingContext2D, slotIndex: number, box: RenderBox) => void
 }
 
@@ -79,6 +80,29 @@ const drawAssetLayer = (context: CanvasRenderingContext2D, canvas: Pick<HTMLCanv
   context.rotate((layer.rotation ?? 0) * 2 * Math.PI)
   context.translate(-centerX, -centerY)
   context.globalAlpha = layer.opacity ?? 1
+  context.drawImage(asset.image, destination.sx, destination.sy, destination.sw, destination.sh, destination.dx, destination.dy, destination.dw, destination.dh)
+  context.restore()
+}
+
+const drawSlotOverlayLayer = (
+  context: CanvasRenderingContext2D,
+  slotWidth: number,
+  slotHeight: number,
+  asset: PreparedFrameAsset,
+  filterCss: string,
+) => {
+  const { layer } = asset
+  const box = { x: layer.x * slotWidth, y: layer.y * slotHeight, width: layer.width * slotWidth, height: layer.height * slotHeight }
+  const destination = calculateAssetDestination(asset, box, layer.fit ?? 'contain')
+  const centerX = box.x + box.width / 2
+  const centerY = box.y + box.height / 2
+  context.save()
+  context.translate(centerX, centerY)
+  if (layer.rotation) context.rotate(layer.rotation * 2 * Math.PI)
+  if (layer.flipX) context.scale(-1, 1)
+  context.translate(-centerX, -centerY)
+  context.globalAlpha = layer.opacity ?? 1
+  context.filter = filterCss
   context.drawImage(asset.image, destination.sx, destination.sy, destination.sw, destination.sh, destination.dx, destination.dy, destination.dw, destination.dh)
   context.restore()
 }
@@ -138,17 +162,45 @@ export function drawFrameComposition(input: DrawFrameCompositionInput): void {
     context.translate(-width / 2, -height / 2)
     roundedPath(context, 0, 0, width, height, frame.border.radius)
     context.clip()
-    if (source) {
-      const adjustment = source.adjustment ?? input.adjustments?.[index]
-      const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height }, adjustment)
-      context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
-      if (source.mirror) {
-        context.translate(width, 0)
-        context.scale(-1, 1)
+    const slotOverlays = input.assets.filter(({ layer }) => layer.placement === 'slot-overlay' && layer.slotIndex === index)
+    if (slotOverlays.length === 0) {
+      if (source) {
+        const adjustment = source.adjustment ?? input.adjustments?.[index]
+        const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height }, adjustment)
+        context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
+        if (source.mirror) {
+          context.translate(width, 0)
+          context.scale(-1, 1)
+        }
+        context.drawImage(source.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
+      } else {
+        input.placeholder?.(context, index, { x: 0, y: 0, width, height })
       }
-      context.drawImage(source.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
     } else {
-      input.placeholder?.(context, index, { x: 0, y: 0, width, height })
+      if (source) {
+        const adjustment = source.adjustment ?? input.adjustments?.[index]
+        const crop = calculateCoverCrop({ width: source.width, height: source.height }, { width, height }, adjustment)
+        if (source.mirror) {
+          context.save()
+          context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
+          context.translate(width, 0)
+          context.scale(-1, 1)
+          context.drawImage(source.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
+          context.restore()
+        } else {
+          context.filter = interpolateFilter(input.filter.cssFilter, input.intensity)
+          context.drawImage(source.source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, width, height)
+        }
+      } else {
+        input.placeholder?.(context, index, { x: 0, y: 0, width, height })
+      }
+      const interpolated = interpolateFilter(input.filter.cssFilter, input.intensity)
+      slotOverlays.forEach((slotOverlay) => {
+        const shouldFilter = input.applyArtistFilter !== undefined
+          ? input.applyArtistFilter
+          : (slotOverlay.layer.applyFilter ?? true)
+        drawSlotOverlayLayer(context, width, height, slotOverlay, shouldFilter ? interpolated : 'none')
+      })
     }
     context.restore()
   })

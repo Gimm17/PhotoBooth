@@ -1,11 +1,13 @@
-import { Camera, Check, ChevronLeft, Grid3X3, ImagePlus, Layout, Lock, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Columns2, Grid3X3, ImagePlus, Layout, Lock, Maximize2, Palette, PanelBottom, PanelLeft, PanelRight, RotateCcw, RotateCw, ShieldCheck, SlidersHorizontal, Sparkles, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FILTER_PRESETS, filterById } from '../../catalog/filters'
-import { FRAME_TEMPLATES, frameById, layoutById } from '../../catalog/frames'
+import { FRAME_TEMPLATES, frameById, isArtistFrame, layoutById } from '../../catalog/frames'
+import type { FrameTemplate } from '../../catalog/types'
 import { useSessionStore } from '../../store/session-store'
 import { useAdminAuthStore } from '../admin/admin-auth-store'
 import { AdminPinModal } from '../admin/AdminPinModal'
+import { ArtistFrameBuilderModal } from '../admin/ArtistFrameBuilderModal'
 import { GreenscreenUploadModal } from '../admin/GreenscreenUploadModal'
 import { useCustomFramesStore } from '../../catalog/custom-frame-store'
 import { captureFrame } from './camera-service'
@@ -115,6 +117,8 @@ export function Studio() {
   const logoutAdmin = useAdminAuthStore((s) => s.logout)
   const [adminPinModalOpen, setAdminPinModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [artistModalOpen, setArtistModalOpen] = useState(false)
+  const [focusModePreference, setFocusModePreference] = useState<'auto' | 'focus' | 'strip'>('auto')
 
   const customFrames = useCustomFramesStore((s) => s.customFrames)
   const initCustomFrames = useCustomFramesStore((s) => s.init)
@@ -124,21 +128,33 @@ export function Studio() {
     void initCustomFrames()
   }, [initCustomFrames])
 
-  const allAvailableFrames = useMemo(() => {
+  const allAvailableFrames = useMemo<FrameTemplate[]>(() => {
     return [...customFrames, ...FRAME_TEMPLATES]
   }, [customFrames])
 
   const machine = machineRef.current
   const complete = session.photos.length >= session.requiredShots
   const activeSlot = captureState.retakeIndex ?? (complete ? -1 : Math.min(session.photos.length, Math.max(session.requiredShots - 1, 0)))
-  const activeFrame = frameById(session.selectedFrame) ?? allAvailableFrames.find((frame) => frame.layoutId === session.selectedLayout) ?? FRAME_TEMPLATES[0]
+  const activeFrame: FrameTemplate = frameById(session.selectedFrame) ?? allAvailableFrames.find((frame) => frame.layoutId === session.selectedLayout) ?? FRAME_TEMPLATES[0]
+  const artistMode = isArtistFrame(activeFrame)
+  const isFocusMode = (focusModePreference === 'auto' ? artistMode : focusModePreference === 'focus') && activeSlot >= 0 && !complete
   const stageZoom = session.stageZoom ?? 1
   const stageZoomPercent = Math.round(stageZoom * 100)
   const dockPos = session.shutterDockPosition ?? 'bottom'
   const compatibleFrames = allAvailableFrames.filter((frame) => frame.layoutId === session.selectedLayout)
+  const activeSlotRect = isFocusMode ? activeFrame.slots[activeSlot] : undefined
+  const slotRatio = activeSlotRect
+    ? (activeSlotRect.width * activeFrame.output.width) / Math.max(1, activeSlotRect.height * activeFrame.output.height)
+    : activeFrame.output.width / activeFrame.output.height
   const stageStyle = {
-    '--frame-stage-width': `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
+    '--frame-stage-width': isFocusMode
+      ? `${Number((slotRatio * 68 * stageZoom).toFixed(3))}dvh`
+      : `${Number(((activeFrame.output.width / activeFrame.output.height) * 120 * stageZoom).toFixed(3))}dvh`,
   } as CSSProperties
+
+  useEffect(() => {
+    setFocusModePreference('auto')
+  }, [activeFrame.id])
   const activeFilter = filterById(session.selectedFilter) ?? FILTER_PRESETS[0]
   const captureBusy = captureState.status === 'countdown' || captureState.status === 'flashing' || captureState.status === 'capturing'
   const settingsLocked = captureState.status === 'flashing' || captureState.status === 'capturing'
@@ -178,6 +194,7 @@ export function Studio() {
       showDate: state.showDate,
       format: 'png',
       adjustments: state.photoAdjustments,
+      applyArtistFilter: state.applyArtistFilter,
     })
       .then((blob) => {
         if (cancelled) return
@@ -192,7 +209,7 @@ export function Studio() {
     return () => {
       cancelled = true
     }
-  }, [complete, captureBusy, session.selectedFrame, session.selectedFilter, session.photos])
+  }, [complete, captureBusy, session.selectedFrame, session.selectedFilter, session.photos, session.applyArtistFilter])
 
   useEffect(() => useSessionStore.subscribe((next, previous) => {
     if (next.selectedLayout !== previous.selectedLayout) {
@@ -294,6 +311,19 @@ export function Studio() {
           {dockPos === 'bottom' ? <PanelBottom aria-hidden="true" size={17} /> : dockPos === 'right' ? <PanelRight aria-hidden="true" size={17} /> : <PanelLeft aria-hidden="true" size={17} />}
           <span>{dockPos === 'bottom' ? 'Tombol: Bawah' : dockPos === 'right' ? 'Tombol: Kanan' : 'Tombol: Kiri'}</span>
         </button>
+        {(artistMode || activeFrame.slots.length > 1) && (
+          <button
+            className={`studio-dock-trigger ${isFocusMode ? 'is-focus-active' : ''}`}
+            type="button"
+            disabled={captureBusy || complete}
+            onClick={() => setFocusModePreference(isFocusMode ? 'strip' : 'focus')}
+            aria-label={isFocusMode ? 'Tampilkan seluruh strip frame' : 'Fokus pada 1 kotak pose aktif'}
+            title={isFocusMode ? 'Lihat seluruh strip frame' : 'Fokus 1 kotak pose besar (gaya Photoism)'}
+          >
+            {isFocusMode ? <Columns2 aria-hidden="true" size={16} /> : <Maximize2 aria-hidden="true" size={16} />}
+            <span>{isFocusMode ? 'Lihat Strip' : 'Mode Fokus'}</span>
+          </button>
+        )}
         {isAdmin ? (
           <button
             className="studio-dock-trigger is-admin-active"
@@ -328,14 +358,66 @@ export function Studio() {
 
     <div className="studio-workspace">
       <div className="studio-main">
-        <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} style={stageStyle} aria-label="Area pratinjau foto">
-          <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} cameraRotation={session.cameraRotation} showGrid={session.showGrid} onError={setPreviewError} />
-          {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
-          {session.liveEnabled && <span className="studio-live-badge" aria-hidden="true"><span className="studio-live-dot" />LIVE</span>}
-          <div className="viewfinder-corners" aria-hidden="true" />
-          {captureState.status === 'countdown' && <div className="countdown" aria-hidden="true">{captureState.remaining}</div>}
-          {captureState.status === 'flashing' && <div className="capture-flash" aria-hidden="true" />}
-          <p className="studio-live-status" role="status" aria-live="assertive">{statusLabel}</p>
+        <div className={isFocusMode ? 'studio-focus-layout' : undefined}>
+          <div className={`studio-stage viewfinder ${captureState.status === 'flashing' ? 'is-flashing' : ''}`} style={stageStyle} aria-label="Area pratinjau foto">
+            <LiveFramePreview ref={videoRef} frame={activeFrame} filter={activeFilter} photos={session.photos.slice(0, session.requiredShots)} activeSlot={activeSlot} cameraStatus={camera.status} intensity={session.filterIntensity} mirror={session.mirror} cameraRotation={session.cameraRotation} showGrid={session.showGrid} applyArtistFilter={session.applyArtistFilter} focusMode={isFocusMode} onError={setPreviewError} />
+            {isFocusMode && artistMode && (
+              <div className="studio-focus-pose-badge" aria-hidden="true">
+                <span>★ Pose {activeSlot + 1}/{session.requiredShots}</span>
+                {activeFrame.artistMeta?.artistName && <small>{activeFrame.artistMeta.artistName}</small>}
+              </div>
+            )}
+            {camera.status !== 'active' && <div className="viewfinder-empty"><Camera aria-hidden="true" size={34} /><strong>{uploadContinuation ? 'Sesi unggahan siap dilanjutkan' : 'Pratinjau kamera belum aktif'}</strong><span>{uploadContinuation ? 'Foto yang dipilih tetap ada di sesi lokal ini. Lengkapi di editor atau kembali untuk mengaktifkan kamera.' : 'Aktifkan kamera di pengaturan untuk mengambil foto langsung.'}</span></div>}
+            {session.liveEnabled && <span className="studio-live-badge" aria-hidden="true"><span className="studio-live-dot" />LIVE</span>}
+            <div className="viewfinder-corners" aria-hidden="true" />
+            {captureState.status === 'countdown' && <div className="countdown" aria-hidden="true">{captureState.remaining}</div>}
+            {captureState.status === 'flashing' && <div className="capture-flash" aria-hidden="true" />}
+            <p className="studio-live-status" role="status" aria-live="assertive">{statusLabel}</p>
+          </div>
+
+          {isFocusMode && (
+            <aside className="studio-focus-rail" aria-label="Mini strip artist frame" style={{ background: activeFrame.background }}>
+              {Array.from({ length: session.requiredShots }, (_, index) => {
+                const captured = session.photos[index]
+                const slotDef = activeFrame.slots[index]
+                const overlayAsset = activeFrame.assets?.find(
+                  (asset) => asset.placement === 'slot-overlay' && asset.slotIndex === index,
+                )
+                const slotAspect = slotDef
+                  ? (slotDef.width * activeFrame.output.width) / Math.max(1, slotDef.height * activeFrame.output.height)
+                  : 1.4
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    disabled={!captured || captureBusy}
+                    className={`studio-focus-rail-slot ${index === activeSlot ? 'is-active' : ''} ${captured ? 'is-captured' : ''}`}
+                    style={{ aspectRatio: String(slotAspect) }}
+                    onClick={() => captured && machine.retake(index)}
+                    aria-label={captured ? `Preview slot ${index + 1}, ketuk untuk ambil ulang` : `Preview slot ${index + 1}`}
+                  >
+                    {captured && <img className="rail-captured-photo" src={captured} alt="" />}
+                    {overlayAsset && (
+                      <img
+                        className="rail-artist-overlay"
+                        src={overlayAsset.src}
+                        alt=""
+                        style={{
+                          left: `${overlayAsset.x * 100}%`,
+                          top: `${overlayAsset.y * 100}%`,
+                          width: `${overlayAsset.width * 100}%`,
+                          height: `${overlayAsset.height * 100}%`,
+                          opacity: overlayAsset.opacity ?? 1,
+                          transform: `${overlayAsset.rotation ? `rotate(${overlayAsset.rotation}turn) ` : ''}${overlayAsset.flipX ? 'scaleX(-1)' : ''}`.trim() || undefined,
+                        }}
+                      />
+                    )}
+                    <span className="rail-slot-index">#{index + 1}</span>
+                  </button>
+                )
+              })}
+            </aside>
+          )}
         </div>
 
         <section className={`studio-filmstrip${dockPos !== 'bottom' ? ' dock-side' : ''}`} aria-label="Progres pose">
@@ -393,14 +475,24 @@ export function Studio() {
           </div>
 
           {isAdmin ? (
-            <button
-              type="button"
-              className="admin-btn-upload-template"
-              onClick={() => setUploadModalOpen(true)}
-            >
-              <Sparkles aria-hidden="true" size={17} color="#e5a93b" />
-              <span>+ Upload Template Greenscreen</span>
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+              <button
+                type="button"
+                className="admin-btn-upload-template"
+                onClick={() => setUploadModalOpen(true)}
+              >
+                <Sparkles aria-hidden="true" size={17} color="#e5a93b" />
+                <span>+ Upload Template Greenscreen</span>
+              </button>
+              <button
+                type="button"
+                className="admin-btn-upload-template is-artist-btn"
+                onClick={() => setArtistModalOpen(true)}
+              >
+                <Sparkles aria-hidden="true" size={17} color="#32647B" />
+                <span>+ Buat Artist Frame (Photoism)</span>
+              </button>
+            </div>
           ) : (
             <button
               type="button"
@@ -562,6 +654,18 @@ export function Studio() {
             <label className="studio-toggle"><span><RotateCcw aria-hidden="true" size={18} />Cermin pratinjau</span><input type="checkbox" disabled={captureBusy} checked={session.mirror} onChange={(event) => session.setMirror(event.target.checked)} /></label>
             <label className="studio-toggle"><span><Grid3X3 aria-hidden="true" size={18} />Tampilkan garis bantu</span><input type="checkbox" disabled={captureBusy} checked={session.showGrid} onChange={(event) => session.setShowGrid(event.target.checked)} /></label>
             <label className="studio-toggle"><span><Sparkles aria-hidden="true" size={18} />Live Photo 60fps</span><input type="checkbox" disabled={captureBusy} checked={session.liveEnabled} onChange={(event) => session.setLiveEnabled(event.target.checked)} /></label>
+            {artistMode && (
+              <label className="studio-toggle">
+                <span><Palette aria-hidden="true" size={18} />Samakan filter warna artis</span>
+                <input
+                  type="checkbox"
+                  aria-label="Samakan filter warna artis"
+                  disabled={captureBusy}
+                  checked={session.applyArtistFilter}
+                  onChange={(event) => session.setApplyArtistFilter(event.target.checked)}
+                />
+              </label>
+            )}
           </div>
 
           <fieldset disabled={captureBusy}>
@@ -638,6 +742,16 @@ export function Studio() {
       <GreenscreenUploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
+        onSuccess={() => {
+          closeSettings()
+        }}
+      />
+    )}
+
+    {artistModalOpen && (
+      <ArtistFrameBuilderModal
+        isOpen={artistModalOpen}
+        onClose={() => setArtistModalOpen(false)}
         onSuccess={() => {
           closeSettings()
         }}

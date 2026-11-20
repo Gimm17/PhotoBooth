@@ -97,7 +97,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
     setLiveStatus(session.boomerangResult ? { kind: 'ready', ...session.boomerangResult } : { kind: 'idle' })
     setQrState(getQrPreuploadState())
     setQrModalOpen(false)
-  }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.liveSequences, session.photoAdjustments])
+  }, [session.selectedFrame, session.selectedFilter, session.filterIntensity, session.caption, session.showDate, session.applyArtistFilter, session.liveSequences, session.photoAdjustments])
 
   const hasResult = Boolean(blob && session.composedResultUrl && frame && filter && session.photos.length >= session.requiredShots)
 
@@ -133,6 +133,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
       intensity: session.filterIntensity,
       caption: session.caption,
       showDate: session.showDate,
+      applyArtistFilter: session.applyArtistFilter,
       photos: session.photos.join('|'),
       adjustments: JSON.stringify(session.photoAdjustments),
     }
@@ -146,6 +147,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         && current.filterIntensity === source.intensity
         && current.caption === source.caption
         && current.showDate === source.showDate
+        && current.applyArtistFilter === source.applyArtistFilter
         && current.photos.join('|') === source.photos
         && JSON.stringify(current.photoAdjustments) === source.adjustments
     }
@@ -164,6 +166,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         showDate: session.showDate,
         format: nextFormat,
         adjustments: session.photoAdjustments,
+        applyArtistFilter: session.applyArtistFilter,
       })
       if (!isCurrent()) return
       const nextUrl = URL.createObjectURL(nextBlob)
@@ -255,6 +258,7 @@ export function ResultPanel({ saveToGallery }: ResultPanelProps) {
         signal: controller.signal,
         capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
         adjustments: session.photoAdjustments,
+        applyArtistFilter: session.applyArtistFilter,
       })
       if (controller.signal.aborted) return
       const url = URL.createObjectURL(recorded.blob)

@@ -14,6 +14,7 @@ export interface ComposePhotoStripInput {
   format: OutputFormat
   quality?: number
   adjustments?: Record<number, PhotoAdjustment>
+  applyArtistFilter?: boolean
 }
 
 const outputMimeTypes: Record<OutputFormat, string> = {
@@ -64,6 +65,7 @@ export const composePhotoStrip = async (input: ComposePhotoStripInput): Promise<
     showDate: input.showDate,
     date: input.date ?? new Date(),
     adjustments: input.adjustments,
+    applyArtistFilter: input.applyArtistFilter,
   })
 
   return canvasToBlob(canvas, outputMimeTypes[input.format], input.quality ?? 0.92)

@@ -30,8 +30,8 @@ export interface PhotoSlot {
   rotation?: number
 }
 
-export type FrameCategory = 'Classic' | 'Coquette' | 'Cute & Pastel' | 'Nature & Dreamy' | 'Celebration' | 'Seasonal'
-export type FrameAssetPlacement = 'underlay' | 'overlay'
+export type FrameCategory = 'Artist' | 'Classic' | 'Coquette' | 'Cute & Pastel' | 'Nature & Dreamy' | 'Celebration' | 'Seasonal'
+export type FrameAssetPlacement = 'underlay' | 'overlay' | 'slot-overlay'
 export type FrameAssetFit = 'contain' | 'cover' | 'stretch'
 
 export interface FrameAssetLayer {
@@ -44,6 +44,18 @@ export interface FrameAssetLayer {
   opacity?: number
   rotation?: number
   fit?: FrameAssetFit
+  /** 0-based index of the photo slot when placement is 'slot-overlay'. */
+  slotIndex?: number
+  /** Horizontally mirrors the character/artist layer when true. */
+  flipX?: boolean
+  /** Whether color filter may apply to this overlay (defaults to true). */
+  applyFilter?: boolean
+}
+
+export interface ArtistFrameMeta {
+  artistName: string
+  subtitle?: string
+  isArtistFrame: true
 }
 
 export type FrameOrientation = 'portrait' | 'landscape' | 'square'
@@ -72,6 +84,7 @@ export interface FrameTemplate {
   caption: FrameCaption
   thumbnail?: string
   assets?: FrameAssetLayer[]
+  artistMeta?: ArtistFrameMeta
 }
 
 export interface LiveFrameSample {
@@ -115,6 +128,7 @@ export interface PhotoSession {
   filterIntensity: number
   caption: string
   showDate: boolean
+  applyArtistFilter: boolean
   composedResultUrl: string | null
   composedResultBlob: Blob | null
   liveEnabled: boolean

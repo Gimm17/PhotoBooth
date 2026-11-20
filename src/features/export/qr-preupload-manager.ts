@@ -58,6 +58,7 @@ export const computeSessionQrSignature = (explicitEndpoint?: string): string => 
     s.filterIntensity,
     s.caption.trim(),
     s.showDate ? '1' : '0',
+    s.applyArtistFilter ? '1' : '0',
     s.photos.slice(0, s.requiredShots).join('|'),
     JSON.stringify(s.photoAdjustments),
   ].join('::')
@@ -234,6 +235,7 @@ export async function startQrPreupload(options?: {
               signal: controller.signal,
               capability: 'standard',
               adjustments: latestSession.photoAdjustments,
+              applyArtistFilter: latestSession.applyArtistFilter,
             })
             if (controller.signal.aborted) return
             if (computeSessionQrSignature(endpoint) === signature) {
@@ -323,6 +325,7 @@ export async function startQrPreupload(options?: {
     const snapshotIntensity = session.filterIntensity
     const snapshotCaption = session.caption
     const snapshotShowDate = session.showDate
+    const snapshotApplyArtistFilter = session.applyArtistFilter
     const snapshotBoomerang = session.boomerangResult
     const targetFolderId = folder.result.folderId
 
@@ -366,6 +369,7 @@ export async function startQrPreupload(options?: {
                 signal: bgAbort.signal,
                 capability: typeof navigator !== 'undefined' && navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 ? 'low' : 'standard',
                 adjustments: snapshotAdjustments,
+                applyArtistFilter: snapshotApplyArtistFilter,
               })
               if (computeSessionQrSignature(endpoint) === signature) {
                 const url = URL.createObjectURL(recorded.blob)

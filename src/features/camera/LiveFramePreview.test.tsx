@@ -74,4 +74,44 @@ describe('LiveFramePreview', () => {
     expect(screen.getByLabelText('Pratinjau kamera di dalam frame')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('synthesizes a 1-slot view in focusMode with remapped slot-overlay and forwards applyArtistFilter', async () => {
+    const artistFrame: FrameTemplate = {
+      ...frame,
+      assets: [
+        { src: 'artist-slot-1.png', placement: 'slot-overlay', slotIndex: 1, x: 0.3, y: 0.1, width: 0.6, height: 0.9 },
+        { src: 'artist-slot-0.png', placement: 'slot-overlay', slotIndex: 0, x: 0.3, y: 0.1, width: 0.6, height: 0.9 },
+      ],
+    }
+    vi.mocked(prepareFrameAssets).mockResolvedValue([
+      { layer: artistFrame.assets![0], image: {} as CanvasImageSource, width: 200, height: 400 },
+      { layer: artistFrame.assets![1], image: {} as CanvasImageSource, width: 200, height: 400 },
+    ])
+
+    render(
+      <LiveFramePreview
+        frame={artistFrame}
+        filter={filter}
+        photos={['data:image/png;base64,one']}
+        activeSlot={1}
+        cameraStatus="active"
+        intensity={100}
+        mirror
+        focusMode
+        applyArtistFilter={false}
+      />,
+    )
+
+    await waitFor(() => {
+      const last = vi.mocked(drawFrameComposition).mock.lastCall?.[0]
+      expect(last?.assets).toHaveLength(1)
+    })
+    const input = vi.mocked(drawFrameComposition).mock.lastCall![0]
+    expect(input.frame.slots).toHaveLength(1)
+    expect(input.slots).toHaveLength(1)
+    expect(input.slots[0]?.source).toBeInstanceOf(HTMLVideoElement)
+    expect(input.assets[0].layer.slotIndex).toBe(0)
+    expect(input.assets[0].layer.src).toBe('artist-slot-1.png')
+    expect(input.applyArtistFilter).toBe(false)
+  })
 })
